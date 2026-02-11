@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block content %}
+<h2>Iniciar Sesión</h2>
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="id_username">Correo Electrónico:</label>
+        {{ form.username }}
+        <!-- Note: AuthenticationForm uses 'username' field name even if it's email -->
+    </div>
+    <div class="form-group">
+        <label for="id_password">Contraseña:</label>
+        {{ form.password }}
+    </div>
+    <button type="submit" class="btn">Ingresar</button>
+
+</form>
+
+{% endblock %}

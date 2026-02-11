@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h2>Bienvenido al Dashboard, {{ user.first_name }} {{ user.last_name }}</h2>
+<p>Has iniciado sesión correctamente.</p>
+<p>Desde aquí puedes navegar a la gestión de usuarios.</p>
+<a href="{% url 'user_list' %}" class="btn">Gestionar Usuarios</a>
+<a href="{% url 'inspection_list' %}" class="btn" style="background-color: #28a745;">Cronograma de Inspecciones
+    (SG-SST)</a>
+{% endblock %}

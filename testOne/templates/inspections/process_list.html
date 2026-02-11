@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Inspecciones de Procesos{% endblock %}
+
+{% block content %}
+<h2>Inspecciones de Instalaciones de Proceso</h2>
+
+{% if pending_schedule %}
+<div class="card" style="margin-bottom: 2rem; border-left: 5px solid #ffc107;">
+    <h3>Próximas Inspecciones (Cronograma)</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha Programada</th>
+                <th>Área</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in pending_schedule %}
+            <tr>
+                <td>{{ item.scheduled_date }}</td>
+                <td>{{ item.area }}</td>
+                <td>
+                    <a href="{% url 'process_create' %}?schedule_item={{ item.pk }}" class="btn"
+                        style="background-color: #28a745;">Ejecutar Ahora</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<a href="{% url 'process_create' %}" class="btn" style="margin-bottom: 1rem;">Nueva Inspección Manual</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Área</th>
+            <th>Inspector</th>
+            <th>Estado General</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for inspection in inspections %}
+        <tr>
+            <td>{{ inspection.inspection_date }}</td>
+            <td>{{ inspection.area }}</td>
+            <td>{{ inspection.inspector }}</td>
+            <td>{{ inspection.general_status }}</td>
+            <td>
+                <a href="{% url 'process_detail' inspection.pk %}" class="btn">Ver</a>
+                <a href="{% url 'process_edit' inspection.pk %}" class="btn btn-secondary">Editar</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5">No hay inspecciones registradas.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

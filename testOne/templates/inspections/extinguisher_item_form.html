@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Agregar Extintor - Inspección de Extintores{% endblock %}
+
+{% block content %}
+<h2>Agregar Extintor a la Inspección</h2>
+<p><strong>Inspección:</strong> {{ inspection }}</p>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    <fieldset>
+        <legend>Datos del Extintor</legend>
+        {{ form.as_p }}
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" name="save" class="btn">Guardar y Volver</button>
+        <button type="submit" name="save_and_add" class="btn btn-secondary">Guardar y Agregar Otro</button>
+        <a href="{% url 'extinguisher_detail' inspection.pk %}" class="btn btn-light"
+            style="border: 1px solid #ccc;">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

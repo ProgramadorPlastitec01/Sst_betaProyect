@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Inspección de Procesos{% endblock %}
+
+{% block content %}
+<h2>{% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Inspección de Procesos (R-RH-SST-030)</h2>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    <fieldset>
+        <legend>Datos Generales</legend>
+        {{ form.as_p }}
+    </fieldset>
+
+    <fieldset>
+        <legend>Lista de Chequeo</legend>
+        {{ items.management_form }}
+
+        <table style="width:100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="width: 50%;">Ítem a Evaluar</th>
+                    <th style="width: 10%;">Cumple</th>
+                    <th style="width: 15%;">Estado</th>
+                    <th style="width: 25%;">Observaciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item_form in items %}
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td>
+                        {{ item_form.id }}
+                        {{ item_form.question.value|default_if_none:"" }}
+                        <input type="hidden" name="{{ item_form.prefix }}-question"
+                            value="{{ item_form.question.value }}">
+                    </td>
+                    <td>{{ item_form.response }}</td>
+                    <td>{{ item_form.item_status }}</td>
+                    <td>{{ item_form.observations }}</td>
+                </tr>
+                {% if item_form.errors %}
+                <tr>
+                    <td colspan="4" style="color:red;">{{ item_form.errors }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </fieldset>
+
+    <button type="submit" class="btn">Guardar Inspección</button>
+    <a href="{% url 'process_list' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}

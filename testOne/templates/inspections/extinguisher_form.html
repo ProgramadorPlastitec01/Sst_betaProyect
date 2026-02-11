@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Inspección de Extintores{% endblock %}
+
+{% block content %}
+<h2>{% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Inspección de Extintores</h2>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    <fieldset>
+        <legend>Datos Generales</legend>
+        {{ form.as_p }}
+    </fieldset>
+
+    <fieldset>
+        <legend>Extintores Inspeccionados</legend>
+        {{ items.management_form }}
+
+        <table style="width:100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th>Ubicación</th>
+                    <th>Tipo</th>
+                    <th>Capacidad</th>
+                    <th>Vencimiento</th>
+                    <th>Estado</th>
+                    <th>Checks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item_form in items %}
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td>{{ item_form.id }}{{ item_form.location }}</td>
+                    <td>{{ item_form.extinguisher_type }}</td>
+                    <td>{{ item_form.capacity }}</td>
+                    <td>{{ item_form.next_recharge_date }}</td>
+                    <td>{{ item_form.status }}</td>
+                    <td>
+                        <label>Manómetro: {{ item_form.pressure_gauge_ok }}</label><br>
+                        <label>Seguro: {{ item_form.safety_pin_ok }}</label><br>
+                        <label>Señal: {{ item_form.signage_ok }}</label><br>
+                        <label>Acceso: {{ item_form.access_ok }}</label>
+                    </td>
+                </tr>
+                {% if item_form.errors %}
+                <tr>
+                    <td colspan="6" style="color:red;">{{ item_form.errors }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </fieldset>
+
+    <button type="submit" class="btn">Guardar Inspección</button>
+    <a href="{% url 'extinguisher_list' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}

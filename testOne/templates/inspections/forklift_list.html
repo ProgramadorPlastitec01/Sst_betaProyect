@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Inspecciones de Montacargas{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h2 style="margin:0; color:#2f5597;">Inspecciones de Montacargas (R-RH-SST-022)</h2>
+    <div style="display: flex; gap: 10px;">
+        <a href="{% url 'inspection_list' %}" class="btn btn-secondary">Volver al Cronograma</a>
+        <a href="{% url 'forklift_create' %}" class="btn" style="background: #2f5597; color: white;">+ Nueva Inspección
+            Manual</a>
+    </div>
+</div>
+
+{% if pending_schedule %}
+<div class="card"
+    style="margin-bottom: 2rem; border-left: 5px solid #ffc107; background: #fff9e6; padding: 20px; border-radius: 8px;">
+    <h3 style="color: #856404; margin-bottom: 15px; margin-top: 0;">⚠️ Próximas Inspecciones Programadas</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="text-align: left; border-bottom: 2px solid #ffeeba;">
+                <th style="padding: 10px;">Fecha Programada</th>
+                <th style="padding: 10px;">Área</th>
+                <th style="padding: 10px;">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in pending_schedule %}
+            <tr style="border-bottom: 1px solid #ffeeba;">
+                <td style="padding: 10px;">{{ item.scheduled_date|date:"d/m/Y" }}</td>
+                <td style="padding: 10px;">{{ item.area }}</td>
+                <td style="padding: 10px;">
+                    <a href="{% url 'forklift_create' %}?schedule_item={{ item.pk }}" class="btn"
+                        style="background-color: #28a745; color: white; padding: 5px 15px;">Ejecutar Inspección</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card"
+    style="padding: 0; overflow: hidden; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead style="background: #f8f9fa;">
+            <tr style="text-align: left;">
+                <th style="padding: 12px; border-bottom: 2px solid #dee2e6;">Fecha</th>
+                <th style="padding: 12px; border-bottom: 2px solid #dee2e6;">Área</th>
+                <th style="padding: 12px; border-bottom: 2px solid #dee2e6;">Tipo</th>
+                <th style="padding: 12px; border-bottom: 2px solid #dee2e6;">Inspector</th>
+                <th style="padding: 12px; border-bottom: 2px solid #dee2e6;">Estado Gral.</th>
+                <th style="padding: 12px; border-bottom: 2px solid #dee2e6;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inspection in inspections %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px;">{{ inspection.inspection_date|date:"d/m/Y" }}</td>
+                <td style="padding: 12px;">{{ inspection.area }}</td>
+                <td style="padding: 12px;">{{ inspection.get_forklift_type_display }}</td>
+                <td style="padding: 12px;">{{ inspection.inspector.get_full_name|default:inspection.inspector.username
+                    }}</td>
+                <td style="padding: 12px;">
+                    <span
+                        style="padding: 4px 8px; border-radius: 4px; color: white; background-color: {% if inspection.general_status == 'Cumple' %}#28a745{% else %}#dc3545{% endif %};">
+                        {{ inspection.general_status }}
+                    </span>
+                </td>
+                <td style="padding: 12px;">
+                    <a href="{% url 'forklift_detail' inspection.pk %}" class="btn"
+                        style="padding: 5px 10px; font-size: 0.9rem; background: #007bff; color: white;">Ver Detalle</a>
+                    <a href="{% url 'forklift_edit' inspection.pk %}" class="btn btn-secondary"
+                        style="padding: 5px 10px; font-size: 0.9rem;">Editar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 20px;">No hay inspecciones registradas.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

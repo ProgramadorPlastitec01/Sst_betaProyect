@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de Inspección de Botiquín{% endblock %}
+
+{% block content %}
+<h2>Detalle de Inspección de Botiquín</h2>
+<div class="card">
+    <p><strong>Fecha:</strong> {{ object.inspection_date }}</p>
+    <p><strong>Área:</strong> {{ object.area }}</p>
+    <p><strong>Inspector:</strong> {{ object.inspector }}</p>
+    <p><strong>Rol:</strong> {{ object.inspector_role }}</p>
+    <p><strong>Observaciones:</strong> {{ object.observations }}</p>
+    {% if object.schedule_item %}
+    <p style="margin-top: 10px; color: #666; font-style: italic;">
+        Esta inspección cumple con la programación del:
+        <a href="{% url 'inspection_list' %}?year={{ object.schedule_item.year }}">{{
+            object.schedule_item.scheduled_date }}</a>
+    </p>
+    {% endif %}
+</div>
+
+<h3>Elementos Inspeccionados</h3>
+<a href="{% url 'first_aid_item_create' object.pk %}" class="btn" style="margin-bottom: 10px;">+ Agregar Elemento</a>
+<table>
+    <thead>
+        <tr>
+            <th>Elemento</th>
+            <th>Cantidad</th>
+            <th>Vencimiento</th>
+            <th>Estado</th>
+            <th>Observaciones</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in object.items.all %}
+        <tr>
+            <td>{{ item.element_name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.expiration_date }}</td>
+            <td>{{ item.status }}</td>
+            <td>{{ item.observations }}</td>
+            <td>
+                <a href="{% url 'first_aid_item_edit' item.pk %}" class="text-primary">Editar</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="{% url 'first_aid_edit' object.pk %}" class="btn">Editar Encabezado</a>
+<a href="{% url 'first_aid_list' %}" class="btn btn-secondary">Volver</a>
+{% endblock %}

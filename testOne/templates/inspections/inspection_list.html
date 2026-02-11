@@ -1,0 +1,445 @@
+{% extends 'base.html' %}
+
+{% block title %} Cronograma de Inspecciones {% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --excel-green: #e2efda;
+        --excel-dark-green: #70ad47;
+        --excel-header-bg: #e2efda;
+        --excel-border: #8497b0;
+    }
+
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Quick Access Buttons */
+    .module-links {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .btn-module {
+        background: white;
+        border: 1px solid var(--excel-border);
+        padding: 8px 15px;
+        border-radius: 5px;
+        text-decoration: none;
+        color: #333;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-module:hover {
+        background: var(--excel-green);
+        border-color: var(--excel-dark-green);
+    }
+
+    /* Excel Table Styles */
+    .excel-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border: 2px solid var(--excel-border);
+        table-layout: fixed;
+    }
+
+    .excel-table th,
+    .excel-table td {
+        border: 1px solid var(--excel-border);
+        padding: 4px;
+        text-align: center;
+        font-size: 0.75rem;
+        overflow: hidden;
+    }
+
+    .excel-table .header-main {
+        background: var(--excel-green);
+        font-weight: bold;
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+
+    .excel-table .header-sub {
+        background: #f2f2f2;
+        font-weight: bold;
+    }
+
+    .row-p {
+        background: #e2efda;
+        font-weight: bold;
+    }
+
+    .row-e {
+        background: white;
+    }
+
+    .col-activity {
+        width: 200px;
+        text-align: left !important;
+        padding-left: 10px !important;
+        font-weight: bold;
+    }
+
+    .col-pe {
+        width: 30px;
+        background: #f2f2f2;
+        font-weight: bold;
+        font-size: 0.7rem;
+    }
+
+    .col-month {
+        width: 40px;
+    }
+
+    .col-total {
+        width: 60px;
+        font-weight: bold;
+    }
+
+    .col-comp {
+        width: 80px;
+        font-weight: bold;
+    }
+
+    .col-resp {
+        width: 180px;
+        text-align: left !important;
+        font-size: 0.7rem;
+    }
+
+    .col-evid {
+        width: 180px;
+        text-align: left !important;
+        font-size: 0.65rem;
+        color: #444;
+    }
+
+    .badge-comp {
+        padding: 4px;
+        border-radius: 0;
+        display: block;
+        width: 100%;
+    }
+
+    .comp-high {
+        background: #00b050;
+        color: white;
+    }
+
+    .comp-mid {
+        background: #ffc000;
+        color: black;
+    }
+
+    .comp-low {
+        background: #ff0000;
+        color: white;
+    }
+
+    /* Summary Section */
+    .summary-header {
+        background: var(--excel-green);
+        font-weight: bold;
+        text-align: center;
+        border: 2px solid var(--excel-border);
+        padding: 5px;
+        margin-top: 20px;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        width: 450px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .form-group {
+        margin-bottom: 12px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 4px;
+        color: #444;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .filters-bar {
+        background: #f8f9fa;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }
+</style>
+
+<div class="dashboard-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; color: #2f5597;">Gestión de Inspecciones SST</h2>
+        <button onclick="openModal()" class="btn"
+            style="background: var(--excel-dark-green); color: white; font-weight: bold; padding: 10px 20px; border-radius: 6px;">+
+            Nueva Programación</button>
+    </div>
+
+    <!-- Quick Access Buttons -->
+    <div class="module-links">
+        <a href="{% url 'extinguisher_list' %}" class="btn-module">🧯 Extintores</a>
+        <a href="{% url 'first_aid_list' %}" class="btn-module">🩹 Botiquines</a>
+        <a href="{% url 'process_list' %}" class="btn-module">⚙️ Instalaciones de Proceso</a>
+        <a href="{% url 'storage_list' %}" class="btn-module">📦 Almacenamiento</a>
+        <a href="{% url 'forklift_list' %}" class="btn-module">🚜 Montacargas</a>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="filters-bar">
+        <strong>Filtros:</strong>
+        <select name="year" onchange="this.form.submit()">
+            <option value="">Año</option>
+            {% for y in years %}<option value="{{ y }}">{{ y }}</option>
+            {% endfor %}
+        </select>
+        <select name="area" onchange="this.form.submit()">
+            <option value="">Área</option>
+            {% for a in areas %}<option value="{{ a }}">{{ a }}</option>
+            {% endfor %}
+        </select>
+        <a href="?" style="font-size: 0.8rem; text-decoration: none; color: #2f5597;">Limpiar filtros</a>
+    </form>
+
+    <!-- 5. CRONOGRAMA TABLE -->
+    <table class="excel-table">
+        <thead>
+            <tr>
+                <th colspan="18" class="header-main">5. CRONOGRAMA</th>
+            </tr>
+            <tr class="header-sub">
+                <th rowspan="2" class="col-activity">ACTIVIDAD</th>
+                <th rowspan="2" class="col-pe"></th>
+                <th colspan="12">PERIODO: AÑO {% if request.GET.year %}{{ request.GET.year }}{% else %}2025{% endif %}
+                </th>
+                <th rowspan="2" class="col-total">TOTAL</th>
+                <th rowspan="2" class="col-comp">% CUMPLIMIENTO</th>
+                <th rowspan="2" class="col-resp">RESPONSABLE</th>
+                <th rowspan="2" class="col-evid">EVIDENCIA</th>
+            </tr>
+            <tr class="header-sub">
+                {% for m in months_names %}<th class="col-month">{{ m }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in matrix %}
+            <!-- ROW P -->
+            <tr class="row-p">
+                <td rowspan="2" class="col-activity">{{ row.type }}</td>
+                <td class="col-pe">*P</td>
+                {% for cell in row.cells %}<td class="col-month">{{ cell.p }}</td>{% endfor %}
+                <td class="col-total" style="background: #a9d08e;">{{ row.total_p }}</td>
+                <td rowspan="2" class="col-comp">
+                    <div
+                        class="badge-comp {% if row.compliance >= 100 %}comp-high{% elif row.compliance >= 70 %}comp-mid{% else %}comp-low{% endif %}">
+                        {{ row.compliance }}%
+                    </div>
+                </td>
+                <td rowspan="2" class="col-resp">{{ row.responsible }}</td>
+                <td rowspan="2" class="col-evid">{{ row.evidence }}</td>
+            </tr>
+            <!-- ROW E -->
+            <tr class="row-e">
+                <td class="col-pe">E</td>
+                {% for cell in row.cells %}<td class="col-month">{{ cell.e }}</td>{% endfor %}
+                <td class="col-total" style="background: #a9d08e;">{{ row.total_e }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- 6. MEDICIÓN Y SEGUIMIENTO -->
+    <div class="summary-header">6. MEDICIÓN Y SEGUIMIENTO</div>
+    <div style="display: flex; gap: 20px; align-items: flex-start;">
+        <table class="excel-table" style="margin-top: 0; border-top: none;">
+            <tr class="header-sub">
+                <th style="width: 230px; text-align: left; padding-left: 10px;">VARIABLES</th>
+                {% for m in months_names %}<th class="col-month">{{ m }}</th>{% endfor %}
+                <th class="col-total">TOTAL</th>
+            </tr>
+            <tr>
+                <td style="text-align: left; padding-left: 10px; font-weight: bold;">Número de actividades Ejecutadas
+                </td>
+                {% for s in monthly_stats %}<td>{{ s.e }}</td>{% endfor %}
+                <td class="col-total">{{ total_e_global }}</td>
+            </tr>
+            <tr>
+                <td style="text-align: left; padding-left: 10px; font-weight: bold;">Número de actividades Programadas
+                </td>
+                {% for s in monthly_stats %}<td>{{ s.p }}</td>{% endfor %}
+                <td class="col-total">{{ total_p_global }}</td>
+            </tr>
+            <tr>
+                <td style="text-align: left; padding-left: 10px; font-weight: bold;">Meta</td>
+                {% for m in months_names %}<td>90%</td>{% endfor %}
+                <td class="col-total">90%</td>
+            </tr>
+            <tr>
+                <td style="text-align: left; padding-left: 10px; font-weight: bold;">% Cumplimiento</td>
+                {% for s in monthly_stats %}
+                <td style="font-weight: bold; color: {% if s.compliance >= 90 %}green{% else %}red{% endif %};">{{
+                    s.compliance }}%</td>
+                {% endfor %}
+                <td class="col-total">{{ global_compliance }}%</td>
+            </tr>
+        </table>
+
+        <!-- Simple CSS Chart Placeholder -->
+        <div
+            style="flex: 1; min-width: 300px; height: 180px; border: 1px solid #ccc; padding: 10px; position: relative; background: #fff;">
+            <div style="text-align: center; font-weight: bold; font-size: 0.7rem; margin-bottom: 10px;">PROGRAMA DE
+                PREVENCIÓN SST</div>
+            <div
+                style="display: flex; align-items: flex-end; justify-content: space-around; height: 120px; border-bottom: 2px solid #555; padding: 0 5px;">
+                {% for s in monthly_stats %}
+                <div style="width: 15px; height: {{ s.compliance }}%; background: #4472c4; position: relative;"
+                    title="{{ s.compliance }}%">
+                    <div style="position: absolute; bottom: -20px; font-size: 0.5rem; width: 100%; text-align: center;">
+                        {{ months_names | slice:":1" | first }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- DETAILED TABLE FOR EDITING (The one we had before, moved down) -->
+    <h3 style="margin-top: 40px; color: #2f5597; border-bottom: 2px solid #2f5597; padding-bottom: 5px;">Gestión de
+        Registros</h3>
+    <div style="background: white; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; margin-bottom: 50px;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead style="background: #f1f3f5;">
+                <tr style="text-align: left;">
+                    <th style="padding: 12px;">Área</th>
+                    <th>Tipo</th>
+                    <th>Fecha</th>
+                    <th>Responsable</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in schedule %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px;">{{ i.area }}</td>
+                    <td>{{ i.inspection_type }}</td>
+                    <td>{{ i.scheduled_date|date:"d/m/Y" }}</td>
+                    <td>{{ i.responsible.get_full_name }}</td>
+                    <td>
+                        <span
+                            style="padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; color: white; background: {% if i.status == 'Realizada' %}#28a745{% else %}#ffc107{% endif %};">
+                            {{ i.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 5px;">
+                            <a href="{% url 'inspection_edit' i.pk %}" class="btn"
+                                style="padding: 3px 8px; font-size: 0.7rem; background: #6c757d; color: white;">Editar</a>
+                            {% if i.status != 'Realizada' %}
+                            {% with t=i.inspection_type|lower %}
+                            {% if "extintor" in t %}
+                            <a href="{% url 'extinguisher_create' %}?schedule_item={{ i.pk }}" class="btn"
+                                style="padding: 3px 8px; font-size: 0.7rem; background: var(--excel-dark-green); color: white;">Ejecutar</a>
+                            {% endif %}
+                            {% if "botiquin" in t %}
+                            <a href="{% url 'first_aid_create' %}?schedule_item={{ i.pk }}" class="btn"
+                                style="padding: 3px 8px; font-size: 0.7rem; background: var(--excel-dark-green); color: white;">Ejecutar</a>
+                            {% endif %}
+                            {% if "proceso" in t %}
+                            <a href="{% url 'process_create' %}?schedule_item={{ i.pk }}" class="btn"
+                                style="padding: 3px 8px; font-size: 0.7rem; background: var(--excel-dark-green); color: white;">Ejecutar</a>
+                            {% endif %}
+                            {% if "almacen" in t %}
+                            <a href="{% url 'storage_create' %}?schedule_item={{ i.pk }}" class="btn"
+                                style="padding: 3px 8px; font-size: 0.7rem; background: var(--excel-dark-green); color: white;">Ejecutar</a>
+                            {% endif %}
+                            {% if "montacarga" in t %}
+                            <a href="{% url 'forklift_create' %}?schedule_item={{ i.pk }}" class="btn"
+                                style="padding: 3px 8px; font-size: 0.7rem; background: var(--excel-dark-green); color: white;">Ejecutar</a>
+                            {% endif %}
+                            {% endwith %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}<tr>
+                    <td colspan="6" style="text-align: center; padding: 20px;">No hay registros.</td>
+                </tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL SECTION -->
+<div id="newRecordModal" class="modal-overlay">
+    <div class="modal-content">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+            <h3 style="margin: 0; color: #2f5597;">Nueva Programación Anual</h3>
+            <span style="cursor: pointer; font-size: 1.5rem; color: #999;" onclick="closeModal()">&times;</span>
+        </div>
+        <form method="post" action="{% url 'inspection_create' %}">
+            {% csrf_token %}
+            {% for f in form %}
+            <div class="form-group">
+                <label>{{ f.label }}</label>
+                {{ f }}
+            </div>
+            {% endfor %}
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn" style="background: #6c757d; color: white;"
+                    onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn" style="background: var(--excel-dark-green); color: white;">Guardar
+                    Registro</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openModal() { document.getElementById('newRecordModal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('newRecordModal').style.display = 'none'; }
+    window.onclick = function (e) { if (e.target == document.getElementById('newRecordModal')) closeModal(); }
+</script>
+{% endblock %}

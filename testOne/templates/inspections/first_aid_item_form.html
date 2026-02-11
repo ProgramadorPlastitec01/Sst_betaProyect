@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Agregar Elemento - Inspección de Botiquines{% endblock %}
+
+{% block content %}
+<h2>Agregar Elemento al Botiquín</h2>
+<p><strong>Inspección:</strong> {{ inspection }}</p>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    <fieldset>
+        <legend>Datos del Elemento</legend>
+        {{ form.as_p }}
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" name="save" class="btn">Guardar y Volver</button>
+        <button type="submit" name="save_and_add" class="btn btn-secondary">Guardar y Agregar Otro</button>
+        <a href="{% url 'first_aid_detail' inspection.pk %}" class="btn btn-light"
+            style="border: 1px solid #ccc;">Cancelar</a>
+    </div>
+</form>
+{% endblock %}
