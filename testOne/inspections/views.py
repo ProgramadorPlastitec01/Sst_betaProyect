@@ -24,10 +24,19 @@ from .forms import (
 class MatrixContextMixin:
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Pass unique values for filters
-        years = InspectionSchedule.objects.values_list('year', flat=True).distinct().order_by('-year')
-        context['years'] = [str(y) for y in years]
-        context['areas'] = InspectionSchedule.objects.values_list('area', flat=True).distinct().order_by('area')
+        # Pass unique values for filters with pre-calculated selection state
+        selected_year = self.request.GET.get('year', '')
+        selected_area = self.request.GET.get('area', '')
+        
+        years_qs = InspectionSchedule.objects.values_list('year', flat=True).distinct().order_by('-year')
+        context['years_data'] = [{'val': str(y), 'selected': str(y) == selected_year} for y in years_qs]
+        
+        areas_qs = InspectionSchedule.objects.values_list('area', flat=True).distinct().order_by('area')
+        context['areas_data'] = [{'val': a, 'selected': a == selected_area} for a in areas_qs]
+        
+        # Display year for the table header (defaults to 2025 like in the screenshot)
+        context['year_display'] = selected_year if selected_year else "2025"
+        
         context['statuses'] = InspectionSchedule.STATUS_CHOICES
         
         # FORM FOR MODAL - FIXING THE EMPTY FORM ISSUE
@@ -180,12 +189,19 @@ def link_to_schedule(request, obj):
 # --- Mixin for Formsets ---
 class FormsetMixin:
     formset_class = None
+    initial_items = []
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         if self.request.POST:
             context['items'] = self.formset_class(self.request.POST, instance=self.object)
         else:
-            context['items'] = self.formset_class(instance=self.object)
+            if not getattr(self, 'object', None) and self.initial_items:
+                initial = [{'question': q} for q in self.initial_items]
+                context['items'] = self.formset_class(instance=self.object, initial=initial)
+                context['items'].extra = len(initial)
+            else:
+                context['items'] = self.formset_class(instance=self.object)
         return context
     
     def form_valid(self, form):
@@ -296,9 +312,49 @@ class ForkliftListView(LoginRequiredMixin, ListView):
     model = ForkliftInspection; template_name = 'inspections/forklift_list.html'; context_object_name = 'inspections'
 
 class ForkliftCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
-    model = ForkliftInspection; form_class = ForkliftInspectionForm; formset_class = ForkliftItemFormSet; template_name = 'inspections/forklift_form.html'
-    def form_valid(self, form): form.instance.inspector = self.request.user; return super().form_valid(form)
-    def get_success_url(self): return reverse('forklift_detail', kwargs={'pk': self.object.pk})
+    model = ForkliftInspection
+    form_class = ForkliftInspectionForm
+    formset_class = ForkliftItemFormSet
+    template_name = 'inspections/forklift_form.html'
+    
+    initial_items = [
+        "1. Bateria sin Novedad (No sulfatada o cargada)",
+        "2. Tanque de Gas (Golpes, Fugas)",
+        "3. Agarradera trasera (Puntos de apoyo)",
+        "4. Tres puntos de apoyo",
+        "5. Escalón Antiderrapante",
+        "6. Abulladuras, golpes, rayones, varios, etc...",
+        "7. Control de velocidad velocidad regulada",
+        "8. Acrilico protector del diplay en buen estado",
+        "9. Limpieza del equipo",
+        "10. Extintor (Buen estado, cargado, vigente)",
+        "11. Espejos completos y en buen estado",
+        "12. Llantas en buen estado (Delanteras, traseras)",
+        "13. Pito Funcionando",
+        "14. Asiento funcional (Respaldo y guias)",
+        "15. Cinturon de seguridad en buen estado",
+        "16. Etiqueta de altura maxima",
+        "17. Etiqueta de peso máximo en buen estado",
+        "18. Etiqueta de velocidad máxima",
+        "19. Rejilla protectora superior en buen estado",
+        "23. Luces funcionando (Frontales, traseras, reversa, torreta)",
+        "25. Medidor nivel de combustible funcionando",
+        "24. Alarma de reversa Funcionando",
+        "25. Frenos en buen estado",
+        "26. Dirección en buen estado (Sin juego)",
+        "27. Funcionamiento del mastil adecuado",
+        "28. Freno de mano en buen estado y funcionando",
+        "29. Cadena de mastil en buen estado",
+        "30. Presenta alguna fuga de aceite",
+        "31. ¿El equipo es apto para su funcionamiento?"
+    ]
+
+    def form_valid(self, form):
+        form.instance.inspector = self.request.user
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('forklift_detail', kwargs={'pk': self.object.pk})
 
 class ForkliftUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
     model = ForkliftInspection; form_class = ForkliftInspectionForm; formset_class = ForkliftItemFormSet; template_name = 'inspections/forklift_form.html'

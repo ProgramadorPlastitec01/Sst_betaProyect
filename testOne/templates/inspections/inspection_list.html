@@ -12,8 +12,10 @@
     }
 
     .dashboard-container {
-        max-width: 1400px;
+        width: 100%;
+        max-width: 1300px;
         margin: 0 auto;
+        padding: 10px 20px;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
@@ -46,21 +48,27 @@
     }
 
     /* Excel Table Styles */
+    .excel-table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        border: 2px solid var(--excel-border);
+        margin-bottom: 25px;
+        background: white;
+    }
+
     .excel-table {
         width: 100%;
         border-collapse: collapse;
-        background: white;
-        border: 2px solid var(--excel-border);
-        table-layout: fixed;
+        /* Removed min-width to prevent scroll */
     }
 
     .excel-table th,
     .excel-table td {
         border: 1px solid var(--excel-border);
-        padding: 4px;
+        padding: 4px 2px;
         text-align: center;
         font-size: 0.75rem;
-        overflow: hidden;
+        vertical-align: middle;
     }
 
     .excel-table .header-main {
@@ -71,7 +79,7 @@
     }
 
     .excel-table .header-sub {
-        background: #f2f2f2;
+        background: #ffffff;
         font-weight: bold;
     }
 
@@ -81,65 +89,81 @@
     }
 
     .row-e {
-        background: white;
+        background: #ffffff;
     }
 
     .col-activity {
-        width: 200px;
-        text-align: left !important;
-        padding-left: 10px !important;
+        width: 180px;
+        min-width: 180px;
+        text-align: center !important;
         font-weight: bold;
+        background: #ffffff !important;
+        vertical-align: middle !important;
     }
 
     .col-pe {
         width: 30px;
+        min-width: 30px;
         background: #f2f2f2;
         font-weight: bold;
         font-size: 0.7rem;
     }
 
     .col-month {
-        width: 40px;
+        width: 38px;
+        min-width: 38px;
     }
 
     .col-total {
-        width: 60px;
+        width: 55px;
+        min-width: 55px;
         font-weight: bold;
+        background: #70ad47 !important;
+        color: black !important;
+        font-size: 0.8rem !important;
     }
 
     .col-comp {
-        width: 80px;
+        width: 100px;
+        min-width: 100px;
         font-weight: bold;
+        vertical-align: middle !important;
     }
 
     .col-resp {
-        width: 180px;
-        text-align: left !important;
-        font-size: 0.7rem;
+        width: 160px;
+        min-width: 160px;
+        text-align: center !important;
+        font-size: 0.75rem;
+        vertical-align: middle !important;
     }
 
     .col-evid {
-        width: 180px;
+        width: 200px;
+        min-width: 200px;
         text-align: left !important;
         font-size: 0.65rem;
-        color: #444;
+        color: #000;
+        padding: 4px !important;
+        vertical-align: middle !important;
+        line-height: 1.2;
     }
 
     .badge-comp {
-        padding: 4px;
-        border-radius: 0;
-        display: block;
-        width: 100%;
+        padding: 2px;
+        font-weight: bold;
+        color: black;
+        width: 90%;
+        margin: 0 auto;
+        font-size: 0.75rem;
     }
 
     .comp-high {
-        background: #00b050;
-        color: white;
+        background: #70ad47;
     }
 
     .comp-mid {
         background: #ffc000;
-        color: black;
     }
 
     .comp-low {
@@ -232,72 +256,74 @@
         <strong>Filtros:</strong>
         <select name="year" onchange="this.form.submit()">
             <option value="">Año</option>
-            {% for y in years %}<option value="{{ y }}">{{ y }}</option>
-            {% endfor %}
+            {% for y in years_data %}<option value="{{ y.val }}" {% if y.selected %}selected{% endif %}>{{ y.val }}
+            </option>{% endfor %}
         </select>
         <select name="area" onchange="this.form.submit()">
             <option value="">Área</option>
-            {% for a in areas %}<option value="{{ a }}">{{ a }}</option>
-            {% endfor %}
+            {% for a in areas_data %}<option value="{{ a.val }}" {% if a.selected %}selected{% endif %}>{{ a.val }}
+            </option>{% endfor %}
         </select>
         <a href="?" style="font-size: 0.8rem; text-decoration: none; color: #2f5597;">Limpiar filtros</a>
     </form>
 
     <!-- 5. CRONOGRAMA TABLE -->
-    <table class="excel-table">
-        <thead>
-            <tr>
-                <th colspan="18" class="header-main">5. CRONOGRAMA</th>
-            </tr>
-            <tr class="header-sub">
-                <th rowspan="2" class="col-activity">ACTIVIDAD</th>
-                <th rowspan="2" class="col-pe"></th>
-                <th colspan="12">PERIODO: AÑO {% if request.GET.year %}{{ request.GET.year }}{% else %}2025{% endif %}
-                </th>
-                <th rowspan="2" class="col-total">TOTAL</th>
-                <th rowspan="2" class="col-comp">% CUMPLIMIENTO</th>
-                <th rowspan="2" class="col-resp">RESPONSABLE</th>
-                <th rowspan="2" class="col-evid">EVIDENCIA</th>
-            </tr>
-            <tr class="header-sub">
-                {% for m in months_names %}<th class="col-month">{{ m }}</th>{% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in matrix %}
-            <!-- ROW P -->
-            <tr class="row-p">
-                <td rowspan="2" class="col-activity">{{ row.type }}</td>
-                <td class="col-pe">*P</td>
-                {% for cell in row.cells %}<td class="col-month">{{ cell.p }}</td>{% endfor %}
-                <td class="col-total" style="background: #a9d08e;">{{ row.total_p }}</td>
-                <td rowspan="2" class="col-comp">
-                    <div
-                        class="badge-comp {% if row.compliance >= 100 %}comp-high{% elif row.compliance >= 70 %}comp-mid{% else %}comp-low{% endif %}">
-                        {{ row.compliance }}%
-                    </div>
-                </td>
-                <td rowspan="2" class="col-resp">{{ row.responsible }}</td>
-                <td rowspan="2" class="col-evid">{{ row.evidence }}</td>
-            </tr>
-            <!-- ROW E -->
-            <tr class="row-e">
-                <td class="col-pe">E</td>
-                {% for cell in row.cells %}<td class="col-month">{{ cell.e }}</td>{% endfor %}
-                <td class="col-total" style="background: #a9d08e;">{{ row.total_e }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="excel-table-wrapper">
+        <table class="excel-table">
+            <thead>
+                <tr>
+                    <th colspan="18" class="header-main">5. CRONOGRAMA</th>
+                </tr>
+                <tr class="header-sub">
+                    <th rowspan="2" class="col-activity">ACTIVIDAD</th>
+                    <th rowspan="2" class="col-pe"></th>
+                    <th colspan="12">PERIODO: AÑO {{ year_display }}</th>
+                    <th rowspan="2" class="col-total">TOTAL</th>
+                    <th rowspan="2" class="col-comp">% CUMPLIMIENTO</th>
+                    <th rowspan="2" class="col-resp">RESPONSABLE</th>
+                    <th rowspan="2" class="col-evid">EVIDENCIA</th>
+                </tr>
+                <tr class="header-sub">
+                    {% for m in months_names %}<th class="col-month">{{ m }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in matrix %}
+                <!-- ROW P -->
+                <tr class="row-p">
+                    <td rowspan="2" class="col-activity">{{ row.type }}</td>
+                    <td class="col-pe">*P</td>
+                    {% for cell in row.cells %}<td class="col-month">{{ cell.p|default:"" }}</td>{% endfor %}
+                    <td class="col-total">{{ row.total_p }}</td>
+                    <td rowspan="2" class="col-comp">
+                        <div
+                            class="badge-comp {% if row.compliance >= 100 %}comp-high{% elif row.compliance >= 70 %}comp-mid{% else %}comp-low{% endif %}">
+                            {{ row.compliance }}%
+                        </div>
+                    </td>
+                    <td rowspan="2" class="col-resp">{{ row.responsible }}</td>
+                    <td rowspan="2" class="col-evid">{{ row.evidence }}</td>
+                </tr>
+                <!-- ROW E -->
+                <tr class="row-e">
+                    <td class="col-pe">E</td>
+                    {% for cell in row.cells %}<td class="col-month">{{ cell.e|default:"" }}</td>{% endfor %}
+                    <td class="col-total">{{ row.total_e }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
     <!-- 6. MEDICIÓN Y SEGUIMIENTO -->
     <div class="summary-header">6. MEDICIÓN Y SEGUIMIENTO</div>
-    <div style="display: flex; gap: 20px; align-items: flex-start;">
-        <table class="excel-table" style="margin-top: 0; border-top: none;">
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        <table class="excel-table" style="margin-top: 0; border-top: none; font-size: 0.7rem; width: 100%;">
             <tr class="header-sub">
-                <th style="width: 230px; text-align: left; padding-left: 10px;">VARIABLES</th>
-                {% for m in months_names %}<th class="col-month">{{ m }}</th>{% endfor %}
-                <th class="col-total">TOTAL</th>
+                <th style="width: 180px; text-align: left; padding-left: 10px;">VARIABLES</th>
+                {% for m in months_names %}<th class="col-month" style="width: 35px; min-width: 35px;">{{ m }}</th>
+                {% endfor %}
+                <th class="col-total" style="width: 50px; min-width: 50px;">TOTAL</th>
             </tr>
             <tr>
                 <td style="text-align: left; padding-left: 10px; font-weight: bold;">Número de actividades Ejecutadas
@@ -319,25 +345,39 @@
             <tr>
                 <td style="text-align: left; padding-left: 10px; font-weight: bold;">% Cumplimiento</td>
                 {% for s in monthly_stats %}
-                <td style="font-weight: bold; color: {% if s.compliance >= 90 %}green{% else %}red{% endif %};">{{
-                    s.compliance }}%</td>
+                <td
+                    style="font-weight: bold; color: {% if s.compliance == 0 %}#333{% elif s.compliance >= 90 %}green{% else %}red{% endif %};">
+                    {{ s.compliance }}%</td>
                 {% endfor %}
-                <td class="col-total">{{ global_compliance }}%</td>
+                <td class="col-total"
+                    style="color: {% if global_compliance == 0 %}#333{% elif global_compliance >= 90 %}black{% else %}red{% endif %};">
+                    {{ global_compliance }}%</td>
             </tr>
         </table>
 
-        <!-- Simple CSS Chart Placeholder -->
+        <!-- Simple CSS Chart Container - MOVED BELOW -->
         <div
-            style="flex: 1; min-width: 300px; height: 180px; border: 1px solid #ccc; padding: 10px; position: relative; background: #fff;">
-            <div style="text-align: center; font-weight: bold; font-size: 0.7rem; margin-bottom: 10px;">PROGRAMA DE
-                PREVENCIÓN SST</div>
+            style="width: 100%; max-width: 800px; margin: 20px auto; height: 230px; border: 1px solid #ccc; padding: 15px 15px 35px 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             <div
-                style="display: flex; align-items: flex-end; justify-content: space-around; height: 120px; border-bottom: 2px solid #555; padding: 0 5px;">
+                style="text-align: center; font-weight: bold; font-size: 0.85rem; margin-bottom: 20px; color: #2f5597;">
+                PROGRAMA DE PREVENCIÓN SST</div>
+            <div
+                style="display: flex; align-items: flex-end; justify-content: space-around; height: 130px; border-bottom: 2px solid #555; padding: 0 10px; position: relative; margin-bottom: 25px;">
                 {% for s in monthly_stats %}
-                <div style="width: 15px; height: {{ s.compliance }}%; background: #4472c4; position: relative;"
+                <div style="width: 30px; height: {{ s.compliance }}%; background: #4472c4; position: relative; transition: height 0.3s;"
                     title="{{ s.compliance }}%">
-                    <div style="position: absolute; bottom: -20px; font-size: 0.5rem; width: 100%; text-align: center;">
-                        {{ months_names | slice:":1" | first }}</div>
+                    <!-- DATA LABEL ON TOP -->
+                    <div
+                        style="position: absolute; top: -18px; width: 100%; text-align: center; font-size: 0.65rem; font-weight: bold; color: #444;">
+                        {% if s.compliance > 0 %}{{ s.compliance }}%{% endif %}
+                    </div>
+                    <!-- MONTH LABEL BELOW -->
+                    <div
+                        style="position: absolute; bottom: -28px; font-size: 0.7rem; width: 100%; text-align: center; font-weight: bold; color: #333; transform: rotate(-45deg); white-space: nowrap;">
+                        {% with m_name=months_names|slice:forloop.counter|last %}
+                        {{ m_name }}
+                        {% endwith %}
+                    </div>
                 </div>
                 {% endfor %}
             </div>
@@ -376,26 +416,29 @@
                         <div style="display: flex; gap: 5px;">
                             <a href="{% url 'inspection_edit' i.pk %}" class="btn"
                                 style="padding: 3px 8px; font-size: 0.7rem; background: #6c757d; color: white;">Editar</a>
+                            <a href="{% url 'inspection_delete' i.pk %}" class="btn"
+                                style="padding: 3px 8px; font-size: 0.7rem; background: #dc3545; color: white;"
+                                onclick="return confirm('¿Está seguro de eliminar esta programación?')">Borrar</a>
                             {% if i.status != 'Realizada' %}
                             {% with t=i.inspection_type|lower %}
-                            {% if "extintor" in t %}
-                            <a href="{% url 'extinguisher_create' %}?schedule_item={{ i.pk }}" class="btn"
+                            {% if "extintor" in t %}<a href="{% url 'extinguisher_create' %}?schedule_item={{ i.pk }}"
+                                class="btn"
                                 style="padding: 3px 8px; font-size: 0.7rem; background: var(--excel-dark-green); color: white;">Ejecutar</a>
                             {% endif %}
-                            {% if "botiquin" in t %}
-                            <a href="{% url 'first_aid_create' %}?schedule_item={{ i.pk }}" class="btn"
+                            {% if "botiquin" in t %}<a href="{% url 'first_aid_create' %}?schedule_item={{ i.pk }}"
+                                class="btn"
                                 style="padding: 3px 8px; font-size: 0.7rem; background: var(--excel-dark-green); color: white;">Ejecutar</a>
                             {% endif %}
-                            {% if "proceso" in t %}
-                            <a href="{% url 'process_create' %}?schedule_item={{ i.pk }}" class="btn"
+                            {% if "proceso" in t %}<a href="{% url 'process_create' %}?schedule_item={{ i.pk }}"
+                                class="btn"
                                 style="padding: 3px 8px; font-size: 0.7rem; background: var(--excel-dark-green); color: white;">Ejecutar</a>
                             {% endif %}
-                            {% if "almacen" in t %}
-                            <a href="{% url 'storage_create' %}?schedule_item={{ i.pk }}" class="btn"
+                            {% if "almacen" in t %}<a href="{% url 'storage_create' %}?schedule_item={{ i.pk }}"
+                                class="btn"
                                 style="padding: 3px 8px; font-size: 0.7rem; background: var(--excel-dark-green); color: white;">Ejecutar</a>
                             {% endif %}
-                            {% if "montacarga" in t %}
-                            <a href="{% url 'forklift_create' %}?schedule_item={{ i.pk }}" class="btn"
+                            {% if "montacarga" in t %}<a href="{% url 'forklift_create' %}?schedule_item={{ i.pk }}"
+                                class="btn"
                                 style="padding: 3px 8px; font-size: 0.7rem; background: var(--excel-dark-green); color: white;">Ejecutar</a>
                             {% endif %}
                             {% endwith %}
