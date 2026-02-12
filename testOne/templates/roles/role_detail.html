@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detalles del Rol: {{ role.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-user-shield"></i> Detalles del Rol</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h3>{{ role.name }}</h3>
+                    <p class="text-muted">{{ role.description }}</p>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Estado:</strong>
+                            {% if role.is_active %}
+                            <span class="badge bg-success">Activo</span>
+                            {% else %}
+                            <span class="badge bg-danger">Inactivo</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Tipo:</strong>
+                            {% if role.is_system_role %}
+                            <span class="badge bg-info">Rol del Sistema</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Rol Personalizado</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Usuarios asignados:</strong>
+                            <span class="badge bg-primary">{{ role.users.count }}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Permisos asignados:</strong>
+                            <span class="badge bg-secondary">{{ role.permissions.count }}</span>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h4>Permisos Asignados</h4>
+                    {% if permissions_by_module %}
+                    {% for module, perms in permissions_by_module.items %}
+                    <div class="mb-3">
+                        <h5><i class="fas fa-folder"></i> {{ module|title }}</h5>
+                        <ul>
+                            {% for perm in perms %}
+                            <li>{{ perm.get_action_display }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted">Este rol no tiene permisos asignados.</p>
+                    {% endif %}
+
+                    <hr>
+
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'role_permissions' role.pk %}" class="btn btn-warning">
+                            <i class="fas fa-key"></i> Gestionar Permisos
+                        </a>
+                        <a href="{% url 'role_edit' role.pk %}" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        <a href="{% url 'role_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Volver
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

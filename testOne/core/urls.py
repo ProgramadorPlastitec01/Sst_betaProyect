@@ -23,4 +23,5 @@ urlpatterns = [
     path('', lambda request: redirect('login')), # Redirect root to login
     path('accounts/', include('users.urls')),
     path('inspections/', include('inspections.urls')),
+    path('roles/', include('roles.urls')),
 ]

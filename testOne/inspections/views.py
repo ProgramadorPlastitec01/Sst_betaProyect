@@ -4,6 +4,7 @@ from django.urls import reverse_lazy, reverse
 from django.db import transaction, models
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
 from .models import (
     InspectionSchedule,
     ExtinguisherInspection, ExtinguisherItem, 
@@ -156,23 +157,104 @@ class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
         if year: qs = qs.filter(year=year)
         if area: qs = qs.filter(area__icontains=area)
         return qs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get filter parameters
+        year_filter = self.request.GET.get('year', '')
+        area_filter = self.request.GET.get('area', '')
+        
+        # Consolidate all inspections from all modules
+        all_inspections = []
+        
+        # Helper function to add inspections to list
+        def add_inspections(model, inspection_type, detail_url_name):
+            qs = model.objects.all()
+            
+            # Apply filters
+            if year_filter:
+                qs = qs.filter(inspection_date__year=int(year_filter))
+            if area_filter:
+                qs = qs.filter(area__icontains=area_filter)
+            
+            for insp in qs:
+                all_inspections.append({
+                    'id': insp.pk,
+                    'date': insp.inspection_date,
+                    'year': insp.inspection_date.year,
+                    'area': insp.area,
+                    'type': inspection_type,
+                    'inspector': insp.inspector.get_full_name() if insp.inspector else 'N/A',
+                    'status': insp.general_status,
+                    'detail_url': reverse(detail_url_name, args=[insp.pk]),
+                    'schedule_linked': insp.schedule_item is not None,
+                })
+        
+        # Add inspections from each module
+        add_inspections(ExtinguisherInspection, 'Extintores', 'extinguisher_detail')
+        add_inspections(FirstAidInspection, 'Botiquines', 'first_aid_detail')
+        add_inspections(ProcessInspection, 'Instalaciones de Proceso', 'process_detail')
+        add_inspections(StorageInspection, 'Almacenamiento', 'storage_detail')
+        add_inspections(ForkliftInspection, 'Montacargas', 'forklift_detail')
+        
+        # Sort by date descending
+        all_inspections.sort(key=lambda x: x['date'], reverse=True)
+        
+        context['all_inspections'] = all_inspections
+        
+        # Get unique years and areas from actual inspections for filters
+        all_years = set()
+        all_areas = set()
+        
+        for model in [ExtinguisherInspection, FirstAidInspection, ProcessInspection, StorageInspection, ForkliftInspection]:
+            years = model.objects.values_list('inspection_date__year', flat=True).distinct()
+            all_years.update(years)
+            areas = model.objects.values_list('area', flat=True).distinct()
+            all_areas.update(areas)
+        
+        # Also include years/areas from schedule
+        schedule_years = InspectionSchedule.objects.values_list('year', flat=True).distinct()
+        all_years.update(schedule_years)
+        schedule_areas = InspectionSchedule.objects.values_list('area', flat=True).distinct()
+        all_areas.update(schedule_areas)
+        
+        # Update filter data with actual inspection data
+        context['years_data'] = [{'val': str(y), 'selected': str(y) == year_filter} for y in sorted(all_years, reverse=True)]
+        context['areas_data'] = [{'val': a, 'selected': a == area_filter} for a in sorted(all_areas)]
+        
+        return context
 
 class InspectionCreateView(LoginRequiredMixin, CreateView):
     model = InspectionSchedule
     form_class = InspectionScheduleForm
     template_name = 'inspections/inspection_form.html'
     success_url = reverse_lazy('inspection_list')
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f'Programación de inspección creada exitosamente para {form.instance.area}')
+        return response
 
 class InspectionUpdateView(LoginRequiredMixin, UpdateView):
     model = InspectionSchedule
     form_class = InspectionUpdateForm
     template_name = 'inspections/inspection_form.html'
     success_url = reverse_lazy('inspection_list')
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Programación actualizada correctamente')
+        return response
 
 class InspectionDeleteView(LoginRequiredMixin, DeleteView):
     model = InspectionSchedule
     template_name = 'inspections/inspection_confirm_delete.html'
     success_url = reverse_lazy('inspection_list')
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, 'Programación eliminada exitosamente')
+        return super().delete(request, *args, **kwargs)
 
 # Helper to link inspections
 def link_to_schedule(request, obj):
@@ -224,13 +306,33 @@ class ExtinguisherListView(LoginRequiredMixin, ListView):
     context_object_name = 'inspections'
 
 class ExtinguisherCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
-    model = ExtinguisherInspection; form_class = ExtinguisherInspectionForm; formset_class = ExtinguisherItemFormSet; template_name = 'inspections/extinguisher_form.html'
-    def form_valid(self, form): form.instance.inspector = self.request.user; return super().form_valid(form)
-    def get_success_url(self): return reverse('extinguisher_detail', kwargs={'pk': self.object.pk})
+    model = ExtinguisherInspection
+    form_class = ExtinguisherInspectionForm
+    formset_class = ExtinguisherItemFormSet
+    template_name = 'inspections/extinguisher_form.html'
+    
+    def form_valid(self, form):
+        form.instance.inspector = self.request.user
+        response = super().form_valid(form)
+        messages.success(self.request, f'Inspección de extintores guardada exitosamente para {form.instance.area}')
+        return response
+    
+    def get_success_url(self):
+        return reverse('extinguisher_detail', kwargs={'pk': self.object.pk})
 
 class ExtinguisherUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
-    model = ExtinguisherInspection; form_class = ExtinguisherInspectionForm; formset_class = ExtinguisherItemFormSet; template_name = 'inspections/extinguisher_form.html'
-    def get_success_url(self): return reverse('extinguisher_detail', kwargs={'pk': self.object.pk})
+    model = ExtinguisherInspection
+    form_class = ExtinguisherInspectionForm
+    formset_class = ExtinguisherItemFormSet
+    template_name = 'inspections/extinguisher_form.html'
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Inspección de extintores actualizada correctamente')
+        return response
+    
+    def get_success_url(self):
+        return reverse('extinguisher_detail', kwargs={'pk': self.object.pk})
 
 class ExtinguisherDetailView(LoginRequiredMixin, DetailView):
     model = ExtinguisherInspection; template_name = 'inspections/extinguisher_detail.html'
@@ -252,13 +354,33 @@ class FirstAidListView(LoginRequiredMixin, ListView):
     model = FirstAidInspection; template_name = 'inspections/first_aid_list.html'; context_object_name = 'inspections'
 
 class FirstAidCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
-    model = FirstAidInspection; form_class = FirstAidInspectionForm; formset_class = FirstAidItemFormSet; template_name = 'inspections/first_aid_form.html'
-    def form_valid(self, form): form.instance.inspector = self.request.user; return super().form_valid(form)
-    def get_success_url(self): return reverse('first_aid_detail', kwargs={'pk': self.object.pk})
+    model = FirstAidInspection
+    form_class = FirstAidInspectionForm
+    formset_class = FirstAidItemFormSet
+    template_name = 'inspections/first_aid_form.html'
+    
+    def form_valid(self, form):
+        form.instance.inspector = self.request.user
+        response = super().form_valid(form)
+        messages.success(self.request, f'Inspección de botiquines guardada exitosamente para {form.instance.area}')
+        return response
+    
+    def get_success_url(self):
+        return reverse('first_aid_detail', kwargs={'pk': self.object.pk})
 
 class FirstAidUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
-    model = FirstAidInspection; form_class = FirstAidInspectionForm; formset_class = FirstAidItemFormSet; template_name = 'inspections/first_aid_form.html'
-    def get_success_url(self): return reverse('first_aid_detail', kwargs={'pk': self.object.pk})
+    model = FirstAidInspection
+    form_class = FirstAidInspectionForm
+    formset_class = FirstAidItemFormSet
+    template_name = 'inspections/first_aid_form.html'
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Inspección de botiquines actualizada correctamente')
+        return response
+    
+    def get_success_url(self):
+        return reverse('first_aid_detail', kwargs={'pk': self.object.pk})
 
 class FirstAidDetailView(LoginRequiredMixin, DetailView):
     model = FirstAidInspection; template_name = 'inspections/first_aid_detail.html'
@@ -304,16 +426,29 @@ class ProcessCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
         "16. ¿La señalización de evacuación o de emergencia se encuentra en buen estado?"
     ]
 
+
     def form_valid(self, form):
         form.instance.inspector = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        messages.success(self.request, f'Inspección de procesos guardada exitosamente para {form.instance.area}')
+        return response
 
     def get_success_url(self):
         return reverse('process_detail', kwargs={'pk': self.object.pk})
 
 class ProcessUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
-    model = ProcessInspection; form_class = ProcessInspectionForm; formset_class = ProcessItemFormSet; template_name = 'inspections/process_form.html'
-    def get_success_url(self): return reverse('process_detail', kwargs={'pk': self.object.pk})
+    model = ProcessInspection
+    form_class = ProcessInspectionForm
+    formset_class = ProcessItemFormSet
+    template_name = 'inspections/process_form.html'
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Inspección de procesos actualizada correctamente')
+        return response
+    
+    def get_success_url(self):
+        return reverse('process_detail', kwargs={'pk': self.object.pk})
 
 class ProcessDetailView(LoginRequiredMixin, DetailView):
     model = ProcessInspection; template_name = 'inspections/process_detail.html'
@@ -348,14 +483,26 @@ class StorageCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.inspector = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        messages.success(self.request, f'Inspección de almacenamiento guardada exitosamente para {form.instance.area}')
+        return response
 
     def get_success_url(self):
         return reverse('storage_detail', kwargs={'pk': self.object.pk})
 
 class StorageUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
-    model = StorageInspection; form_class = StorageInspectionForm; formset_class = StorageItemFormSet; template_name = 'inspections/storage_form.html'
-    def get_success_url(self): return reverse('storage_detail', kwargs={'pk': self.object.pk})
+    model = StorageInspection
+    form_class = StorageInspectionForm
+    formset_class = StorageItemFormSet
+    template_name = 'inspections/storage_form.html'
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Inspección de almacenamiento actualizada correctamente')
+        return response
+    
+    def get_success_url(self):
+        return reverse('storage_detail', kwargs={'pk': self.object.pk})
 
 class StorageDetailView(LoginRequiredMixin, DetailView):
     model = StorageInspection; template_name = 'inspections/storage_detail.html'
@@ -404,14 +551,26 @@ class ForkliftCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.inspector = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        messages.success(self.request, f'Inspección de montacargas guardada exitosamente - {form.instance.forklift_id}')
+        return response
 
     def get_success_url(self):
         return reverse('forklift_detail', kwargs={'pk': self.object.pk})
 
 class ForkliftUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
-    model = ForkliftInspection; form_class = ForkliftInspectionForm; formset_class = ForkliftItemFormSet; template_name = 'inspections/forklift_form.html'
-    def get_success_url(self): return reverse('forklift_detail', kwargs={'pk': self.object.pk})
+    model = ForkliftInspection
+    form_class = ForkliftInspectionForm
+    formset_class = ForkliftItemFormSet
+    template_name = 'inspections/forklift_form.html'
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Inspección de montacargas actualizada correctamente')
+        return response
+    
+    def get_success_url(self):
+        return reverse('forklift_detail', kwargs={'pk': self.object.pk})
 
 class ForkliftDetailView(LoginRequiredMixin, DetailView):
     model = ForkliftInspection; template_name = 'inspections/forklift_detail.html'

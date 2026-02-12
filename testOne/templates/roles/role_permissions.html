@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Permisos del Rol: {{ role.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>
+                <i class="fas fa-key"></i>
+                Gestión de Permisos: <strong>{{ role.name }}</strong>
+            </h2>
+            <p class="text-muted">{{ role.description }}</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    {% if role.name == 'Administrador' %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        El rol <strong>Administrador</strong> tiene todos los permisos del sistema por defecto y no
+                        pueden ser modificados.
+                    </div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        {% for module_name, perms in permissions_by_module.items %}
+                        <div class="card mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-folder"></i> {{ module_name }}
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for perm_data in perms %}
+                                    <div class="col-md-3 col-sm-6 mb-2">
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input"
+                                                name="{{ perm_data.field_name }}" id="{{ perm_data.field_name }}" 
+												{% if perm_data.permission.id in selected_permission_ids %} checked 
+												{% endif %} {% if role.name == 'Administrador' %}disabled{% endif %}>
+                                            <label class="form-check-label" for="{{ perm_data.field_name }}">
+                                                {{ perm_data.permission.get_action_display }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <div class="d-flex gap-2 mt-4">
+                            {% if role.name != 'Administrador' %}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Permisos
+                            </button>
+                            {% endif %}
+                            <a href="{% url 'role_detail' role.pk %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
