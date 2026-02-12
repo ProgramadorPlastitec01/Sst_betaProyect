@@ -3,58 +3,198 @@
 {% block title %}Detalle de Inspección de Extintores{% endblock %}
 
 {% block content %}
-<h2>Detalle de Inspección de Extintores</h2>
-<div class="card">
-    <p><strong>Fecha:</strong> {{ object.inspection_date }}</p>
-    <p><strong>Área:</strong> {{ object.area }}</p>
-    <p><strong>Inspector:</strong> {{ object.inspector }}</p>
-    <p><strong>Rol:</strong> {{ object.inspector_role }}</p>
-    <p><strong>Observaciones:</strong> {{ object.observations }}</p>
-    {% if object.schedule_item %}
-    <p style="margin-top: 10px; color: #666; font-style: italic;">
-        Esta inspección cumple con la programación del:
-        <a href="{% url 'inspection_list' %}?year={{ object.schedule_item.year }}">{{
-            object.schedule_item.scheduled_date }}</a>
-    </p>
-    {% endif %}
+<style>
+    .inspection-container {
+        max-width: 1200px;
+        margin: auto;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, #28a745, #1e7e34);
+        color: white;
+        padding: 20px;
+        border-radius: 8px 8px 0 0;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        padding: 25px;
+        margin-bottom: 30px;
+        border: 1px solid #e0e0e0;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+
+    .info-item label {
+        display: block;
+        color: #666;
+        font-size: 0.85rem;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        font-weight: bold;
+    }
+
+    .info-item span {
+        font-size: 1.1rem;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .inspection-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        font-size: 13px;
+    }
+
+    .inspection-table th {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .inspection-table td {
+        border: 1px solid #dee2e6;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .status-bueno {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-malo {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-recargar {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .check-icon {
+        font-size: 1.2rem;
+    }
+</style>
+
+<div class="inspection-container">
+    <div class="form-header">
+        <h2 style="margin:0;">Detalle de Inspección de Extintores</h2>
+        <div>
+            <a href="{% url 'extinguisher_edit' object.pk %}" class="btn"
+                style="background: rgba(255,255,255,0.2);">Editar Encabezado</a>
+        </div>
+    </div>
+
+    <div class="form-card">
+        <h3 style="color:#1e7e34; border-bottom: 2px solid #d4edda; padding-bottom: 10px; margin-top: 0;">Datos
+            Generales</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Fecha</label>
+                <span>{{ object.inspection_date }}</span>
+            </div>
+            <div class="info-item">
+                <label>Área</label>
+                <span>{{ object.area }}</span>
+            </div>
+            <div class="info-item">
+                <label>Inspector</label>
+                <span>{{ object.inspector }}</span>
+            </div>
+            <div class="info-item">
+                <label>Rol</label>
+                <span>{{ object.inspector_role }}</span>
+            </div>
+        </div>
+        {% if object.observations %}
+        <div style="margin-top: 20px;">
+            <label style="color: #666; font-size: 0.85rem; font-weight: bold;">OBSERVACIONES GENERALES</label>
+            <p style="background: #f8f9fa; padding: 10px; border-radius: 4px; border-left: 4px solid #28a745;">
+                {{ object.observations }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="form-card">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #d4edda; padding-bottom: 10px;">
+            <h3 style="color:#1e7e34; margin: 0;">Items Inspeccionados</h3>
+            <a href="{% url 'extinguisher_item_create' object.pk %}" class="btn"
+                style="padding: 5px 15px; font-size: 0.9rem;">+ Agregar Extintor</a>
+        </div>
+
+        <table class="inspection-table">
+            <thead>
+                <tr>
+                    <th>Ubicación</th>
+                    <th>Tipo</th>
+                    <th>Capacidad</th>
+                    <th>Vencimiento</th>
+                    <th>Estado</th>
+                    <th>Checks (M/S/H/Se/A/E)</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in object.items.all %}
+                <tr>
+                    <td style="text-align: left;">{{ item.location }}</td>
+                    <td>{{ item.get_extinguisher_type_display }}</td>
+                    <td>{{ item.capacity }}</td>
+                    <td>{{ item.next_recharge_date|default:"N/A" }}</td>
+                    <td>
+                        <span
+                            class="status-badge {% if item.status == 'Bueno' %}status-bueno{% elif item.status == 'Malo' %}status-malo{% else %}status-recargar{% endif %}">
+                            {{ item.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <span title="Manómetro">{% if item.pressure_gauge_ok %}✅{% else %}❌{% endif %}</span>
+                        <span title="Seguro">{% if item.safety_pin_ok %}✅{% else %}❌{% endif %}</span>
+                        <span title="Manguera">{% if item.hose_nozzle_ok %}✅{% else %}❌{% endif %}</span>
+                        <span title="Señalización">{% if item.signage_ok %}✅{% else %}❌{% endif %}</span>
+                        <span title="Acceso">{% if item.access_ok %}✅{% else %}❌{% endif %}</span>
+                        <span title="Etiqueta">{% if item.label_ok %}✅{% else %}❌{% endif %}</span>
+                    </td>
+                    <td>
+                        <a href="{% url 'extinguisher_item_edit' item.pk %}"
+                            style="color: #007bff; text-decoration: none;">Editar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="padding: 20px; color: #666;">No hay extintores registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+        <a href="{% url 'extinguisher_list' %}" class="btn btn-secondary" style="padding: 10px 30px;">Volver al
+            Listado</a>
+    </div>
 </div>
-
-<h3>Items Inspeccionados</h3>
-<a href="{% url 'extinguisher_item_create' object.pk %}" class="btn" style="margin-bottom: 10px;">+ Agregar Extintor</a>
-<table>
-    <thead>
-        <tr>
-            <th>Ubicación</th>
-            <th>Tipo</th>
-            <th>Capacidad</th>
-            <th>Vencimiento</th>
-            <th>Estado</th>
-            <th>Checks</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in object.items.all %}
-        <tr>
-            <td>{{ item.location }}</td>
-            <td>{{ item.extinguisher_type }}</td>
-            <td>{{ item.capacity }}</td>
-            <td>{{ item.next_recharge_date }}</td>
-            <td>{{ item.status }}</td>
-            <td>
-                M: {% if item.pressure_gauge_ok %}✅{% else %}❌{% endif %} |
-                S: {% if item.safety_pin_ok %}✅{% else %}❌{% endif %} |
-                H: {% if item.hose_nozzle_ok %}✅{% else %}❌{% endif %} |
-                L: {% if item.label_ok %}✅{% else %}❌{% endif %}
-            </td>
-            <td>
-                <a href="{% url 'extinguisher_item_edit' item.pk %}" class="text-primary">Editar</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
-<a href="{% url 'extinguisher_edit' object.pk %}" class="btn">Editar</a>
-<a href="{% url 'extinguisher_list' %}" class="btn btn-secondary">Volver</a>
 {% endblock %}

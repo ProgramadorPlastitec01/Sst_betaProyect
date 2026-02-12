@@ -1,23 +1,141 @@
 {% extends 'base.html' %}
 
-{% block title %}Agregar Extintor - Inspección de Extintores{% endblock %}
+{% block title %}{% if form.instance.pk %}Editar{% else %}Agregar{% endif %} Extintor - Inspección de Extintores
+{% endblock %}
 
 {% block content %}
-<h2>Agregar Extintor a la Inspección</h2>
-<p><strong>Inspección:</strong> {{ inspection }}</p>
+<style>
+    .form-container {
+        max-width: 700px;
+        margin: auto;
+    }
 
-<form method="post" novalidate>
-    {% csrf_token %}
-    <fieldset>
-        <legend>Datos del Extintor</legend>
-        {{ form.as_p }}
-    </fieldset>
+    .form-header {
+        background: linear-gradient(135deg, #28a745, #1e7e34);
+        color: white;
+        padding: 20px;
+        border-radius: 8px 8px 0 0;
+        margin-bottom: 20px;
+    }
 
-    <div class="form-actions">
-        <button type="submit" name="save" class="btn">Guardar y Volver</button>
-        <button type="submit" name="save_and_add" class="btn btn-secondary">Guardar y Agregar Otro</button>
-        <a href="{% url 'extinguisher_detail' inspection.pk %}" class="btn btn-light"
-            style="border: 1px solid #ccc;">Cancelar</a>
+    .form-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        padding: 25px;
+        margin-bottom: 30px;
+        border: 1px solid #e0e0e0;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #444;
+    }
+
+    input,
+    select,
+    textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+
+    .check-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 10px;
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+
+    .check-group p {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+    }
+
+    .btn-save {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+</style>
+
+<div class="form-container">
+    <div class="form-header">
+        <h2 style="margin:0;">{% if form.instance.pk %}Editar{% else %}Agregar{% endif %} Extintor a la Inspección</h2>
     </div>
-</form>
+
+    <div class="form-card">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label>{{ form.location.label }}</label>
+                    {{ form.location }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.extinguisher_type.label }}</label>
+                    {{ form.extinguisher_type }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.capacity.label }}</label>
+                    {{ form.capacity }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.status.label }}</label>
+                    {{ form.status }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.last_recharge_date.label }}</label>
+                    {{ form.last_recharge_date }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.next_recharge_date.label }}</label>
+                    {{ form.next_recharge_date }}
+                </div>
+            </div>
+
+            <h4 style="margin: 15px 0 5px 0; color: #1e7e34;">Lista de Verificación</h4>
+            <div class="check-group">
+                <p>{{ form.pressure_gauge_ok }} {{ form.pressure_gauge_ok.label }}</p>
+                <p>{{ form.safety_pin_ok }} {{ form.safety_pin_ok.label }}</p>
+                <p>{{ form.hose_nozzle_ok }} {{ form.hose_nozzle_ok.label }}</p>
+                <p>{{ form.signage_ok }} {{ form.signage_ok.label }}</p>
+                <p>{{ form.access_ok }} {{ form.access_ok.label }}</p>
+                <p>{{ form.label_ok }} {{ form.label_ok.label }}</p>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+                <label>{{ form.observations.label }}</label>
+                {{ form.observations }}
+            </div>
+
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                {% if not form.instance.pk %}
+                <button type="submit" name="save_and_add" class="btn btn-secondary">Guardar y Agregar Otro</button>
+                {% endif %}
+                <button type="submit" class="btn-save">Guardar Extintor</button>
+                <a href="{% if form.instance.pk %}{% url 'extinguisher_detail' form.instance.inspection.pk %}{% else %}{% url 'extinguisher_detail' view.kwargs.pk %}{% endif %}"
+                    class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

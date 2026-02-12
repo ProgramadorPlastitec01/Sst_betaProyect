@@ -42,8 +42,8 @@
                 <p
                     style="color: #666; font-size: 0.85rem; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px;">
                     Responsable:</p>
-                <p style="font-weight: bold; font-size: 1.1rem; color: #333;">{{
-                    object.inspector.get_full_name|default:object.inspector.username }}</p>
+                <p style="font-weight: bold; font-size: 1.1rem; color: #333;">
+                    {{ object.inspector.get_full_name|default:object.inspector.username }}</p>
             </div>
             <div>
                 <p
@@ -103,14 +103,14 @@
         <div style="margin-top: 30px; background: #fdfdfd; padding: 20px; border-radius: 8px; border: 1px dashed #ccc;">
             <h4 style="margin-bottom: 15px; color: #555; text-transform: uppercase; font-size: 0.85rem;">Observaciones
                 Generales de la Inspección:</h4>
-            <p style="color: #333; line-height: 1.6; white-space: pre-wrap;">{{ object.observations|default:"No se
-                registraron observaciones adicionales durante el turno." }}</p>
+            <p style="color: #333; line-height: 1.6; white-space: pre-wrap;">
+                {{ object.observations|default:"No se registraron observaciones adicionales durante el turno." }}</p>
         </div>
 
         <div style="margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 50px; text-align: center;">
             <div style="border-top: 1px solid #333; padding-top: 10px;">
-                <p style="font-weight: bold; margin: 0;">{{
-                    object.inspector.get_full_name|default:object.inspector.username }}</p>
+                <p style="font-weight: bold; margin: 0;">
+                    {{ object.inspector.get_full_name|default:object.inspector.username }}</p>
                 <p style="font-size: 0.85rem; color: #666;">Firma de quien realiza el chequeo</p>
             </div>
             <div style="border-top: 1px solid #333; padding-top: 10px;">

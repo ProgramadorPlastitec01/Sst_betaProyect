@@ -1,23 +1,92 @@
 {% extends 'base.html' %}
 
-{% block title %}Agregar Elemento - Inspección de Botiquines{% endblock %}
+{% block title %}
+{% if form.instance.pk %}Editar{% else %}Agregar{% endif %} Elemento - Inspección de Botiquín
+
+{% endblock %}
 
 {% block content %}
-<h2>Agregar Elemento al Botiquín</h2>
-<p><strong>Inspección:</strong> {{ inspection }}</p>
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: auto;
+    }
 
-<form method="post" novalidate>
-    {% csrf_token %}
-    <fieldset>
-        <legend>Datos del Elemento</legend>
-        {{ form.as_p }}
-    </fieldset>
+    .form-header {
+        background: linear-gradient(135deg, #28a745, #1e7e34);
+        color: white;
+        padding: 20px;
+        border-radius: 8px 8px 0 0;
+        margin-bottom: 20px;
+    }
 
-    <div class="form-actions">
-        <button type="submit" name="save" class="btn">Guardar y Volver</button>
-        <button type="submit" name="save_and_add" class="btn btn-secondary">Guardar y Agregar Otro</button>
-        <a href="{% url 'first_aid_detail' inspection.pk %}" class="btn btn-light"
-            style="border: 1px solid #ccc;">Cancelar</a>
+    .form-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        padding: 25px;
+        border: 1px solid #e0e0e0;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #444;
+    }
+
+    input,
+    select,
+    textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+
+    .btn-save {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+</style>
+
+<div class="form-container">
+    <div class="form-header">
+        <h2 style="margin:0;">{% if form.instance.pk %}Editar{% else %}Agregar{% endif %} Elemento al Botiquín</h2>
     </div>
-</form>
+
+    <div class="form-card">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="form-group">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div style="color:red; font-size: 12px;">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                {% if not form.instance.pk %}
+                <button type="submit" name="save_and_add" class="btn btn-secondary">Guardar y Agregar Otro</button>
+                {% endif %}
+                <button type="submit" class="btn-save">Guardar Elemento</button>
+                <a href="{% if form.instance.pk %}{% url 'first_aid_detail' form.instance.inspection.pk %}{% else %}{% url 'first_aid_detail' view.kwargs.pk %}{% endif %}"
+                    class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

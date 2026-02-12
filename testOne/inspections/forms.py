@@ -73,9 +73,11 @@ ExtinguisherItemFormSet = inlineformset_factory(
     fields=['location', 'extinguisher_type', 'capacity', 'last_recharge_date', 'next_recharge_date', 
             'pressure_gauge_ok', 'safety_pin_ok', 'hose_nozzle_ok', 'signage_ok', 'access_ok', 'label_ok', 
             'status', 'observations'],
-    extra=1,
+    extra=1, # Start with 1 row for dynamic addition
     can_delete=True,
     widgets={
+        'location': forms.TextInput(attrs={'placeholder': 'Ubicación'}),
+        'capacity': forms.TextInput(attrs={'placeholder': 'Capacidad'}),
         'last_recharge_date': forms.DateInput(attrs={'type': 'date'}),
         'next_recharge_date': forms.DateInput(attrs={'type': 'date'}),
         'observations': forms.Textarea(attrs={'rows': 1, 'placeholder': 'Observaciones'}),
@@ -104,11 +106,13 @@ class FirstAidItemForm(forms.ModelForm):
 FirstAidItemFormSet = inlineformset_factory(
     FirstAidInspection, FirstAidItem,
     fields=['element_name', 'quantity', 'expiration_date', 'status', 'observations'],
-    extra=5, # Default to showing a few rows
+    extra=1, # Start with 1 row, let user add more dynamically
     can_delete=True,
     widgets={
+        'element_name': forms.TextInput(attrs={'placeholder': 'Nombre del elemento'}),
+        'quantity': forms.NumberInput(attrs={'min': 0}),
         'expiration_date': forms.DateInput(attrs={'type': 'date'}),
-        'observations': forms.Textarea(attrs={'rows': 1}),
+        'observations': forms.Textarea(attrs={'rows': 1, 'placeholder': 'Observaciones'}),
     }
 )
 

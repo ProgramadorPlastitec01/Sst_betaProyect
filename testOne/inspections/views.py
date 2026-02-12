@@ -280,9 +280,36 @@ class ProcessListView(LoginRequiredMixin, ListView):
     model = ProcessInspection; template_name = 'inspections/process_list.html'; context_object_name = 'inspections'
 
 class ProcessCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
-    model = ProcessInspection; form_class = ProcessInspectionForm; formset_class = ProcessItemFormSet; template_name = 'inspections/process_form.html'
-    def form_valid(self, form): form.instance.inspector = self.request.user; return super().form_valid(form)
-    def get_success_url(self): return reverse('process_detail', kwargs={'pk': self.object.pk})
+    model = ProcessInspection
+    form_class = ProcessInspectionForm
+    formset_class = ProcessItemFormSet
+    template_name = 'inspections/process_form.html'
+    
+    initial_items = [
+        "1. ¿Las áreas están señalizadas y la señalización se encuentra en buen estado?",
+        "2. ¿Las paredes están limpias y el estado de la pintura es óptimo?",
+        "3. ¿Los pisos están sin grietas y en buen estado de limpieza?",
+        "4. ¿Existen equipos de control de incendios ubicados en lugar de fácil acceso?",
+        "5. ¿Las áreas se encuentran en adecuado orden y aseo?",
+        "6. ¿Las áreas cuentan con buena iluminación?",
+        "7. ¿Las instalaciones eléctricas no presentan riesgos y tableros en buen estado?",
+        "8. ¿Los recipientes de basura o residuos están señalizados?",
+        "9. ¿Las áreas operativas están libres de materiales innecesarios?",
+        "10. ¿Los lugares de acceso se encuentran libres de obstáculos?",
+        "11. El personal que manipula las sustancias químicas conocen las hojas de seguridad (MSDS)?",
+        "12. ¿Equipos de seguridad (extintores, camillas, botiquines) señalizados?",
+        "13. ¿Recipientes de sustancias químicas rotulados e identificados?",
+        "14. ¿Las máquinas y/o equipos del área se encuentran señalizadas?",
+        "15. ¿Los sistemas de seguridad de la máquina funcionan y están señalizados?",
+        "16. ¿La señalización de evacuación o de emergencia se encuentra en buen estado?"
+    ]
+
+    def form_valid(self, form):
+        form.instance.inspector = self.request.user
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('process_detail', kwargs={'pk': self.object.pk})
 
 class ProcessUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
     model = ProcessInspection; form_class = ProcessInspectionForm; formset_class = ProcessItemFormSet; template_name = 'inspections/process_form.html'
@@ -296,9 +323,35 @@ class StorageListView(LoginRequiredMixin, ListView):
     model = StorageInspection; template_name = 'inspections/storage_list.html'; context_object_name = 'inspections'
 
 class StorageCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
-    model = StorageInspection; form_class = StorageInspectionForm; formset_class = StorageItemFormSet; template_name = 'inspections/storage_form.html'
-    def form_valid(self, form): form.instance.inspector = self.request.user; return super().form_valid(form)
-    def get_success_url(self): return reverse('storage_detail', kwargs={'pk': self.object.pk})
+    model = StorageInspection
+    form_class = StorageInspectionForm
+    formset_class = StorageItemFormSet
+    template_name = 'inspections/storage_form.html'
+    
+    initial_items = [
+        "1. ¿Las áreas están claramente señalizadas y la señalización se encuentra en buen estado?",
+        "2. ¿Las paredes están limpias y el estado de la pintura es óptimo?",
+        "3. ¿Los pisos están sin grietas y en buen estado de limpieza?",
+        "4. ¿Existen equipos de control de incendios ubicados en lugar de fácil acceso?",
+        "5. ¿Las áreas se encuentran en adecuado orden y aseo?",
+        "6. ¿Las áreas cuentan con buena iluminación?",
+        "7. ¿Las instalaciones eléctricas no presentan riesgos y tableros en buen estado?",
+        "8. ¿Los recipientes de basura o residuos están señalizados?",
+        "9. ¿La distribución de estantes permite la circulación por los pasillos?",
+        "10. ¿Los artículos de mayor peso se almacenan en la parte inferior?",
+        "11. ¿El personal conoce las hojas de seguridad (MSDS)?",
+        "12. ¿Equipos de seguridad (extintores, camillas, botiquines) señalizados?",
+        "13. ¿Recipientes de sustancias químicas rotulados e identificados?",
+        "14. ¿Equipos de transporte (estibadores) en buenas condiciones?",
+        "15. ¿La señalización de evacuación o emergencia en buen estado?"
+    ]
+
+    def form_valid(self, form):
+        form.instance.inspector = self.request.user
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('storage_detail', kwargs={'pk': self.object.pk})
 
 class StorageUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
     model = StorageInspection; form_class = StorageInspectionForm; formset_class = StorageItemFormSet; template_name = 'inspections/storage_form.html'
