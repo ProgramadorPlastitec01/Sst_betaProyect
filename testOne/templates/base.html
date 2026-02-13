@@ -63,6 +63,11 @@
                         <i class="fas fa-boxes"></i> <span>Almacenamiento</span>
                     </a>
                 </li>
+                <li>
+                    <a href="{% url 'forklift_list' %}" class="{% if 'forklift' in request.path %}active{% endif %}">
+                        <i class="fas fa-truck-loading"></i> <span>Montacargas</span>
+                    </a>
+                </li>
             </ul>
         </aside>
 

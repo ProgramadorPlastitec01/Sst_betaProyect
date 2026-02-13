@@ -10,6 +10,7 @@ class InspectionScheduleForm(forms.ModelForm):
         ('Montacargas', 'Montacargas'),
     ]
     inspection_type = forms.ChoiceField(choices=TYPE_CHOICES, label="Tipo de Inspección")
+    year = forms.ChoiceField(label="Año de Programación")
 
     class Meta:
         model = InspectionSchedule
@@ -21,6 +22,11 @@ class InspectionScheduleForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        from datetime import date
+        current_year = date.today().year
+        self.fields['year'].choices = [(current_year, str(current_year)), (current_year + 1, str(current_year + 1))]
+        self.fields['year'].initial = current_year
+        
         self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
         self.fields['area'].empty_label = "Seleccione un área"
 

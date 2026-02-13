@@ -12,6 +12,7 @@ from .models import (
     ProcessInspection, StorageInspection,
     ForkliftInspection, ForkliftCheckItem
 )
+from dateutil.relativedelta import relativedelta
 from .forms import (
     InspectionScheduleForm, InspectionUpdateForm,
     ExtinguisherInspectionForm, ExtinguisherItemFormSet, ExtinguisherItemForm,
@@ -24,19 +25,31 @@ from .forms import (
 # --- Mixin to provide matrix context to any view ---
 class MatrixContextMixin:
     def get_context_data(self, **kwargs):
+        from datetime import date
         context = super().get_context_data(**kwargs)
+        current_year = date.today().year
+
         # Pass unique values for filters with pre-calculated selection state
-        selected_year = self.request.GET.get('year', '')
+        # Default to current year if not specified in GET (initial load)
+        # If specified but empty (?year=), it means 'All'
+        get_year = self.request.GET.get('year')
+        selected_year = str(current_year) if get_year is None else get_year
+        
         selected_area = self.request.GET.get('area', '')
         
         years_qs = InspectionSchedule.objects.values_list('year', flat=True).distinct().order_by('-year')
         context['years_data'] = [{'val': str(y), 'selected': str(y) == selected_year} for y in years_qs]
         
-        areas_qs = InspectionSchedule.objects.values_list('area', flat=True).distinct().order_by('area')
-        context['areas_data'] = [{'val': a, 'selected': a == selected_area} for a in areas_qs]
+        # FIX: Use area name instead of ID for dropdown
+        areas_qs = InspectionSchedule.objects.values_list('area__id', 'area__name').distinct().order_by('area__name')
+        try:
+             sel_area_id = int(selected_area) if selected_area else None
+        except ValueError:
+             sel_area_id = None
+        context['areas_data'] = [{'id': a[0], 'name': a[1], 'selected': a[0] == sel_area_id} for a in areas_qs]
         
-        # Display year for the table header (defaults to 2025 like in the screenshot)
-        context['year_display'] = selected_year if selected_year else "2025"
+        # Display year for the table header
+        context['year_display'] = selected_year if selected_year else "Histórico Completo"
         
         context['statuses'] = InspectionSchedule.STATUS_CHOICES
         
@@ -45,11 +58,14 @@ class MatrixContextMixin:
         
         # Base Queryset for Matrix (respect filters if present)
         matrix_qs = InspectionSchedule.objects.all()
-        selected_year = self.request.GET.get('year', '')
-        selected_area = self.request.GET.get('area', '')
         
-        if selected_year: matrix_qs = matrix_qs.filter(year=selected_year)
-        if selected_area: matrix_qs = matrix_qs.filter(area__icontains=selected_area)
+        # Apply filters
+        if selected_year: 
+            matrix_qs = matrix_qs.filter(year=selected_year)
+            
+        # FIX: Filter by area name
+        if selected_area: 
+            matrix_qs = matrix_qs.filter(area__id=selected_area)
 
         model_mapping = {
             'Extintores': ExtinguisherInspection,
@@ -94,7 +110,7 @@ class MatrixContextMixin:
                 if actual_model:
                     actual_qs = actual_model.objects.filter(inspection_date__month=m)
                     if selected_year: actual_qs = actual_qs.filter(inspection_date__year=selected_year)
-                    if selected_area: actual_qs = actual_qs.filter(area=selected_area)
+                    if selected_area: actual_qs = actual_qs.filter(area_id=selected_area)
                     unlinked_count = actual_qs.filter(schedule_item__isnull=True).count()
                     e_count += unlinked_count
 
@@ -156,7 +172,7 @@ class ScheduledInspectionsMixin:
         'first_aid': 'botiquin',
         'process': 'proceso',
         'storage': 'almacenamiento',
-        'forklift': 'montacargas',
+        'forklift': 'montacarga',
     }
     
     # Override this in the view to specify which module type
@@ -167,10 +183,18 @@ class ScheduledInspectionsMixin:
         
         if self.inspection_module_type and self.inspection_module_type in self.INSPECTION_TYPE_MAP:
             keyword = self.INSPECTION_TYPE_MAP[self.inspection_module_type]
-            context['scheduled_inspections'] = InspectionSchedule.objects.filter(
-                inspection_type__icontains=keyword,
-                status='Programada'
-            ).select_related('responsible').order_by('scheduled_date')
+            
+            qs = InspectionSchedule.objects.filter(
+                inspection_type__icontains=keyword
+            )
+            
+            schedule_id = self.request.GET.get('schedule_id')
+            if schedule_id:
+                qs = qs.filter(id=schedule_id)
+            else:
+                qs = qs.filter(status='Programada')
+                
+            context['scheduled_inspections'] = qs.select_related('responsible').order_by('scheduled_date')
         else:
             context['scheduled_inspections'] = InspectionSchedule.objects.none()
         
@@ -187,7 +211,7 @@ class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
         year = self.request.GET.get('year')
         area = self.request.GET.get('area')
         if year: qs = qs.filter(year=year)
-        if area: qs = qs.filter(area__icontains=area)
+        if area: qs = qs.filter(area__id=area)
         return qs
     
     def get_context_data(self, **kwargs):
@@ -208,7 +232,7 @@ class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
             if year_filter:
                 qs = qs.filter(inspection_date__year=int(year_filter))
             if area_filter:
-                qs = qs.filter(area__icontains=area_filter)
+                qs = qs.filter(area__id=area_filter)
             
             for insp in qs:
                 all_inspections.append({
@@ -242,18 +266,20 @@ class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
         for model in [ExtinguisherInspection, FirstAidInspection, ProcessInspection, StorageInspection, ForkliftInspection]:
             years = model.objects.values_list('inspection_date__year', flat=True).distinct()
             all_years.update(years)
-            areas = model.objects.values_list('area', flat=True).distinct()
+            areas = model.objects.values_list('area__id', 'area__name').distinct()
             all_areas.update(areas)
         
         # Also include years/areas from schedule
         schedule_years = InspectionSchedule.objects.values_list('year', flat=True).distinct()
         all_years.update(schedule_years)
-        schedule_areas = InspectionSchedule.objects.values_list('area', flat=True).distinct()
+        schedule_areas = InspectionSchedule.objects.values_list('area__id', 'area__name').distinct()
         all_areas.update(schedule_areas)
         
         # Update filter data with actual inspection data
-        context['years_data'] = [{'val': str(y), 'selected': str(y) == year_filter} for y in sorted(all_years, reverse=True)]
-        context['areas_data'] = [{'val': a, 'selected': a == area_filter} for a in sorted(all_areas)]
+        context['years_data'] = [{'val': str(y), 'selected': str(y) == year_filter} for y in sorted(list(all_years), reverse=True)]
+        # Sort by area name (index 1 in tuple)
+        sorted_areas = sorted(list(all_areas), key=lambda x: x[1])
+        context['areas_data'] = [{'id': a[0], 'name': a[1], 'selected': str(a[0]) == str(area_filter)} for a in sorted_areas]
         
         return context
 
@@ -265,7 +291,56 @@ class InspectionCreateView(LoginRequiredMixin, CreateView):
     
     def form_valid(self, form):
         response = super().form_valid(form)
-        messages.success(self.request, f'Programación de inspección creada exitosamente para {form.instance.area}')
+        base = self.object
+        
+        # Robust year extraction
+        try:
+            target_year = int(form.cleaned_data.get('year'))
+        except (ValueError, TypeError):
+            target_year = base.scheduled_date.year
+            
+        current_date = base.scheduled_date
+        
+        # Robust frequency mapping
+        freq_map = {
+            'Mensual': 1,
+            'Bimestral': 2,
+            'Trimestral': 3,
+            'Cuatrimestral': 4,
+            'Semestral': 6,
+            'Anual': 12
+        }
+        
+        months_to_add = freq_map.get(base.frequency, 0)
+        created_count = 0
+        
+        if months_to_add > 0:
+            next_date = current_date + relativedelta(months=months_to_add)
+            # Generate only within the target year
+            while next_date.year == target_year:
+                if not InspectionSchedule.objects.filter(
+                    area=base.area,
+                    inspection_type=base.inspection_type,
+                    scheduled_date=next_date
+                ).exists():
+                    InspectionSchedule.objects.create(
+                        year=target_year,
+                        area=base.area,
+                        inspection_type=base.inspection_type,
+                        frequency=base.frequency,
+                        scheduled_date=next_date,
+                        responsible=base.responsible,
+                        status='Programada',
+                        observations=base.observations
+                    )
+                    created_count += 1
+                next_date += relativedelta(months=months_to_add)
+
+        if created_count > 0:
+            messages.success(self.request, f'Se han generado {created_count} programaciones adicionales automáticas para {target_year}.')
+        else:
+            messages.success(self.request, f'Programación guardada exitosamente.')
+            
         return response
 
 class InspectionUpdateView(LoginRequiredMixin, UpdateView):
@@ -296,9 +371,18 @@ def link_to_schedule(request, obj):
             item = InspectionSchedule.objects.get(pk=s_id)
             obj.schedule_item = item
             obj.save()
+            
+            # Mark as done
             item.status = 'Realizada'
             item.save()
-        except: pass
+            
+            # Generate next recurrence
+            next_schedule = item.generate_next_schedule()
+            if next_schedule:
+                messages.info(request, f"📅 Nueva programación generada automáticamente para el {next_schedule.scheduled_date.strftime('%d/%m/%Y')}")
+                
+        except Exception as e:
+            print(f"Error linking schedule: {e}")
 
 # --- Mixin for Formsets ---
 class FormsetMixin:

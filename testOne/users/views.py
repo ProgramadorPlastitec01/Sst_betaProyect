@@ -6,6 +6,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from .models import CustomUser
 from .forms import CustomUserCreationForm, CustomUserChangeForm
+from inspections.models import InspectionSchedule
+from datetime import date, timedelta
 
 class CustomLoginView(LoginView):
     template_name = 'users/login.html'
@@ -19,6 +21,25 @@ class CustomLoginView(LoginView):
 
 class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'users/dashboard.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        today = date.today()
+        week_ahead = today + timedelta(days=7)
+        
+        # Overdue: Date < Today AND Status != 'Realizada'
+        context['overdue_inspections'] = InspectionSchedule.objects.filter(
+            scheduled_date__lt=today
+        ).exclude(status='Realizada').order_by('scheduled_date')
+        
+        # Upcoming: Today <= Date <= Week Ahead AND Status != 'Realizada'
+        context['upcoming_inspections'] = InspectionSchedule.objects.filter(
+            scheduled_date__gte=today,
+            scheduled_date__lte=week_ahead
+        ).exclude(status='Realizada').order_by('scheduled_date')
+        
+        return context
 
 class UserListView(LoginRequiredMixin, ListView):
     model = CustomUser

@@ -1,9 +1,101 @@
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator
+from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 
 # Area Model - Standardized areas for inspections
 class Area(models.Model):
+    # ... existing content ...
+
+# ...
+
+    class Meta:
+        verbose_name = "Cronograma de Inspección"
+        verbose_name_plural = "Cronogramas de Inspección"
+        ordering = ['scheduled_date']
+
+    @property
+    def is_executable(self):
+        """
+        Determines if the inspection can be executed today.
+        Rule: Can only be executed on or after the scheduled date.
+        """
+        if self.status == 'Realizada':
+            return False
+        return date.today() >= self.scheduled_date
+
+    @property
+    def is_overdue(self):
+        """
+        Determines if the inspection is overdue.
+        Rule: Overdue if today is past the scheduled date and status is not 'Realizada'.
+        """
+        return date.today() > self.scheduled_date and self.status != 'Realizada'
+
+    @property
+    def is_upcoming(self):
+        """
+        Determines if the inspection is upcoming (within the next 7 days).
+        """
+        today = date.today()
+        return today <= self.scheduled_date <= today + timedelta(days=7) and self.status != 'Realizada'
+    
+    @property
+    def status_label(self):
+        """Returns a dynamic status label for display."""
+        if self.status == 'Realizada':
+            return 'Realizada'
+        if self.is_overdue:
+            return 'Vencida'
+        if self.is_executable:
+            return 'Disponible'
+        return 'Programada'
+
+    def generate_next_schedule(self):
+        """
+        Generates the next inspection schedule based on frequency.
+        Should be called when this inspection is completed.
+        """
+        if not self.frequency or self.frequency == 'Única':
+            return None
+            
+        next_date = self.scheduled_date
+        
+        if self.frequency == 'Mensual':
+            next_date += relativedelta(months=1)
+        elif self.frequency == 'Bimestral':
+            next_date += relativedelta(months=2)
+        elif self.frequency == 'Trimestral':
+            next_date += relativedelta(months=3)
+        elif self.frequency == 'Cuatrimestral':
+            next_date += relativedelta(months=4)
+        elif self.frequency == 'Semestral':
+            next_date += relativedelta(months=6)
+        elif self.frequency == 'Anual':
+            next_date += relativedelta(years=1)
+            
+        # Create new schedule
+        # Check if already exists to avoid duplicates
+        existing = InspectionSchedule.objects.filter(
+            area=self.area,
+            inspection_type=self.inspection_type,
+            scheduled_date=next_date
+        ).exists()
+        
+        if not existing:
+            new_schedule = InspectionSchedule.objects.create(
+                year=next_date.year,
+                area=self.area,
+                inspection_type=self.inspection_type,
+                frequency=self.frequency,
+                scheduled_date=next_date,
+                responsible=self.responsible,
+                status='Programada',
+                observations=f"Generada automáticamente tras realizar la inspección del {self.scheduled_date.strftime('%d/%m/%Y')}"
+            )
+            return new_schedule
+        return None
     """
     Standardized areas for the organization.
     Used across all inspection modules to ensure consistency.
@@ -25,6 +117,7 @@ class Area(models.Model):
 class InspectionSchedule(models.Model):
     FREQUENCY_CHOICES = [
         ('Mensual', 'Mensual'),
+        ('Bimestral', 'Bimestral'),
         ('Trimestral', 'Trimestral'),
         ('Cuatrimestral', 'Cuatrimestral'),
         ('Semestral', 'Semestral'),
@@ -92,10 +185,27 @@ class InspectionSchedule(models.Model):
                 resp = self.storageinspection_actual_inspections.first()
                 if resp: return reverse('storage_detail', args=[resp.pk])
 
-            if hasattr(self, 'forkliftinspection_actual_inspections'):
-                resp = self.forkliftinspection_actual_inspections.first()
                 if resp: return reverse('forklift_detail', args=[resp.pk])
         return None
+
+    def get_module_url(self):
+        """Returns the URL for the corresponding inspection module list."""
+        from django.urls import reverse
+        t = self.inspection_type.lower()
+        url = None
+        
+        # Map types to module list URLs
+        if 'extintor' in t: url = reverse('extinguisher_list')
+        elif 'botiquin' in t: url = reverse('first_aid_list')
+        elif 'proceso' in t or 'instalacion' in t: url = reverse('process_list')
+        elif 'almacen' in t or 'storage' in t: url = reverse('storage_list')
+        elif 'montacarga' in t: url = reverse('forklift_list')
+        
+        if url:
+             return f"{url}?schedule_id={self.id}"
+        
+        # Fallback to schedule list with filters
+        return reverse('inspection_list') + f"?year={self.year}&area={self.area.id}"
 
 # Base Abstract Model for Inspections
 class BaseInspection(models.Model):

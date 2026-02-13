@@ -64,7 +64,7 @@
     <select name="area" onchange="this.form.submit()">
         <option value="">Área</option>
         {% for a in areas_data %}
-        <option value="{{ a.val }}" {% if a.selected %}selected{% endif %}>{{ a.val }}</option>
+        <option value="{{ a.id }}" {% if a.selected %}selected{% endif %}>{{ a.name }}</option>
         {% endfor %}
     </select>
     <a href="?" class="btn-link" style="font-size: 0.85rem; margin-left: 10px;">Limpiar filtros</a>
@@ -228,9 +228,9 @@
                     <td>{{ i.responsible.get_full_name }}</td>
                     <td>
                         <span
-                            class="compliance-badge {% if i.status == 'Realizada' %}badge-success{% else %}badge-warning{% endif %}"
+                            class="compliance-badge {% if i.status == 'Realizada' %}badge-success{% elif i.is_overdue %}badge-danger{% elif i.is_upcoming %}badge-warning{% else %}badge-info{% endif %}"
                             style="font-size: 0.75rem;">
-                            {{ i.status }}
+                            {{ i.status_label }}
                         </span>
                     </td>
                     <td>
@@ -240,6 +240,7 @@
                             </a>
 
                             {% if i.status != 'Realizada' %}
+                            {% if i.is_executable %}
                             {% with t=i.inspection_type|lower %}
                             {% if "extintor" in t %}
                             <a href="{% url 'extinguisher_create' %}?schedule_item={{ i.pk }}"
@@ -268,6 +269,12 @@
                             </a>
                             {% endif %}
                             {% endwith %}
+                            {% else %}
+                            <span class="btn btn-sm btn-secondary" style="cursor: not-allowed; opacity: 0.7;"
+                                title="Disponible a partir del {{ i.scheduled_date|date:'d/m/Y' }}">
+                                <i class="fas fa-clock"></i>
+                            </span>
+                            {% endif %}
                             {% endif %}
 
                             <a href="{% url 'inspection_delete' i.pk %}" class="btn btn-sm btn-danger" title="Eliminar"
