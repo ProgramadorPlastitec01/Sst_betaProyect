@@ -15,40 +15,102 @@
     </a>
 </div>
 
-<div class="card">
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Email / Usuario</th>
-                    <th>Nombre Completo</th>
-                    <th>Documento</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user_item in users %}
-                <tr>
-                    <td>{{ user_item.email }}</td>
-                    <td style="font-weight: 600;">{{ user_item.first_name }} {{ user_item.last_name }}</td>
-                    <td>{{ user_item.document_number }}</td>
-                    <td>
-                        <div style="display: flex; gap: 10px;">
-                            <a href="{% url 'user_edit' user_item.pk %}" class="btn-link" title="Editar"><i
-                                    class="fas fa-edit"></i></a>
-                            <a href="{% url 'user_delete' user_item.pk %}" class="btn-link" style="color: #dc3545;"
-                                title="Eliminar"><i class="fas fa-trash-alt"></i></a>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" style="text-align: center; padding: 32px; color: var(--text-light);">No hay usuarios
-                        registrados en el sistema.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<!-- Stats Cards -->
+<div class="stats-container">
+    <div class="stat-card">
+        <div class="stat-icon icon-blue">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ total_users }}</div>
+            <div class="stat-label">Total Usuarios</div>
+        </div>
     </div>
+    <div class="stat-card">
+        <div class="stat-icon icon-green">
+            <i class="fas fa-user-check"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ active_users }}</div>
+            <div class="stat-label">Usuarios Activos</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon icon-orange">
+            <i class="fas fa-user-slash"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ inactive_users }}</div>
+            <div class="stat-label">Usuarios Inactivos</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom: 24px;">
+    <form method="get" style="display: flex; gap: 16px; align-items: end;">
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label for="search">Buscar por nombre, email o documento</label>
+            <input type="text" id="search" name="search" value="{{ search }}" placeholder="Buscar usuario..."
+                style="width: 100%;">
+        </div>
+        <div class="form-group" style="width: 200px; margin-bottom: 0;">
+            <label for="status">Estado</label>
+            <select id="status" name="status" style="width: 100%;">
+                <option value="">Todos</option>
+                <option value="active" {% if status == 'active' %}selected{% endif %}>Activos</option>
+                <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactivos</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-bottom: 0;">
+            <i class="fas fa-search"></i> Buscar
+        </button>
+        {% if search or status %}
+        <a href="{% url 'user_list' %}" class="btn" style="background: #6c757d; color: white; margin-bottom: 0;">
+            <i class="fas fa-times"></i> Limpiar
+        </a>
+        {% endif %}
+    </form>
+</div>
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>Email / Usuario</th>
+                <th>Nombre Completo</th>
+                <th>Documento</th>
+                <th style="width: 150px;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user_item in users %}
+            <tr>
+                <td>{{ user_item.email }}</td>
+                <td style="font-weight: 600;">{{ user_item.first_name }} {{ user_item.last_name }}</td>
+                <td>{{ user_item.document_number }}</td>
+                <td>
+                    <div style="display: flex; gap: 8px;">
+                        <a href="{% url 'user_edit' user_item.pk %}" class="btn btn-sm"
+                            style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar usuario">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'user_delete' user_item.pk %}" class="btn btn-sm"
+                            style="background: #dc3545; color: white; padding: 6px 12px;" title="Eliminar usuario"
+                            onclick="return confirm('¿Está seguro de eliminar este usuario?');">
+                            <i class="fas fa-trash-alt"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center; padding: 32px; color: var(--text-light);">
+                    No hay usuarios registrados en el sistema.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 </div>
 {% endblock %}

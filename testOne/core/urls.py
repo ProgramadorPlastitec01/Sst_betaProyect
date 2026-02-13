@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
+from core.views import ConfigurationView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -24,4 +25,5 @@ urlpatterns = [
     path('accounts/', include('users.urls')),
     path('inspections/', include('inspections.urls')),
     path('roles/', include('roles.urls')),
+    path('configuration/', ConfigurationView.as_view(), name='configuration'),
 ]

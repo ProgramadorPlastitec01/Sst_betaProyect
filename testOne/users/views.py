@@ -25,6 +25,42 @@ class UserListView(LoginRequiredMixin, ListView):
     template_name = 'users/user_list.html'
     context_object_name = 'users'
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtering
+        search_query = self.request.GET.get('search', '')
+        status_filter = self.request.GET.get('status', '')
+        
+        if search_query:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(first_name__icontains=search_query) | 
+                Q(last_name__icontains=search_query) | 
+                Q(email__icontains=search_query) |
+                Q(document_number__icontains=search_query)
+            )
+            
+        if status_filter == 'active':
+            queryset = queryset.filter(is_active=True)
+        elif status_filter == 'inactive':
+            queryset = queryset.filter(is_active=False)
+            
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Stats counters
+        context['total_users'] = CustomUser.objects.count()
+        context['active_users'] = CustomUser.objects.filter(is_active=True).count()
+        context['inactive_users'] = CustomUser.objects.filter(is_active=False).count()
+        
+        # Pass filter values back to context
+        context['search'] = self.request.GET.get('search', '')
+        context['status'] = self.request.GET.get('status', '')
+        
+        return context
+
 class UserCreateView(LoginRequiredMixin, CreateView):
     model = CustomUser
     form_class = CustomUserCreationForm

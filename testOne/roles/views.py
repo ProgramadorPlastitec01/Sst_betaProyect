@@ -14,7 +14,25 @@ class RoleListView(LoginRequiredMixin, ListView):
     context_object_name = 'roles'
     
     def get_queryset(self):
-        return Role.objects.all().prefetch_related('permissions')
+        queryset = Role.objects.all().prefetch_related('permissions', 'users')
+        
+        search_query = self.request.GET.get('search', '')
+        if search_query:
+            queryset = queryset.filter(name__icontains=search_query)
+            
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Stats counters
+        context['total_roles'] = Role.objects.count()
+        context['system_roles'] = Role.objects.filter(is_system_role=True).count()
+        context['active_roles'] = Role.objects.filter(is_active=True).count()
+        
+        # Pass filter value back
+        context['search'] = self.request.GET.get('search', '')
+        
+        return context
 
 
 class RoleCreateView(LoginRequiredMixin, CreateView):

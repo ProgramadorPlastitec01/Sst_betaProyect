@@ -1,145 +1,103 @@
 from django.core.management.base import BaseCommand
-from roles.models import Permission, Role
-
+from django.contrib.auth import get_user_model
+from roles.models import Role, Permission
 
 class Command(BaseCommand):
-    help = 'Inicializa permisos y roles del sistema'
+    help = 'Inicializa los roles del sistema y asigna permisos al administrador'
 
-    def handle(self, *args, **kwargs):
-        self.stdout.write(self.style.SUCCESS('Iniciando creación de permisos y roles...'))
+    def handle(self, *args, **options):
+        User = get_user_model()
         
-        # 1. Crear todos los permisos
-        self.create_permissions()
-        
-        # 2. Crear roles predeterminados
-        self.create_roles()
-        
-        self.stdout.write(self.style.SUCCESS('[OK] Permisos y roles creados exitosamente!'))
-
-    def create_permissions(self):
-        """Crea todos los permisos del sistema"""
-        self.stdout.write('Creando permisos...')
-        
-        modules = [
-            ('users', 'Usuarios'),
-            ('inspections', 'Inspecciones'),
-            ('schedule', 'Cronograma'),
-            ('extinguisher', 'Extintores'),
-            ('first_aid', 'Botiquines'),
-            ('process', 'Procesos'),
-            ('storage', 'Almacenamiento'),
-            ('forklift', 'Montacargas'),
-            ('roles', 'Roles'),
-        ]
-        
-        actions = [
-            ('view', 'Ver módulo'),
-            ('create', 'Registrar'),
-            ('edit', 'Editar'),
-            ('delete', 'Eliminar'),
-        ]
-        
-        created_count = 0
-        for module_code, module_name in modules:
-            for action_code, action_name in actions:
-                perm, created = Permission.objects.get_or_create(
-                    module=module_code,
-                    action=action_code,
-                    defaults={
-                        'codename': f'{module_code}_{action_code}',
-                        'description': f'{action_name} en {module_name}',
-                        'is_active': True
-                    }
-                )
-                if created:
-                    created_count += 1
-                    self.stdout.write(f'  + Creado: {perm}')
-        
-        self.stdout.write(self.style.SUCCESS(f'  Total permisos creados: {created_count}'))
-
-    def create_roles(self):
-        """Crea los roles predeterminados del sistema"""
-        self.stdout.write('Creando roles...')
-        
+        # Definir roles con sus descripciones
         roles_data = [
             {
                 'name': 'Administrador',
-                'description': 'Acceso total al sistema',
-                'is_system_role': True,
-                'all_permissions': True
+                'description': 'Acceso total al sistema, gestión de usuarios, roles y configuraciones',
+                'permissions': 'all'  # Todos los permisos
             },
             {
-                'name': 'COPASST',
-                'description': 'Comité Paritario de Seguridad y Salud en el Trabajo',
-                'is_system_role': True,
-                'permissions': ['inspections_view', 'schedule_view', 'extinguisher_view', 
-                               'first_aid_view', 'process_view', 'storage_view', 'forklift_view']
-            },
-            {
-                'name': 'Brigadista',
-                'description': 'Miembro de la brigada de emergencias',
-                'is_system_role': True,
-                'permissions': ['extinguisher_view', 'first_aid_view', 'first_aid_edit']
-            },
-            {
-                'name': 'Montacarguista',
-                'description': 'Operador de montacargas',
-                'is_system_role': True,
-                'permissions': ['forklift_view', 'forklift_create', 'forklift_edit']
+                'name': 'Equipo SST',
+                'description': 'Equipo de Seguridad y Salud en el Trabajo, gestión de inspecciones y cronogramas',
+                'permissions': ['view', 'create', 'edit']  # Ver, crear y editar inspecciones
             },
             {
                 'name': 'Almacenista',
-                'description': 'Personal de almacén',
-                'is_system_role': True,
-                'permissions': ['storage_view', 'storage_create', 'storage_edit']
+                'description': 'Responsable de inspecciones de almacenamiento y control de inventarios',
+                'permissions': ['view', 'create', 'edit']
             },
             {
-                'name': 'SST',
-                'description': 'Seguridad y Salud en el Trabajo',
-                'is_system_role': True,
-                'permissions': ['inspections_view', 'inspections_create', 'inspections_edit',
-                               'schedule_view', 'schedule_create', 'schedule_edit',
-                               'extinguisher_view', 'extinguisher_create', 'extinguisher_edit',
-                               'first_aid_view', 'first_aid_create', 'first_aid_edit',
-                               'process_view', 'process_create', 'process_edit',
-                               'storage_view', 'storage_create', 'storage_edit',
-                               'forklift_view', 'forklift_create', 'forklift_edit']
+                'name': 'Brigadista',
+                'description': 'Responsable de inspecciones de extintores y botiquines de primeros auxilios',
+                'permissions': ['view', 'create', 'edit']
+            },
+            {
+                'name': 'Montacarguista',
+                'description': 'Operador de montacargas, responsable de inspecciones de equipos',
+                'permissions': ['view', 'create']  # Solo ver y crear sus inspecciones
             },
             {
                 'name': 'Consulta',
-                'description': 'Solo lectura de información',
-                'is_system_role': True,
-                'permissions': ['inspections_view', 'schedule_view', 'extinguisher_view',
-                               'first_aid_view', 'process_view', 'storage_view', 'forklift_view']
+                'description': 'Acceso de solo lectura para consultar inspecciones y reportes',
+                'permissions': ['view']  # Solo lectura
             },
         ]
+        
+        self.stdout.write(self.style.SUCCESS('\n=== Inicializando Roles ===\n'))
+        
+        created_roles = []
         
         for role_data in roles_data:
             role, created = Role.objects.get_or_create(
                 name=role_data['name'],
-                defaults={
-                    'description': role_data['description'],
-                    'is_system_role': role_data['is_system_role'],
-                    'is_active': True
-                }
+                defaults={'description': role_data['description']}
             )
             
-            if created or role.name == 'Administrador':
-                # Asignar permisos
-                if role_data.get('all_permissions'):
-                    # Administrador tiene todos los permisos
-                    all_perms = Permission.objects.filter(is_active=True)
-                    role.permissions.set(all_perms)
-                    self.stdout.write(f'  + Rol "{role.name}" creado con TODOS los permisos')
-                else:
-                    # Asignar permisos específicos
-                    perms = Permission.objects.filter(
-                        codename__in=role_data.get('permissions', []),
-                        is_active=True
-                    )
-                    role.permissions.set(perms)
-                    self.stdout.write(f'  + Rol "{role.name}" creado con {perms.count()} permisos')
+            if created:
+                created_roles.append(role)
+                self.stdout.write(self.style.SUCCESS(f'  [OK] Rol creado: {role.name}'))
             else:
-                self.stdout.write(f'  - Rol "{role.name}" ya existe')
+                self.stdout.write(f'  [--] Rol existente: {role.name}')
+            
+            # Asignar permisos
+            if role_data['permissions'] == 'all':
+                # Administrador: todos los permisos
+                all_permissions = Permission.objects.all()
+                role.permissions.set(all_permissions)
+                self.stdout.write(f'      -> {all_permissions.count()} permisos asignados (TODOS)')
+            else:
+                # Otros roles: permisos específicos
+                permissions_to_assign = []
+                for perm_code in role_data['permissions']:
+                    perms = Permission.objects.filter(codename__icontains=perm_code)
+                    permissions_to_assign.extend(perms)
+                
+                role.permissions.set(permissions_to_assign)
+                self.stdout.write(f'      -> {len(permissions_to_assign)} permisos asignados')
         
-        self.stdout.write(self.style.SUCCESS(f'  Total roles: {Role.objects.count()}'))
+        # Asignar rol de Administrador al usuario datamaster
+        self.stdout.write(self.style.SUCCESS('\n=== Asignando Rol a Usuario ===\n'))
+        
+        try:
+            admin_user = User.objects.get(username='datamaster')
+            admin_role = Role.objects.get(name='Administrador')
+            
+            admin_user.role = admin_role
+            admin_user.save()
+            
+            self.stdout.write(self.style.SUCCESS(f'  [OK] Usuario "{admin_user.username}" asignado al rol "{admin_role.name}"'))
+            self.stdout.write(f'      -> Email: {admin_user.email}')
+            self.stdout.write(f'      -> Staff: {admin_user.is_staff}')
+            self.stdout.write(f'      -> Superuser: {admin_user.is_superuser}')
+            
+        except User.DoesNotExist:
+            self.stdout.write(self.style.WARNING('  [!!] Usuario "datamaster" no encontrado'))
+        except Role.DoesNotExist:
+            self.stdout.write(self.style.ERROR('  [ERROR] Rol "Administrador" no encontrado'))
+        
+        # Resumen final
+        self.stdout.write(self.style.SUCCESS('\n=== Resumen ==='))
+        self.stdout.write(self.style.SUCCESS(f'Roles creados: {len(created_roles)}'))
+        self.stdout.write(f'Roles existentes: {Role.objects.count() - len(created_roles)}')
+        self.stdout.write(self.style.SUCCESS(f'Total de roles: {Role.objects.count()}'))
+        self.stdout.write(self.style.SUCCESS(f'Total de permisos: {Permission.objects.count()}'))
+        self.stdout.write(self.style.SUCCESS('\n¡Inicialización completada!'))
