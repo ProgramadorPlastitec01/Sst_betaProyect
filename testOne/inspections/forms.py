@@ -68,16 +68,33 @@ from .models import (
 class ExtinguisherInspectionForm(forms.ModelForm):
     class Meta:
         model = ExtinguisherInspection
-        fields = ['inspection_date', 'area', 'inspector_role', 'general_status', 'observations']
+        fields = ['inspection_date', 'area', 'inspector_role']
         widgets = {
             'inspection_date': forms.DateInput(attrs={'type': 'date'}),
-            'observations': forms.Textarea(attrs={'rows': 3}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        from django.utils import timezone
+        
+        # Set default date to today if not provided
+        if not self.instance.pk:
+            # Check if initial is set, otherwise use today
+            if 'inspection_date' not in self.initial:
+                today = timezone.now().strftime('%Y-%m-%d')
+                self.fields['inspection_date'].initial = today
+                # Explicitly set value attribute for HTML5 date input
+                self.fields['inspection_date'].widget.attrs['value'] = today
+            
         self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
         self.fields['area'].empty_label = "Seleccione un área"
+        
+        # Lock area if provided (e.g. from schedule)
+        if self.initial.get('area'):
+            self.fields['area'].widget.attrs.update({
+                'style': 'pointer-events: none; background-color: #e9ecef;',
+                'readonly': 'readonly'
+            })
 
 class ExtinguisherItemForm(forms.ModelForm):
     class Meta:
@@ -91,12 +108,13 @@ class ExtinguisherItemForm(forms.ModelForm):
 
 ExtinguisherItemFormSet = inlineformset_factory(
     ExtinguisherInspection, ExtinguisherItem,
-    fields=['location', 'extinguisher_type', 'capacity', 'last_recharge_date', 'next_recharge_date', 
+    fields=['extinguisher_number', 'location', 'extinguisher_type', 'capacity', 'last_recharge_date', 'next_recharge_date', 
             'pressure_gauge_ok', 'safety_pin_ok', 'hose_nozzle_ok', 'signage_ok', 'access_ok', 'label_ok', 
             'status', 'observations'],
     extra=1, # Start with 1 row for dynamic addition
     can_delete=True,
     widgets={
+        'extinguisher_number': forms.TextInput(attrs={'placeholder': 'Número'}),
         'location': forms.TextInput(attrs={'placeholder': 'Ubicación'}),
         'capacity': forms.TextInput(attrs={'placeholder': 'Capacidad'}),
         'last_recharge_date': forms.DateInput(attrs={'type': 'date'}),

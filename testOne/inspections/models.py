@@ -274,10 +274,11 @@ class ExtinguisherInspection(BaseInspection):
 
 class ExtinguisherItem(models.Model):
     TYPE_CHOICES = [
-        ('PQS', 'Polvo Químico Seco'),
-        ('CO2', 'Dióxido de Carbono'),
+        ('PQS', 'Polvo Químico Seco (PQS)'),
+        ('AGUA', 'H2O Agua Presión'),
         ('SOLKAFLAM', 'Solkaflam'),
-        ('AGUA', 'Agua a Presión'),
+        ('CO2', 'CO2 Gas Carbónico'),
+        ('MULTIPROPOSITO', 'Multipropósito ABC'),
     ]
     STATUS_CHOICES = [
         ('Bueno', 'Bueno'),
@@ -286,6 +287,7 @@ class ExtinguisherItem(models.Model):
     ]
 
     inspection = models.ForeignKey(ExtinguisherInspection, related_name='items', on_delete=models.CASCADE)
+    extinguisher_number = models.CharField(max_length=50, verbose_name="Número", default="N/A")
     location = models.CharField(max_length=100, verbose_name="Ubicación Específica")
     extinguisher_type = models.CharField(max_length=20, choices=TYPE_CHOICES, verbose_name="Tipo")
     capacity = models.CharField(max_length=50, verbose_name="Capacidad (lbs/kg)")

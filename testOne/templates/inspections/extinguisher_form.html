@@ -25,7 +25,26 @@
 
         <div class="card">
             <h3 class="inspection-section-title"><i class="fas fa-info-circle"></i> Datos Generales</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+            <style>
+                .inspection-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 20px;
+                }
+
+                @media (max-width: 992px) {
+                    .inspection-grid {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                }
+
+                @media (max-width: 576px) {
+                    .inspection-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+            </style>
+            <div class="inspection-grid">
                 {% for field in form %}
                 <div class="form-group">
                     <label style="font-weight: 600;">{{ field.label }}</label>
@@ -48,73 +67,147 @@
 
             {{ items.management_form }}
 
-            <div class="table-wrapper">
-                <table class="mass-table" id="items-table">
+            <style>
+                .mass-table th {
+                    vertical-align: middle;
+                    text-align: center;
+                    background: #f8faf9;
+                    color: var(--text-color);
+                    font-weight: 600;
+                    font-size: 0.8rem;
+                    padding: 12px;
+                }
+
+                .mass-table td {
+                    vertical-align: top;
+                    padding: 12px;
+                    border-bottom: 1px solid #eee;
+                }
+
+                .check-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px;
+                    text-align: left;
+                }
+
+                .check-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 0.8rem;
+                    color: var(--text-color);
+                    background: #f8faf9;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    border: 1px solid #eee;
+                }
+
+                .check-item input[type="checkbox"] {
+                    margin: 0;
+                    width: 16px;
+                    height: 16px;
+                    cursor: pointer;
+                }
+
+                .tech-data-stack {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                .tech-field {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                }
+
+                .tech-label {
+                    font-size: 0.7rem;
+                    color: var(--text-light);
+                    font-weight: 600;
+                    text-transform: uppercase;
+                }
+
+                .form-control-sm {
+                    padding: 4px 8px;
+                    font-size: 0.85rem;
+                }
+            </style>
+
+            <div class="table-wrapper" style="overflow-x: auto;">
+                <table class="mass-table" id="items-table" style="width: 100%; min-width: 1000px;">
                     <thead>
-                        <tr>
-                            <th class="inspection-table-header" rowspan="2" style="width: 40px;">NO.</th>
-                            <th class="inspection-table-header" rowspan="2" style="width: 180px;">UBICACIÓN</th>
-                            <th class="inspection-table-header" rowspan="2" style="width: 120px;">TIPO / CLASE</th>
-                            <th class="inspection-table-header" colspan="3">DATOS DEL EXTINTOR</th>
-                            <th class="inspection-table-header" colspan="6">REVISIÓN</th>
-                            <th class="inspection-table-header" rowspan="2" style="width: 100px;">ESTADO</th>
-                            <th class="inspection-table-header" rowspan="2">OBSERVACIONES</th>
-                            <th class="inspection-table-header" rowspan="2" style="width: 40px;"></th>
-                        </tr>
-                        <tr>
-                            <th class="inspection-table-header"
-                                style="background: #f1f8f6 !important; font-size: 0.65rem;">CAPACIDAD</th>
-                            <th class="inspection-table-header"
-                                style="background: #f1f8f6 !important; font-size: 0.65rem;">ÚLTIMA REC.</th>
-                            <th class="inspection-table-header"
-                                style="background: #f1f8f6 !important; font-size: 0.65rem;">PRÓXIMA REC.</th>
-                            <th class="inspection-table-header"
-                                style="background: #fff9f0 !important; font-size: 0.6rem;">MANÓM.</th>
-                            <th class="inspection-table-header"
-                                style="background: #fff9f0 !important; font-size: 0.6rem;">SEGURO</th>
-                            <th class="inspection-table-header"
-                                style="background: #fff9f0 !important; font-size: 0.6rem;">MANG./BOQ.</th>
-                            <th class="inspection-table-header"
-                                style="background: #fff9f0 !important; font-size: 0.6rem;">SEÑALIZ.</th>
-                            <th class="inspection-table-header"
-                                style="background: #fff9f0 !important; font-size: 0.6rem;">ACCESO</th>
-                            <th class="inspection-table-header"
-                                style="background: #fff9f0 !important; font-size: 0.6rem;">ETIQ.</th>
+                        <tr style="border-bottom: 2px solid #eee;">
+                            <th style="width: 120px;">NÚMERO</th>
+                            <th style="width: 20%;">UBICACIÓN</th>
+                            <th style="width: 15%;">TIPO / CLASE</th>
+                            <th style="width: 20%;">DATOS TÉCNICOS</th>
+                            <th style="width: 25%;">PUNTOS DE REVISIÓN</th>
+                            <th style="width: 150px;">ESTADO / OBS.</th>
+                            <th style="width: 40px;"></th>
                         </tr>
                     </thead>
                     <tbody id="items-tbody">
                         {% for item_form in items %}
                         <tr class="item-row">
-                            <td class="row-number"
-                                style="text-align: center; font-weight: 700; color: var(--primary-color);">
-                                {{ forloop.counter }}</td>
                             <td>
                                 {{ item_form.id }}
+                                {{ item_form.extinguisher_number }}
+                            </td>
+                            <td>
                                 {{ item_form.location }}
                             </td>
                             <td>{{ item_form.extinguisher_type }}</td>
-                            <td>{{ item_form.capacity }}</td>
-                            <td>{{ item_form.last_recharge_date }}</td>
-                            <td>{{ item_form.next_recharge_date }}</td>
-                            <td class="check-cell">{{ item_form.pressure_gauge_ok }}</td>
-                            <td class="check-cell">{{ item_form.safety_pin_ok }}</td>
-                            <td class="check-cell">{{ item_form.hose_nozzle_ok }}</td>
-                            <td class="check-cell">{{ item_form.signage_ok }}</td>
-                            <td class="check-cell">{{ item_form.access_ok }}</td>
-                            <td class="check-cell">{{ item_form.label_ok }}</td>
-                            <td>{{ item_form.status }}</td>
-                            <td>{{ item_form.observations }}</td>
-                            <td style="text-align: center;">
+                            <td>
+                                <div class="tech-data-stack">
+                                    <div class="tech-field">
+                                        <span class="tech-label">Capacidad</span>
+                                        {{ item_form.capacity }}
+                                    </div>
+                                    <div class="tech-field">
+                                        <span class="tech-label">Última Recarga</span>
+                                        {{ item_form.last_recharge_date }}
+                                    </div>
+                                    <div class="tech-field">
+                                        <span class="tech-label">Próxima Recarga</span>
+                                        {{ item_form.next_recharge_date }}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="check-grid">
+                                    <label class="check-item">{{ item_form.pressure_gauge_ok }} Manómetro</label>
+                                    <label class="check-item">{{ item_form.safety_pin_ok }} Seguro</label>
+                                    <label class="check-item">{{ item_form.hose_nozzle_ok }} Manguera</label>
+                                    <label class="check-item">{{ item_form.signage_ok }} Señalización</label>
+                                    <label class="check-item">{{ item_form.access_ok }} Acceso</label>
+                                    <label class="check-item">{{ item_form.label_ok }} Etiqueta</label>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <div class="tech-field">
+                                        <span class="tech-label">Estado</span>
+                                        {{ item_form.status }}
+                                    </div>
+                                    <div class="tech-field">
+                                        <span class="tech-label">Observaciones</span>
+                                        {{ item_form.observations }}
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="text-align: center; vertical-align: middle;">
                                 {% if items.can_delete %}
                                 <div style="display: none;">{{ item_form.DELETE }}</div>
                                 <button type="button" class="btn-link" style="color: #dc3545;"
-                                    onclick="removeRow(this)"><i class="fas fa-times"></i></button>
+                                    onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button>
                                 {% endif %}
                             </td>
                         </tr>
                         {% if item_form.errors %}
                         <tr class="error-row">
-                            <td colspan="15">{{ item_form.errors }}</td>
+                            <td colspan="7">{{ item_form.errors }}</td>
                         </tr>
                         {% endif %}
                         {% endfor %}
@@ -124,8 +217,7 @@
         </div>
 
         <div style="margin-top: 32px; display: flex; gap: 12px; justify-content: flex-end;">
-            <a href="{% url 'extinguisher_list' %}" class="btn"
-                style="background: #e9ecef; color: #495057;">Cancelar</a>
+            <a href="{% url 'extinguisher_list' %}" class="btn" style="background: #e9ecef; color: #495057;">Volver</a>
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-save" style="margin-right: 8px;"></i> Guardar Inspección Masiva
             </button>
@@ -136,22 +228,49 @@
 <!-- Template for new rows -->
 <script type="text/template" id="row-template">
     <tr class="item-row">
-        <td class="row-number" style="text-align: center; font-weight: 700; color: var(--primary-color);">__prefix__</td>
+        <td>{{ items.empty_form.extinguisher_number }}</td>
         <td>{{ items.empty_form.location }}</td>
         <td>{{ items.empty_form.extinguisher_type }}</td>
-        <td>{{ items.empty_form.capacity }}</td>
-        <td>{{ items.empty_form.last_recharge_date }}</td>
-        <td>{{ items.empty_form.next_recharge_date }}</td>
-        <td class="check-cell">{{ items.empty_form.pressure_gauge_ok }}</td>
-        <td class="check-cell">{{ items.empty_form.safety_pin_ok }}</td>
-        <td class="check-cell">{{ items.empty_form.hose_nozzle_ok }}</td>
-        <td class="check-cell">{{ items.empty_form.signage_ok }}</td>
-        <td class="check-cell">{{ items.empty_form.access_ok }}</td>
-        <td class="check-cell">{{ items.empty_form.label_ok }}</td>
-        <td>{{ items.empty_form.status }}</td>
-        <td>{{ items.empty_form.observations }}</td>
-        <td style="text-align: center;">
-            <button type="button" class="btn-link" style="color: #dc3545;" onclick="removeRow(this)"><i class="fas fa-times"></i></button>
+        <td>
+            <div class="tech-data-stack">
+                <div class="tech-field">
+                    <span class="tech-label">Capacidad</span>
+                    {{ items.empty_form.capacity }}
+                </div>
+                <div class="tech-field">
+                    <span class="tech-label">Última Recarga</span>
+                    {{ items.empty_form.last_recharge_date }}
+                </div>
+                <div class="tech-field">
+                    <span class="tech-label">Próxima Recarga</span>
+                    {{ items.empty_form.next_recharge_date }}
+                </div>
+            </div>
+        </td>
+        <td>
+            <div class="check-grid">
+                <label class="check-item">{{ items.empty_form.pressure_gauge_ok }} Manómetro</label>
+                <label class="check-item">{{ items.empty_form.safety_pin_ok }} Seguro</label>
+                <label class="check-item">{{ items.empty_form.hose_nozzle_ok }} Manguera</label>
+                <label class="check-item">{{ items.empty_form.signage_ok }} Señalización</label>
+                <label class="check-item">{{ items.empty_form.access_ok }} Acceso</label>
+                <label class="check-item">{{ items.empty_form.label_ok }} Etiqueta</label>
+            </div>
+        </td>
+        <td>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div class="tech-field">
+                    <span class="tech-label">Estado</span>
+                    {{ items.empty_form.status }}
+                </div>
+                <div class="tech-field">
+                    <span class="tech-label">Observaciones</span>
+                    {{ items.empty_form.observations }}
+                </div>
+            </div>
+        </td>
+        <td style="text-align: center; vertical-align: middle;">
+            <button type="button" class="btn-link" style="color: #dc3545;" onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button>
         </td>
     </tr>
 </script>
@@ -170,7 +289,6 @@
             const parser = new DOMParser();
             const doc = parser.parseFromString(`<table>${newRow}</table>`, 'text/html');
             const row = doc.querySelector('tr');
-            row.querySelector('.row-number').textContent = itemsTbody.querySelectorAll('.item-row:not(.deleted)').length + 1;
 
             itemsTbody.appendChild(row);
             totalForms.value = formIdx + 1;
@@ -188,14 +306,6 @@
         } else {
             row.remove();
         }
-        updateRowNumbers();
-    }
-
-    function updateRowNumbers() {
-        const rows = document.querySelectorAll('#items-tbody .item-row:not(.deleted)');
-        rows.forEach((row, index) => {
-            row.querySelector('.row-number').textContent = index + 1;
-        });
     }
 </script>
 {% endblock %}

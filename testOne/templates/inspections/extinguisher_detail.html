@@ -10,8 +10,9 @@
     <div class="dashboard-header">
         <div>
             <h1 style="font-size: 1.5rem; font-weight: 700;">Detalle de Inspección #{{ object.pk }}</h1>
-            <p style="color: var(--text-light); font-size: 0.9rem;">Realizada por {{ object.inspector }} el {{
-                object.inspection_date|date:"d/m/Y" }}</p>
+            <p style="color: var(--text-light); font-size: 0.9rem;">Realizada por
+                <b>{{ object.inspector }}</b> el <b>{{ object.inspection_date|date:"d/m/Y" }}</b>
+            </p>
         </div>
         <div style="display: flex; gap: 12px;">
             <a href="{% url 'extinguisher_list' %}" class="btn" style="background: #e9ecef; color: #495057;"><i
@@ -73,6 +74,7 @@
             <table style="font-size: 0.85rem;">
                 <thead>
                     <tr>
+                        <th style="width: 50px;">Número</th>
                         <th>Ubicación</th>
                         <th>Tipo / Capacidad</th>
                         <th>Próxima Recarga</th>
@@ -84,7 +86,8 @@
                 <tbody>
                     {% for item in object.items.all %}
                     <tr>
-                        <td style="font-weight: 600;">{{ item.location }}</td>
+                        <td style="font-weight: 600;">{{ item.extinguisher_number }}</td>
+                        <td>{{ item.location }}</td>
                         <td>{{ item.get_extinguisher_type_display }} / {{ item.capacity }}</td>
                         <td>{{ item.next_recharge_date|date:"d/m/Y"|default:"N/A" }}</td>
                         <td>
@@ -94,7 +97,7 @@
                             </span>
                         </td>
                         <td>
-                            <div style="display: flex; gap: 10px; font-size: 0.8rem;">
+                            <div style="display: flex; gap: 10px; font-size: 0.8rem; flex-wrap: wrap;">
                                 <span title="Manómetro">{% if item.pressure_gauge_ok %}<i class="fas fa-check-circle"
                                         style="color:#28a745;"></i>{% else %}<i class="fas fa-times-circle"
                                         style="color:#dc3545;"></i>{% endif %} Man.</span>
@@ -110,8 +113,12 @@
                             </div>
                         </td>
                         <td style="text-align: center;">
-                            <a href="{% url 'extinguisher_item_edit' item.pk %}" class="btn-link" title="Editar"><i
-                                    class="fas fa-edit"></i></a>
+                            <div class="action-buttons">
+                                <a href="{% url 'extinguisher_item_edit' item.pk %}" class="btn btn-sm"
+                                    style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}

@@ -92,6 +92,12 @@
                     <div id="userDropdown" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; 
                                                    background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
                                                    min-width: 200px; z-index: 1000; overflow: hidden;">
+                        <a href="{% url 'user_profile' %}"
+                            style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
+                                                                    text-decoration: none; color: #333; transition: background 0.2s;">
+                            <i class="fas fa-user-circle" style="color: #49BAA0; width: 20px;"></i>
+                            <span>Perfil</span>
+                        </a>
                         {% if user.is_staff %}
                         <a href="{% url 'configuration' %}"
                             style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 

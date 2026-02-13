@@ -422,14 +422,55 @@ class ExtinguisherListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListVi
     context_object_name = 'inspections'
     inspection_module_type = 'extinguisher'  # For ScheduledInspectionsMixin
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        from django.utils import timezone
+        current_year = timezone.now().year
+        return qs.filter(inspection_date__year=current_year)
+        
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from django.utils import timezone
+        current_year = timezone.now().year
+        
+        # Filter scheduled inspections by year
+        if 'scheduled_inspections' in context:
+            context['scheduled_inspections'] = context['scheduled_inspections'].filter(scheduled_date__year=current_year)
+            
+        return context
+
 class ExtinguisherCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
     model = ExtinguisherInspection
     form_class = ExtinguisherInspectionForm
     formset_class = ExtinguisherItemFormSet
     template_name = 'inspections/extinguisher_form.html'
     
+    def get_initial(self):
+        initial = super().get_initial()
+        schedule_item_id = self.request.GET.get('schedule_item')
+        if schedule_item_id:
+            try:
+                from .models import InspectionSchedule
+                obj = InspectionSchedule.objects.get(pk=schedule_item_id)
+                initial['area'] = obj.area
+            except InspectionSchedule.DoesNotExist:
+                pass
+        return initial
+
     def form_valid(self, form):
         form.instance.inspector = self.request.user
+        
+        schedule_item_id = self.request.GET.get('schedule_item')
+        if schedule_item_id:
+            try:
+                from .models import InspectionSchedule
+                obj = InspectionSchedule.objects.get(pk=schedule_item_id)
+                form.instance.schedule_item = obj
+                obj.status = 'Realizada'
+                obj.save()
+            except InspectionSchedule.DoesNotExist:
+                pass
+
         response = super().form_valid(form)
         messages.success(self.request, f'Inspección de extintores guardada exitosamente para {form.instance.area}')
         return response
