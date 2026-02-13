@@ -163,35 +163,147 @@ body {
     font-weight: 600;
 }
 
-/* Buttons */
+/* Buttons - Standardized */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     padding: 10px 20px;
     border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none !important;
     cursor: pointer;
-    transition: var(--transition);
-    border: none;
-    text-decoration: none;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    gap: 8px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    white-space: nowrap;
 }
 
+.btn:disabled,
+.btn.disabled {
+    opacity: 0.65;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Primary Button (Teal) */
 .btn-primary {
     background-color: var(--primary-color);
-    color: var(--white);
+    border-color: var(--primary-color);
+    color: white;
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-hover);
+    background-color: #3da891;
+    border-color: #3da891;
+    color: white;
     box-shadow: 0 4px 12px rgba(73, 186, 160, 0.2);
 }
 
+/* Secondary Button (Gray) */
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+    color: white;
+}
+
+/* Danger Button (Red) */
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #bb2d3b;
+    border-color: #bb2d3b;
+    color: white;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+}
+
+/* Warning Button (Yellow) */
+.btn-warning {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+    border-color: #d39e00;
+    color: #212529;
+}
+
+/* Success Button (Green) */
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+    color: white;
+}
+
+/* Info Button (Cyan) */
+.btn-info {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #0bb5d5;
+    border-color: #0aa2bf;
+    color: white;
+}
+
+/* Small Button (for tables) */
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+}
+
+/* Link Button */
 .btn-link {
     background: none;
+    border: none;
     color: var(--primary-color);
     padding: 0;
+    text-decoration: none;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+    color: #3da891;
+    background: none;
+}
+
+/* Icons inside buttons */
+.btn i {
+    font-size: 1.1em;
 }
 
 /* Tables */
@@ -388,18 +500,23 @@ textarea:focus {
 }
 
 .icon-blue {
-    background: rgba(73, 186, 160, 0.1);
-    color: var(--primary-color);
+    background: linear-gradient(135deg, #49BAA0 0%, #3da891 100%);
+    color: white;
 }
 
 .icon-green {
-    background: rgba(40, 167, 69, 0.1);
-    color: #28a745;
+    background: linear-gradient(135deg, #28a745 0%, #20883a 100%);
+    color: white;
 }
 
 .icon-orange {
-    background: rgba(255, 193, 7, 0.1);
-    color: #ffc107;
+    background: linear-gradient(135deg, #fd7e14 0%, #e67e22 100%);
+    color: white;
+}
+
+.icon-gray {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+    color: white;
 }
 
 .stat-info h3 {

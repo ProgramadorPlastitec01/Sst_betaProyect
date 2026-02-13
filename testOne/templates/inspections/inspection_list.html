@@ -177,8 +177,9 @@
                     </td>
                     <td>
                         <div style="display: flex; gap: 8px;">
-                            <a href="{{ insp.detail_url }}" class="btn-link" title="Ver Detalle"><i
-                                    class="fas fa-eye"></i></a>
+                            <a href="{{ insp.detail_url }}" class="btn btn-sm btn-info" title="Ver Detalle">
+                                <i class="fas fa-eye"></i>
+                            </a>
                         </div>
                     </td>
                 </tr>
@@ -234,34 +235,45 @@
                     </td>
                     <td>
                         <div style="display: flex; gap: 8px;">
-                            <a href="{% url 'inspection_edit' i.pk %}" class="btn-link" title="Editar"><i
-                                    class="fas fa-edit"></i></a>
+                            <a href="{% url 'inspection_edit' i.pk %}" class="btn btn-sm btn-primary" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
 
                             {% if i.status != 'Realizada' %}
                             {% with t=i.inspection_type|lower %}
-                            {% if "extintor" in t %}<a href="{% url 'extinguisher_create' %}?schedule_item={{ i.pk }}"
-                                class="btn-link" style="color: #28a745;" title="Ejecutar"><i
-                                    class="fas fa-play-circle"></i></a>
-                            {% elif "botiquin" in t %}<a href="{% url 'first_aid_create' %}?schedule_item={{ i.pk }}"
-                                class="btn-link" style="color: #28a745;" title="Ejecutar"><i
-                                    class="fas fa-play-circle"></i></a>
-                            {% elif "proceso" in t %}<a href="{% url 'process_create' %}?schedule_item={{ i.pk }}"
-                                class="btn-link" style="color: #28a745;" title="Ejecutar"><i
-                                    class="fas fa-play-circle"></i></a>
-                            {% elif "almacen" in t %}<a href="{% url 'storage_create' %}?schedule_item={{ i.pk }}"
-                                class="btn-link" style="color: #28a745;" title="Ejecutar"><i
-                                    class="fas fa-play-circle"></i></a>
-                            {% elif "montacarga" in t %}<a href="{% url 'forklift_create' %}?schedule_item={{ i.pk }}"
-                                class="btn-link" style="color: #28a745;" title="Ejecutar"><i
-                                    class="fas fa-play-circle"></i></a>
+                            {% if "extintor" in t %}
+                            <a href="{% url 'extinguisher_create' %}?schedule_item={{ i.pk }}"
+                                class="btn btn-sm btn-success" title="Ejecutar">
+                                <i class="fas fa-play-circle"></i>
+                            </a>
+                            {% elif "botiquin" in t %}
+                            <a href="{% url 'first_aid_create' %}?schedule_item={{ i.pk }}"
+                                class="btn btn-sm btn-success" title="Ejecutar">
+                                <i class="fas fa-play-circle"></i>
+                            </a>
+                            {% elif "proceso" in t %}
+                            <a href="{% url 'process_create' %}?schedule_item={{ i.pk }}" class="btn btn-sm btn-success"
+                                title="Ejecutar">
+                                <i class="fas fa-play-circle"></i>
+                            </a>
+                            {% elif "almacen" in t %}
+                            <a href="{% url 'storage_create' %}?schedule_item={{ i.pk }}" class="btn btn-sm btn-success"
+                                title="Ejecutar">
+                                <i class="fas fa-play-circle"></i>
+                            </a>
+                            {% elif "montacarga" in t %}
+                            <a href="{% url 'forklift_create' %}?schedule_item={{ i.pk }}"
+                                class="btn btn-sm btn-success" title="Ejecutar">
+                                <i class="fas fa-play-circle"></i>
+                            </a>
                             {% endif %}
                             {% endwith %}
                             {% endif %}
 
-                            <a href="{% url 'inspection_delete' i.pk %}" class="btn-link" style="color: #dc3545;"
-                                title="Eliminar"
-                                onclick="return confirm('¿Está seguro de eliminar esta programación?')"><i
-                                    class="fas fa-trash"></i></a>
+                            <a href="{% url 'inspection_delete' i.pk %}" class="btn btn-sm btn-danger" title="Eliminar"
+                                onclick="return confirm('¿Está seguro de eliminar esta programación?')">
+                                <i class="fas fa-trash"></i>
+                            </a>
                         </div>
                     </td>
                 </tr>
@@ -307,8 +319,7 @@
         <!-- Modal Footer (fixed) -->
         <div class="modal-footer">
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="btn" style="background: #e9ecef; color: #495057;"
-                    onclick="closeModal()">Cancelar</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
                 <button type="submit" form="inspectionForm" class="btn btn-primary">Guardar Registro</button>
             </div>
         </div>

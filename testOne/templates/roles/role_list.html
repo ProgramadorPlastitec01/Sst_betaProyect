@@ -27,7 +27,7 @@
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon icon-green">
+        <div class="stat-icon icon-gray">
             <i class="fas fa-cog"></i>
         </div>
         <div class="stat-info">
@@ -36,7 +36,7 @@
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon icon-orange">
+        <div class="stat-icon icon-green">
             <i class="fas fa-check-circle"></i>
         </div>
         <div class="stat-info">
@@ -64,121 +64,127 @@
         {% endif %}
     </form>
 </div>
-<div class="table-wrapper">
-    <table>
-        <thead>
-            <tr>
-                <th>Nombre</th>
-                <th>Descripción</th>
-                <th style="width: 100px;">Permisos</th>
-                <th style="width: 100px;">Usuarios</th>
-                <th style="width: 100px;">Estado</th>
-                <th style="width: 120px;">Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for role in roles %}
-            <tr>
-                <td>
-                    <strong>{{ role.name }}</strong>
-                    {% if role.is_system_role %}
-                    <span
-                        style="background: #d1ecf1; color: #0c5460; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-left: 8px;">
-                        Sistema
-                    </span>
-                    {% endif %}
-                </td>
-                <td style="color: #666;">{{ role.description|truncatewords:10 }}</td>
-                <td>
-                    <span
-                        style="background: #e9ecef; color: #495057; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
-                        {{ role.permissions.count }}
-                    </span>
-                </td>
-                <td>
-                    <span
-                        style="background: #cfe2ff; color: #084298; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
-                        {{ role.users.count }}
-                    </span>
-                </td>
-                <td>
-                    {% if role.is_active %}
-                    <span
-                        style="background: #d1e7dd; color: #0f5132; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
-                        <i class="fas fa-check-circle" style="margin-right: 4px;"></i> Activo
-                    </span>
-                    {% else %}
-                    <span
-                        style="background: #f8d7da; color: #842029; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
-                        <i class="fas fa-ban" style="margin-right: 4px;"></i> Inactivo
-                    </span>
-                    {% endif %}
-                </td>
-                <td>
-                    <div style="position: relative;">
-                        <button class="btn btn-sm"
-                            style="background: #49BAA0; color: white; padding: 6px 12px; width: 100%;"
-                            onclick="toggleRoleMenu({{ role.pk }})" title="Acciones">
-                            <i class="fas fa-cog"></i>
-                        </button>
+<!-- Roles Table -->
+<div class="card">
+    <h3 class="card-title">Listado de Roles</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th style="width: 100px;">Permisos</th>
+                    <th style="width: 100px;">Usuarios</th>
+                    <th style="width: 100px;">Estado</th>
+                    <th style="width: 120px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for role in roles %}
+                <tr>
+                    <td style="font-weight: 600; color: #666;">{{ forloop.counter }}</td>
+                    <td>
+                        <strong>{{ role.name }}</strong>
+                        {% if role.is_system_role %}
+                        <span
+                            style="background: #d1ecf1; color: #0c5460; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-left: 8px;">
+                            Sistema
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td style="color: #666;">{{ role.description|truncatewords:10 }}</td>
+                    <td>
+                        <span
+                            style="background: #e9ecef; color: #495057; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
+                            {{ role.permissions.count }}
+                        </span>
+                    </td>
+                    <td>
+                        <span
+                            style="background: #cfe2ff; color: #084298; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
+                            {{ role.users.count }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if role.is_active %}
+                        <span
+                            style="background: #d1e7dd; color: #0f5132; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                            <i class="fas fa-check-circle" style="margin-right: 4px;"></i> Activo
+                        </span>
+                        {% else %}
+                        <span
+                            style="background: #f8d7da; color: #842029; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                            <i class="fas fa-ban" style="margin-right: 4px;"></i> Inactivo
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="position: relative;">
+                            <button class="btn btn-sm"
+                                style="background: #49BAA0; color: white; padding: 6px 12px; width: 100%;"
+                                onclick="toggleRoleMenu({{ role.pk }})" title="Acciones">
+                                <i class="fas fa-cog"></i>
+                            </button>
 
-                        <!-- Dropdown Menu -->
-                        <div id="roleMenu{{ role.pk }}" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; 
-                                        background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
-                                        min-width: 200px; z-index: 1000; overflow: hidden;">
+                            <!-- Dropdown Menu -->
+                            <div id="roleMenu{{ role.pk }}" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; 
+                                            background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+                                            min-width: 200px; z-index: 1000; overflow: hidden;">
 
-                            <a href="{% url 'role_detail' role.pk %}" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
-                                          text-decoration: none; color: #333; transition: background 0.2s; 
-                                          border-bottom: 1px solid #f0f0f0;">
-                                <i class="fas fa-eye" style="color: #0dcaf0; width: 20px;"></i>
-                                <span>Ver Detalles</span>
-                            </a>
+                                <a href="{% url 'role_detail' role.pk %}" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
+                                              text-decoration: none; color: #333; transition: background 0.2s; 
+                                              border-bottom: 1px solid #f0f0f0;">
+                                    <i class="fas fa-eye" style="color: #0dcaf0; width: 20px;"></i>
+                                    <span>Ver Detalles</span>
+                                </a>
 
-                            <a href="{% url 'role_permissions' role.pk %}" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
-                                          text-decoration: none; color: #333; transition: background 0.2s; 
-                                          border-bottom: 1px solid #f0f0f0;">
-                                <i class="fas fa-key" style="color: #ffc107; width: 20px;"></i>
-                                <span>Gestionar Permisos</span>
-                            </a>
+                                <a href="{% url 'role_permissions' role.pk %}" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
+                                              text-decoration: none; color: #333; transition: background 0.2s; 
+                                              border-bottom: 1px solid #f0f0f0;">
+                                    <i class="fas fa-key" style="color: #ffc107; width: 20px;"></i>
+                                    <span>Gestionar Permisos</span>
+                                </a>
 
-                            <a href="{% url 'role_edit' role.pk %}" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
-                                          text-decoration: none; color: #333; transition: background 0.2s; 
-                                          border-bottom: 1px solid #f0f0f0;">
-                                <i class="fas fa-edit" style="color: #49BAA0; width: 20px;"></i>
-                                <span>Editar Rol</span>
-                            </a>
+                                <a href="{% url 'role_edit' role.pk %}" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
+                                              text-decoration: none; color: #333; transition: background 0.2s; 
+                                              border-bottom: 1px solid #f0f0f0;">
+                                    <i class="fas fa-edit" style="color: #49BAA0; width: 20px;"></i>
+                                    <span>Editar Rol</span>
+                                </a>
 
-                            {% if role.name != 'Administrador' %}
-                            <a href="{% url 'role_toggle' role.pk %}" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
-                                          text-decoration: none; color: #333; transition: background 0.2s; 
-                                          border-bottom: 1px solid #f0f0f0;"
-                                onclick="return confirm('¿Está seguro de {% if role.is_active %}desactivar{% else %}activar{% endif %} este rol?');">
-                                <i class="fas fa-power-off" style="color: #6c757d; width: 20px;"></i>
-                                <span>{% if role.is_active %}Desactivar{% else %}Activar{% endif %}</span>
-                            </a>
+                                {% if role.name != 'Administrador' %}
+                                <a href="{% url 'role_toggle' role.pk %}" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
+                                              text-decoration: none; color: #333; transition: background 0.2s; 
+                                              border-bottom: 1px solid #f0f0f0;"
+                                    onclick="return confirm('¿Está seguro de {% if role.is_active %}desactivar{% else %}activar{% endif %} este rol?');">
+                                    <i class="fas fa-power-off" style="color: #6c757d; width: 20px;"></i>
+                                    <span>{% if role.is_active %}Desactivar{% else %}Activar{% endif %}</span>
+                                </a>
 
-                            <a href="{% url 'role_delete' role.pk %}" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
-                                          text-decoration: none; color: #dc3545; transition: background 0.2s;"
-                                onclick="return confirm('¿Está seguro de eliminar este rol?');">
-                                <i class="fas fa-trash" style="width: 20px;"></i>
-                                <span>Eliminar Rol</span>
-                            </a>
-                            {% endif %}
+                                <a href="{% url 'role_delete' role.pk %}" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
+                                              text-decoration: none; color: #dc3545; transition: background 0.2s;"
+                                    onclick="return confirm('¿Está seguro de eliminar este rol?');">
+                                    <i class="fas fa-trash" style="width: 20px;"></i>
+                                    <span>Eliminar Rol</span>
+                                </a>
+                                {% endif %}
+                            </div>
                         </div>
-                    </div>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 60px 20px; color: #999;">
-                    <i class="fas fa-user-shield" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;"></i>
-                    <p style="font-size: 1.1rem; margin-bottom: 8px;">No hay roles registrados</p>
-                    <p style="font-size: 0.9rem;">Crea el primer rol para comenzar</p>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 60px 20px; color: #999;">
+                        <i class="fas fa-user-shield" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;"></i>
+                        <p style="font-size: 1.1rem; margin-bottom: 8px;">No hay roles registrados</p>
+                        <p style="font-size: 0.9rem;">Crea el primer rol para comenzar</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 </div>
 
