@@ -144,6 +144,38 @@ class MatrixContextMixin:
         
         return context
 
+# --- Mixin to provide scheduled inspections to module list views ---
+class ScheduledInspectionsMixin:
+    """
+    Mixin to add pending scheduled inspections to any inspection module list view.
+    Automatically filters by inspection type based on the module.
+    """
+    # Map of module types to their inspection_type keywords
+    INSPECTION_TYPE_MAP = {
+        'extinguisher': 'extintor',
+        'first_aid': 'botiquin',
+        'process': 'proceso',
+        'storage': 'almacenamiento',
+        'forklift': 'montacargas',
+    }
+    
+    # Override this in the view to specify which module type
+    inspection_module_type = None
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        if self.inspection_module_type and self.inspection_module_type in self.INSPECTION_TYPE_MAP:
+            keyword = self.INSPECTION_TYPE_MAP[self.inspection_module_type]
+            context['scheduled_inspections'] = InspectionSchedule.objects.filter(
+                inspection_type__icontains=keyword,
+                status='Programada'
+            ).select_related('responsible').order_by('scheduled_date')
+        else:
+            context['scheduled_inspections'] = InspectionSchedule.objects.none()
+        
+        return context
+
 # 0. Core Schedule Views
 class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
     model = InspectionSchedule
@@ -300,10 +332,11 @@ class FormsetMixin:
         return super().form_valid(form)
 
 # 1. Extinguishers
-class ExtinguisherListView(LoginRequiredMixin, ListView):
+class ExtinguisherListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListView):
     model = ExtinguisherInspection
     template_name = 'inspections/extinguisher_list.html'
     context_object_name = 'inspections'
+    inspection_module_type = 'extinguisher'  # For ScheduledInspectionsMixin
 
 class ExtinguisherCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
     model = ExtinguisherInspection
@@ -350,8 +383,11 @@ class ExtinguisherItemUpdateView(LoginRequiredMixin, UpdateView):
     def get_success_url(self): return reverse('extinguisher_detail', kwargs={'pk': self.object.inspection.pk})
 
 # 2. First Aid
-class FirstAidListView(LoginRequiredMixin, ListView):
-    model = FirstAidInspection; template_name = 'inspections/first_aid_list.html'; context_object_name = 'inspections'
+class FirstAidListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListView):
+    model = FirstAidInspection
+    template_name = 'inspections/first_aid_list.html'
+    context_object_name = 'inspections'
+    inspection_module_type = 'first_aid'
 
 class FirstAidCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
     model = FirstAidInspection
@@ -398,8 +434,11 @@ class FirstAidItemUpdateView(LoginRequiredMixin, UpdateView):
     def get_success_url(self): return reverse('first_aid_detail', kwargs={'pk': self.object.inspection.pk})
 
 # 3. Process
-class ProcessListView(LoginRequiredMixin, ListView):
-    model = ProcessInspection; template_name = 'inspections/process_list.html'; context_object_name = 'inspections'
+class ProcessListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListView):
+    model = ProcessInspection
+    template_name = 'inspections/process_list.html'
+    context_object_name = 'inspections'
+    inspection_module_type = 'process'
 
 class ProcessCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
     model = ProcessInspection
@@ -454,8 +493,11 @@ class ProcessDetailView(LoginRequiredMixin, DetailView):
     model = ProcessInspection; template_name = 'inspections/process_detail.html'
 
 # 4. Storage
-class StorageListView(LoginRequiredMixin, ListView):
-    model = StorageInspection; template_name = 'inspections/storage_list.html'; context_object_name = 'inspections'
+class StorageListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListView):
+    model = StorageInspection
+    template_name = 'inspections/storage_list.html'
+    context_object_name = 'inspections'
+    inspection_module_type = 'storage'
 
 class StorageCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
     model = StorageInspection
@@ -508,8 +550,11 @@ class StorageDetailView(LoginRequiredMixin, DetailView):
     model = StorageInspection; template_name = 'inspections/storage_detail.html'
 
 # 5. Forklift
-class ForkliftListView(LoginRequiredMixin, ListView):
-    model = ForkliftInspection; template_name = 'inspections/forklift_list.html'; context_object_name = 'inspections'
+class ForkliftListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListView):
+    model = ForkliftInspection
+    template_name = 'inspections/forklift_list.html'
+    context_object_name = 'inspections'
+    inspection_module_type = 'forklift'
 
 class ForkliftCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
     model = ForkliftInspection

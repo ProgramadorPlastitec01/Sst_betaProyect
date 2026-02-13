@@ -128,7 +128,7 @@
             (%)</h3>
         <div class="bar-chart">
             {% for s in monthly_stats %}
-            <div class="bar-item" style="height: {{ s.compliance }}%;" title="{{ s.compliance }}%">
+            <div class="bar-item" style="height: calc({{ s.compliance }}% * 1.7);" title="{{ s.compliance }}%">
                 <span class="bar-label-val">{% if s.compliance > 0 %}{{ s.compliance }}%{% endif %}</span>
                 <span class="bar-label-month">
                     {% with m_name=months_names|slice:forloop.counter|last %}
@@ -280,31 +280,56 @@
 <!-- MODAL SECTION -->
 <div id="newRecordModal" class="modal-overlay">
     <div class="modal-content">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-            <h3 style="margin: 0; color: var(--primary-color);">Nueva Programación Anual</h3>
-            <button onclick="closeModal()"
-                style="background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer;">&times;</button>
-        </div>
-        <form method="post" action="{% url 'inspection_create' %}">
-            {% csrf_token %}
-            {% for f in form %}
-            <div class="form-group">
-                <label>{{ f.label }}</label>
-                {{ f }}
+        <!-- Modal Header -->
+        <div class="modal-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: var(--primary-color);">Nueva Programación Anual</h3>
+                <button onclick="closeModal()"
+                    style="background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer;">&times;</button>
             </div>
-            {% endfor %}
-            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+        </div>
+
+        <!-- Modal Body (scrollable) -->
+        <div class="modal-body">
+            <form id="inspectionForm" method="post" action="{% url 'inspection_create' %}">
+                {% csrf_token %}
+                <div class="modal-form-grid">
+                    {% for f in form %}
+                    <div class="form-group {% if 'observ' in f.name or 'Observ' in f.label %}full-width{% endif %}">
+                        <label>{{ f.label }}</label>
+                        {{ f }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </form>
+        </div>
+
+        <!-- Modal Footer (fixed) -->
+        <div class="modal-footer">
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
                 <button type="button" class="btn" style="background: #e9ecef; color: #495057;"
                     onclick="closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Guardar Registro</button>
+                <button type="submit" form="inspectionForm" class="btn btn-primary">Guardar Registro</button>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
 <script>
-    function openModal() { document.getElementById('newRecordModal').style.display = 'flex'; }
-    function closeModal() { document.getElementById('newRecordModal').style.display = 'none'; }
-    window.onclick = function (e) { if (e.target == document.getElementById('newRecordModal')) closeModal(); }
+    function openModal() {
+        document.getElementById('newRecordModal').style.display = 'flex';
+        document.body.classList.add('modal-open');
+    }
+
+    function closeModal() {
+        document.getElementById('newRecordModal').style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
+
+    window.onclick = function (e) {
+        if (e.target == document.getElementById('newRecordModal')) {
+            closeModal();
+        }
+    }
 </script>
 {% endblock %}

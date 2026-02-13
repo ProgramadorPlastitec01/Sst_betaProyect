@@ -1,5 +1,5 @@
 from django import forms
-from .models import InspectionSchedule
+from .models import InspectionSchedule, Area
 
 class InspectionScheduleForm(forms.ModelForm):
     TYPE_CHOICES = [
@@ -18,6 +18,11 @@ class InspectionScheduleForm(forms.ModelForm):
             'scheduled_date': forms.DateInput(attrs={'type': 'date'}),
             'observations': forms.Textarea(attrs={'rows': 3}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
+        self.fields['area'].empty_label = "Seleccione un área"
 
 class InspectionUpdateForm(forms.ModelForm):
     TYPE_CHOICES = [
@@ -37,6 +42,11 @@ class InspectionUpdateForm(forms.ModelForm):
             'scheduled_date': forms.DateInput(attrs={'type': 'date'}),
             'observations': forms.Textarea(attrs={'rows': 3}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
+        self.fields['area'].empty_label = "Seleccione un área"
 
 # --- New Inspection Modules ---
 from django.forms import inlineformset_factory
@@ -57,6 +67,11 @@ class ExtinguisherInspectionForm(forms.ModelForm):
             'inspection_date': forms.DateInput(attrs={'type': 'date'}),
             'observations': forms.Textarea(attrs={'rows': 3}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
+        self.fields['area'].empty_label = "Seleccione un área"
 
 class ExtinguisherItemForm(forms.ModelForm):
     class Meta:
@@ -93,6 +108,11 @@ class FirstAidInspectionForm(forms.ModelForm):
             'inspection_date': forms.DateInput(attrs={'type': 'date'}),
             'observations': forms.Textarea(attrs={'rows': 3}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
+        self.fields['area'].empty_label = "Seleccione un área"
 
 class FirstAidItemForm(forms.ModelForm):
     class Meta:
@@ -125,6 +145,11 @@ class ProcessInspectionForm(forms.ModelForm):
             'inspection_date': forms.DateInput(attrs={'type': 'date'}),
             'observations': forms.Textarea(attrs={'rows': 3}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
+        self.fields['area'].empty_label = "Seleccione un área"
 
 ProcessItemFormSet = inlineformset_factory(
     ProcessInspection, ProcessCheckItem,
@@ -146,6 +171,11 @@ class StorageInspectionForm(forms.ModelForm):
             'inspection_date': forms.DateInput(attrs={'type': 'date'}),
             'observations': forms.Textarea(attrs={'rows': 3}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
+        self.fields['area'].empty_label = "Seleccione un área"
 
 StorageItemFormSet = inlineformset_factory(
     StorageInspection, StorageCheckItem,
@@ -167,6 +197,11 @@ class ForkliftInspectionForm(forms.ModelForm):
             'inspection_date': forms.DateInput(attrs={'type': 'date'}),
             'observations': forms.Textarea(attrs={'rows': 3}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
+        self.fields['area'].empty_label = "Seleccione un área"
 
 ForkliftItemFormSet = inlineformset_factory(
     ForkliftInspection, ForkliftCheckItem,

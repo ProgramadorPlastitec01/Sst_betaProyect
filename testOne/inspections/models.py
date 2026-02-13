@@ -2,6 +2,25 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator
 
+# Area Model - Standardized areas for inspections
+class Area(models.Model):
+    """
+    Standardized areas for the organization.
+    Used across all inspection modules to ensure consistency.
+    """
+    name = models.CharField(max_length=200, unique=True, verbose_name="Nombre del Área")
+    is_active = models.BooleanField(default=True, verbose_name="Activa")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Área"
+        verbose_name_plural = "Áreas"
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
 # Existing InspectionSchedule Model
 class InspectionSchedule(models.Model):
     FREQUENCY_CHOICES = [
@@ -19,7 +38,12 @@ class InspectionSchedule(models.Model):
     ]
 
     year = models.IntegerField(verbose_name="Año de Programación")
-    area = models.CharField(max_length=200, verbose_name="Área a Inspeccionar")
+    area = models.ForeignKey(
+        'Area',
+        on_delete=models.PROTECT,
+        verbose_name="Área a Inspeccionar",
+        help_text="Seleccione el área donde se realizará la inspección"
+    )
     inspection_type = models.CharField(max_length=200, verbose_name="Tipo de Inspección")
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, verbose_name="Frecuencia")
     scheduled_date = models.DateField(verbose_name="Fecha Programada")
@@ -82,7 +106,12 @@ class BaseInspection(models.Model):
     ]
 
     inspection_date = models.DateField(verbose_name="Fecha de Inspección")
-    area = models.CharField(max_length=200, verbose_name="Área/Ubicación")
+    area = models.ForeignKey(
+        'Area',
+        on_delete=models.PROTECT,
+        verbose_name="Área/Ubicación",
+        help_text="Seleccione el área inspeccionada"
+    )
     inspector = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

@@ -15,24 +15,32 @@
     </a>
 </div>
 
-{% if pending_schedule %}
-<div class="card" style="border-left: 5px solid #ffc107;">
-    <h3 class="inspection-section-title" style="color: #856404; border-color: #ffeeba;"><i class="fas fa-clock"></i>
-        Pendientes por Cronograma</h3>
+{% if scheduled_inspections %}
+<div class="card" style="border-left: 5px solid #49BAA0;">
+    <h3 class="inspection-section-title" style="color: #49BAA0; border-color: #49BAA0;"><i
+            class="fas fa-calendar-check"></i>
+        Inspecciones Programadas</h3>
     <div class="table-wrapper">
         <table>
             <thead>
                 <tr>
                     <th>Fecha Programada</th>
                     <th>Área</th>
+                    <th>Responsable</th>
+                    <th>Frecuencia</th>
+                    <th>Observaciones</th>
                     <th>Acción</th>
                 </tr>
             </thead>
             <tbody>
-                {% for item in pending_schedule %}
+                {% for item in scheduled_inspections %}
                 <tr>
                     <td style="font-weight: 600;">{{ item.scheduled_date|date:"d/m/Y" }}</td>
                     <td>{{ item.area }}</td>
+                    <td>{{ item.responsible.get_full_name|default:item.responsible.username }}</td>
+                    <td><span class="badge" style="background: #e3f2fd; color: #1976d2;">{{ item.frequency }}</span>
+                    </td>
+                    <td>{{ item.observations|truncatewords:8|default:"—" }}</td>
                     <td>
                         <a href="{% url 'storage_create' %}?schedule_item={{ item.pk }}" class="btn btn-primary"
                             style="padding: 6px 12px; font-size: 0.8rem;">

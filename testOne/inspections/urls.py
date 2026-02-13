@@ -15,6 +15,9 @@ from .views import (
     ForkliftListView, ForkliftCreateView, ForkliftUpdateView, ForkliftDetailView
 )
 
+# Area Management Views
+from .area_views import AreaListView, AreaCreateView, AreaUpdateView
+
 urlpatterns = [
     # Existing Schedule
     path('', InspectionListView.as_view(), name='inspection_list'),
@@ -59,4 +62,9 @@ urlpatterns = [
     path('forklift/add/', ForkliftCreateView.as_view(), name='forklift_create'),
     path('forklift/<int:pk>/', ForkliftDetailView.as_view(), name='forklift_detail'),
     path('forklift/<int:pk>/edit/', ForkliftUpdateView.as_view(), name='forklift_edit'),
+    
+    # 6. Area Management
+    path('areas/', AreaListView.as_view(), name='area_list'),
+    path('areas/add/', AreaCreateView.as_view(), name='area_create'),
+    path('areas/<int:pk>/edit/', AreaUpdateView.as_view(), name='area_update'),
 ]
