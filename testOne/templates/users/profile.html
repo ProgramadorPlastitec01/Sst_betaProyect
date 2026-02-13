@@ -82,5 +82,125 @@
             </a>
         </div>
     </div>
+
+    <!-- Digital Signature Card -->
+    <div class="card">
+        <h3 class="card-title"><i class="fas fa-file-signature"></i> Firma Digital</h3>
+        <p style="color: var(--text-light); margin-bottom: 24px;">
+            Configure su firma digital para validar inspecciones y documentos.
+        </p>
+
+        <form method="post" action="{% url 'update_signature' %}" id="signatureForm">
+            {% csrf_token %}
+            {{ signature_form }}
+
+            <div
+                style="margin-bottom: 16px; border: 1px solid #ced4da; border-radius: 4px; position: relative; background-color: #f8f9fa;">
+                <canvas id="signatureCanvas" width="400" height="200"
+                    style="width: 100%; height: 200px; touch-action: none; cursor: crosshair;"></canvas>
+                <div id="signaturePlaceholder"
+                    style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #adb5bd; pointer-events: none; font-weight: 500;">
+                    {% if user.digital_signature %}Firma Registrada{% else %}Dibuje su firma aquí{% endif %}
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: space-between;">
+                <button type="button" class="btn" style="background: #e9ecef; color: #495057;"
+                    onclick="clearSignature()">
+                    <i class="fas fa-eraser"></i> Limpiar
+                </button>
+                <button type="submit" class="btn btn-primary" onclick="saveSignature(event)">
+                    <i class="fas fa-save"></i> Guardar Firma
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
+
+{% block extra_scripts %}
+<script>
+    const canvas = document.getElementById('signatureCanvas');
+    const ctx = canvas.getContext('2d');
+    const placeholder = document.getElementById('signaturePlaceholder');
+    const signatureInput = document.querySelector('input[name="digital_signature"]');
+    let isDrawing = false;
+    let hasSignature = {% if user.digital_signature %}true{% else %} false{% endif %};
+
+    function resizeCanvas() {
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0) return;
+
+        canvas.width = rect.width * ratio;
+        canvas.height = rect.height * ratio;
+        ctx.scale(ratio, ratio);
+
+        if (hasSignature && '{{ user.digital_signature }}') {
+            const img = new Image();
+            img.onload = function () {
+                ctx.drawImage(img, 0, 0, rect.width, rect.height);
+            };
+            img.src = '{{ user.digital_signature }}';
+            placeholder.style.display = 'none';
+        }
+    }
+
+    window.addEventListener('load', resizeCanvas);
+    window.addEventListener('resize', resizeCanvas);
+    setTimeout(resizeCanvas, 500);
+
+    function startPosition(e) {
+        isDrawing = true;
+        draw(e);
+        placeholder.style.display = 'none';
+    }
+
+    function endPosition() {
+        isDrawing = false;
+        ctx.beginPath();
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+        const clientY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#000';
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+
+    canvas.addEventListener('mousedown', startPosition);
+    canvas.addEventListener('mouseup', endPosition);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseleave', endPosition);
+
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startPosition(e); }, { passive: false });
+    canvas.addEventListener('touchend', endPosition);
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
+
+    window.clearSignature = function () {
+        const rect = canvas.getBoundingClientRect();
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        placeholder.style.display = 'block';
+        placeholder.innerText = 'Dibuje su firma aquí';
+        if (signatureInput) signatureInput.value = '';
+    }
+
+    window.saveSignature = function (e) {
+        const dataURL = canvas.toDataURL('image/png');
+        if (signatureInput) signatureInput.value = dataURL;
+    }
+</script>
+{% endblock %}
 {% endblock %}

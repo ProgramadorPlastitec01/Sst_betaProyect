@@ -3,7 +3,7 @@ from django.contrib.auth.views import LogoutView
 from .views import (
     CustomLoginView, DashboardView, UserListView, 
     UserCreateView, UserUpdateView, UserDeleteView,
-    ProfileView, UserPasswordChangeView
+    ProfileView, UserPasswordChangeView, DigitalSignatureUpdateView
 )
 
 urlpatterns = [
@@ -16,4 +16,5 @@ urlpatterns = [
     path('users/<int:pk>/delete/', UserDeleteView.as_view(), name='user_delete'),
     path('profile/', ProfileView.as_view(), name='user_profile'),
     path('profile/password/', UserPasswordChangeView.as_view(), name='user_password_change'),
+    path('profile/signature/', DigitalSignatureUpdateView.as_view(), name='update_signature'),
 ]

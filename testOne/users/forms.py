@@ -17,3 +17,11 @@ class UserProfileForm(forms.ModelForm):
     class Meta:
         model = CustomUser
         fields = ('first_name', 'last_name', 'email')
+
+class UserSignatureForm(forms.ModelForm):
+    class Meta:
+        model = CustomUser
+        fields = ('digital_signature',)
+        widgets = {
+            'digital_signature': forms.HiddenInput()
+        }

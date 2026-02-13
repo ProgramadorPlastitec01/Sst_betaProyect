@@ -8,6 +8,8 @@ class CustomUser(AbstractUser):
                              related_name='users', verbose_name='Rol')
     updated_at = models.DateTimeField(auto_now=True)
     
+    digital_signature = models.TextField(blank=True, null=True, verbose_name="Firma Digital") # Base64 encoded image
+    
     # We use email as the identifier
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']

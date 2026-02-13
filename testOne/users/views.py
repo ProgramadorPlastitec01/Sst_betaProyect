@@ -5,7 +5,7 @@ from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from .models import CustomUser
-from .forms import CustomUserCreationForm, CustomUserChangeForm, UserProfileForm
+from .forms import CustomUserCreationForm, CustomUserChangeForm, UserProfileForm, UserSignatureForm
 from inspections.models import InspectionSchedule
 from datetime import date, timedelta
 
@@ -128,6 +128,29 @@ class ProfileView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         messages.success(self.request, 'Perfil actualizado correctamente')
         return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['signature_form'] = UserSignatureForm(instance=self.request.user)
+        return context
+
+class DigitalSignatureUpdateView(LoginRequiredMixin, UpdateView):
+    model = CustomUser
+    form_class = UserSignatureForm
+    template_name = 'users/profile.html'
+    success_url = reverse_lazy('user_profile')
+
+    def get_object(self):
+        return self.request.user
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Firma digital guardada correctamente')
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'Error al guardar la firma')
+        from django.shortcuts import redirect
+        return redirect('user_profile')
 
 class UserPasswordChangeView(LoginRequiredMixin, PasswordChangeView):
     template_name = 'users/password_change.html'
