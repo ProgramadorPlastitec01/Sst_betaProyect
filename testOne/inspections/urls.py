@@ -4,7 +4,9 @@ from .views import (
     InspectionUpdateView, InspectionDeleteView,
     
     # New Views
+    # New Views
     ExtinguisherListView, ExtinguisherCreateView, ExtinguisherUpdateView, ExtinguisherDetailView, 
+    SignExtinguisherInspectionView, ExtinguisherReportView,
     ExtinguisherItemCreateView, ExtinguisherItemUpdateView,
     FirstAidListView, FirstAidCreateView, FirstAidUpdateView, FirstAidDetailView,
     FirstAidItemCreateView, FirstAidItemUpdateView,
@@ -30,6 +32,8 @@ urlpatterns = [
     path('extinguishers/add/', ExtinguisherCreateView.as_view(), name='extinguisher_create'),
     path('extinguishers/<int:pk>/', ExtinguisherDetailView.as_view(), name='extinguisher_detail'),
     path('extinguishers/<int:pk>/edit/', ExtinguisherUpdateView.as_view(), name='extinguisher_edit'),
+    path('extinguishers/<int:pk>/sign/', SignExtinguisherInspectionView.as_view(), name='extinguisher_sign'),
+    path('extinguishers/<int:pk>/report/', ExtinguisherReportView.as_view(), name='extinguisher_report'),
     
     # Items
     path('extinguishers/<int:pk>/add-item/', ExtinguisherItemCreateView.as_view(), name='extinguisher_item_create'),

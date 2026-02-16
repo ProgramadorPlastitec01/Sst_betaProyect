@@ -12,13 +12,28 @@
             <h1 style="font-size: 1.5rem; font-weight: 700;">Detalle de Inspección #{{ object.pk }}</h1>
             <p style="color: var(--text-light); font-size: 0.9rem;">Realizada por
                 <b>{{ object.inspector }}</b> el <b>{{ object.inspection_date|date:"d/m/Y" }}</b>
+                <span
+                    style="margin-left:8px; padding:2px 6px; border-radius:4px; font-size:0.8rem; background-color:{% if object.status == 'Cerrada' %}#28a745{% elif object.status == 'En proceso' %}#17a2b8{% else %}#ffc107{% endif %}; color:white;">
+                    {{ object.status }}
+                </span>
             </p>
         </div>
-        <div style="display: flex; gap: 12px;">
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <a href="{% url 'extinguisher_report' object.pk %}" target="_blank" class="btn"
+                style="background: #17a2b8; color: white; display: flex; align-items: center; gap: 8px; text-decoration: none;">
+                <i class="fas fa-file-alt"></i> Ver Reporte
+            </a>
+            <button onclick="document.getElementById('signaturesModal').style.display='block'" class="btn"
+                style="background: #6c757d; color: white;">
+                <i class="fas fa-file-signature"></i> Firmas
+            </button>
             <a href="{% url 'extinguisher_list' %}" class="btn" style="background: #e9ecef; color: #495057;"><i
                     class="fas fa-arrow-left"></i> Volver</a>
+
+            {% if object.status != 'Cerrada' %}
             <a href="{% url 'extinguisher_edit' object.pk %}" class="btn btn-primary"><i class="fas fa-edit"></i>
                 Editar</a>
+            {% endif %}
         </div>
     </div>
 
@@ -64,10 +79,12 @@
         <div class="card-header" style="margin-bottom: 15px;">
             <h3 class="inspection-section-title" style="margin: 0; border: none;"><i
                     class="fas fa-fire-extinguisher"></i> Extintores Inspeccionados</h3>
+            {% if object.status != 'Cerrada' %}
             <a href="{% url 'extinguisher_item_create' object.pk %}" class="btn"
                 style="background-color: #f8faf9; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 6px 12px; font-size: 0.8rem;">
                 <i class="fas fa-plus-circle"></i> Agregar Extintor
             </a>
+            {% endif %}
         </div>
 
         <div class="table-wrapper">
@@ -114,10 +131,14 @@
                         </td>
                         <td style="text-align: center;">
                             <div class="action-buttons">
+                                {% if object.status != 'Cerrada' %}
                                 <a href="{% url 'extinguisher_item_edit' item.pk %}" class="btn btn-sm"
                                     style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
+                                {% else %}
+                                <span style="color:#aaa; font-size:0.8rem;">Bloqueado</span>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -132,4 +153,89 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Firmas -->
+<div id="signaturesModal" class="modal"
+    style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+    <div class="modal-content"
+        style="background-color:#fff; margin:5% auto; padding:24px; border:1px solid #888; width:90%; max-width:600px; border-radius:8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <div
+            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
+            <h2 style="margin:0; font-size:1.25rem; font-weight:700;">Firmas de Participantes</h2>
+            <span onclick="document.getElementById('signaturesModal').style.display='none'"
+                style="color:#aaa; font-size:28px; font-weight:bold; cursor:pointer;">&times;</span>
+        </div>
+
+        <div style="margin-bottom:24px;">
+            <table style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color:#f8f9fa; border-bottom: 2px solid #eee;">
+                        <th style="text-align:left; padding:12px; font-size:0.85rem; color:#6c757d;">PARTICIPANTE</th>
+                        <th style="text-align:left; padding:12px; font-size:0.85rem; color:#6c757d;">ESTADO</th>
+                        <th style="text-align:left; padding:12px; font-size:0.85rem; color:#6c757d;">FECHA FIRMA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid #f1f1f1;">
+                        <td style="padding:12px; font-weight:600;">
+                            {{ object.inspector.get_full_name|default:object.inspector.username }} (Inspector)</td>
+                        <td style="padding:12px;">
+                            {% if object.status == 'Cerrada' %}
+                            <span class="badge"
+                                style="background:#28a745; color:white; padding:4px 8px; border-radius:4px; font-size:0.75rem;">FIRMADO</span>
+                            {% else %}
+                            <span class="badge"
+                                style="background:#ffc107; color:#212529; padding:4px 8px; border-radius:4px; font-size:0.75rem;">PENDIENTE</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding:12px; font-size:0.85rem; color:#6c757d;">
+                            {% for sig in signatures %}
+                            {% if sig.user == object.inspector %}
+                            {{ sig.signed_at|date:"d/m/Y H:i" }}
+                            {% endif %}
+                            {% empty %}
+                            -
+                            {% endfor %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div style="text-align:right; border-top:1px solid #eee; padding-top:20px;">
+            {% if object.status != 'Cerrada' %}
+            {% if can_sign %}
+            <form action="{% url 'extinguisher_sign' object.pk %}" method="post" style="display:inline;"
+                onsubmit="return confirm('¿Está seguro de firmar esta inspección? Se utilizará su firma digital registrada en el Perfil.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">
+                    <i class="fas fa-file-signature"></i> Firmar Inspección
+                </button>
+            </form>
+            {% elif not user_has_signed and not can_sign %}
+            <div style="display:inline-block; margin-right:10px; text-align:right;">
+                <p style="color:#dc3545; font-size:0.8rem; margin:0 0 5px 0;">* Debe registrar su firma en el Perfil.
+                </p>
+                <a href="{% url 'user_profile' %}" class="btn"
+                    style="background-color: #6c757d; color: white; padding: 6px 12px; text-decoration: none; font-size:0.85rem;">Ir
+                    al Perfil</a>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <button class="btn" onclick="document.getElementById('signaturesModal').style.display='none'"
+                style="background-color: #e9ecef; color: #495057; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-left:10px;">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Close modal when clicking outside
+    window.onclick = function (event) {
+        var modal = document.getElementById('signaturesModal');
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+</script>
 {% endblock %}

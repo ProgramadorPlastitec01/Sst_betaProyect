@@ -267,10 +267,33 @@ class ExtinguisherInspection(BaseInspection):
         default='Equipo SST',
         verbose_name="Rol del Inspector"
     )
+    
+    INSPECTION_STATUS_CHOICES = [
+        ('Programada', 'Programada'),
+        ('En proceso', 'En proceso'),
+        ('Cerrada', 'Cerrada'),
+    ]
+    status = models.CharField(
+        max_length=20, 
+        choices=INSPECTION_STATUS_CHOICES, 
+        default='En proceso', 
+        verbose_name="Estado de Inspección"
+    )
 
     class Meta(BaseInspection.Meta):
         verbose_name = "Inspección de Extintores"
         verbose_name_plural = "Inspecciones de Extintores"
+
+class InspectionSignature(models.Model):
+    inspection = models.ForeignKey(ExtinguisherInspection, related_name='signatures', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Firmante")
+    signature = models.TextField(verbose_name="Firma Base64 (Snapshot)")
+    signed_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Firma")
+
+    class Meta:
+        verbose_name = "Firma de Inspección"
+        verbose_name_plural = "Firmas de Inspección"
+        unique_together = ('inspection', 'user')
 
 class ExtinguisherItem(models.Model):
     TYPE_CHOICES = [

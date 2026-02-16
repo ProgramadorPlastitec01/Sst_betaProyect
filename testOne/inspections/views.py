@@ -1,4 +1,4 @@
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy, reverse
 from django.db import transaction, models
@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from .models import (
-    InspectionSchedule,
+    InspectionSchedule, InspectionSignature,
     ExtinguisherInspection, ExtinguisherItem, 
     FirstAidInspection, FirstAidItem,
     ProcessInspection, StorageInspection,
@@ -493,7 +493,63 @@ class ExtinguisherUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
         return reverse('extinguisher_detail', kwargs={'pk': self.object.pk})
 
 class ExtinguisherDetailView(LoginRequiredMixin, DetailView):
-    model = ExtinguisherInspection; template_name = 'inspections/extinguisher_detail.html'
+    model = ExtinguisherInspection
+    template_name = 'inspections/extinguisher_detail.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        inspection = self.object
+        user = self.request.user
+        
+        context['signatures'] = inspection.signatures.select_related('user').all()
+        context['user_has_signed'] = inspection.signatures.filter(user=user).exists()
+        context['is_participant'] = (user == inspection.inspector)
+        context['can_sign'] = context['is_participant'] and not context['user_has_signed'] and getattr(user, 'digital_signature', None)
+        
+        return context
+
+class SignExtinguisherInspectionView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        inspection = get_object_or_404(ExtinguisherInspection, pk=pk)
+        user = request.user
+        
+        if user != inspection.inspector:
+             messages.error(request, 'No tiene permiso para firmar esta inspección')
+             return redirect('extinguisher_detail', pk=pk)
+             
+        if not getattr(user, 'digital_signature', None):
+             messages.error(request, 'Debe registrar su firma digital en el Perfil antes de firmar')
+             return redirect('extinguisher_detail', pk=pk)
+             
+        if inspection.signatures.filter(user=user).exists():
+             messages.warning(request, 'Ya ha firmado esta inspección')
+             return redirect('extinguisher_detail', pk=pk)
+             
+        if inspection.status == 'Cerrada':
+             messages.error(request, 'La inspección ya está cerrada')
+             return redirect('extinguisher_detail', pk=pk)
+
+        InspectionSignature.objects.create(
+            inspection=inspection,
+            user=user,
+            signature=user.digital_signature
+        )
+        messages.success(request, 'Inspección firmada exitosamente')
+        
+        inspection.status = 'Cerrada'
+        inspection.save()
+        messages.info(request, 'La inspección ha sido cerrada automáticamente')
+        
+        return redirect('extinguisher_detail', pk=pk)
+
+class ExtinguisherReportView(LoginRequiredMixin, DetailView):
+    model = ExtinguisherInspection
+    template_name = 'inspections/extinguisher_report.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['signatures'] = self.object.signatures.select_related('user').all()
+        return context
 
 class ExtinguisherItemCreateView(LoginRequiredMixin, CreateView):
     model = ExtinguisherItem; form_class = ExtinguisherItemForm; template_name = 'inspections/extinguisher_item_form.html'
