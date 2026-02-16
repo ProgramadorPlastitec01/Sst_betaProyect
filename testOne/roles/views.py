@@ -5,10 +5,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from .models import Role, Permission
 from .forms import RoleForm, RolePermissionsForm
+from .mixins import RolePermissionRequiredMixin
 
 
-class RoleListView(LoginRequiredMixin, ListView):
+class RoleListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
     """Vista para listar todos los roles"""
+    permission_required = ('roles', 'view')
     model = Role
     template_name = 'roles/role_list.html'
     context_object_name = 'roles'
@@ -35,8 +37,9 @@ class RoleListView(LoginRequiredMixin, ListView):
         return context
 
 
-class RoleCreateView(LoginRequiredMixin, CreateView):
+class RoleCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, CreateView):
     """Vista para crear un nuevo rol"""
+    permission_required = ('roles', 'create')
     model = Role
     form_class = RoleForm
     template_name = 'roles/role_form.html'
@@ -48,8 +51,9 @@ class RoleCreateView(LoginRequiredMixin, CreateView):
         return response
 
 
-class RoleUpdateView(LoginRequiredMixin, UpdateView):
+class RoleUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView):
     """Vista para editar un rol existente"""
+    permission_required = ('roles', 'edit')
     model = Role
     form_class = RoleForm
     template_name = 'roles/role_form.html'
@@ -61,20 +65,52 @@ class RoleUpdateView(LoginRequiredMixin, UpdateView):
         return response
 
 
-class RoleDetailView(LoginRequiredMixin, DetailView):
+class RoleDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
     """Vista para ver detalles de un rol"""
+    permission_required = ('roles', 'view')
     model = Role
     template_name = 'roles/role_detail.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Agrupar permisos por módulo
-        context['permissions_by_module'] = self.object.get_permissions_by_module()
+        
+        # Obtener todos los permisos definidos en el sistema
+        all_permissions = Permission.objects.all().order_by('module', 'action')
+        
+        # Obtener IDs de permisos que tiene el rol
+        role_perm_ids = set(self.object.permissions.values_list('id', flat=True))
+        
+        # Agrupar por módulo para visualizar
+        # Estructura: {'users': {'name': 'Usuarios', 'perms': [{'obj': p, 'has': True}, ...]}, ...}
+        permissions_matrix = {}
+        
+        # Usar MODULE_CHOICES para iterar en orden y obtener nombres legibles
+        module_dict = dict(Permission.MODULE_CHOICES)
+        
+        for module_key, module_name in Permission.MODULE_CHOICES:
+            # Filtrar permisos de este módulo
+            module_perms = [p for p in all_permissions if p.module == module_key]
+            
+            if module_perms:
+                perms_list = []
+                for p in module_perms:
+                    perms_list.append({
+                        'permission': p,
+                        'has_perm': p.id in role_perm_ids
+                    })
+                
+                permissions_matrix[module_key] = {
+                    'name': module_name,
+                    'vals': perms_list
+                }
+        
+        context['permissions_matrix'] = permissions_matrix
         return context
 
 
-class RoleDeleteView(LoginRequiredMixin, DeleteView):
+class RoleDeleteView(LoginRequiredMixin, RolePermissionRequiredMixin, DeleteView):
     """Vista para eliminar un rol"""
+    permission_required = ('roles', 'delete')
     model = Role
     template_name = 'roles/role_confirm_delete.html'
     success_url = reverse_lazy('role_list')

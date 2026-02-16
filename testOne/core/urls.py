@@ -25,5 +25,7 @@ urlpatterns = [
     path('accounts/', include('users.urls')),
     path('inspections/', include('inspections.urls')),
     path('roles/', include('roles.urls')),
+    path('notifications/', include('notifications.urls')),
+    path('configuration/advanced/', include('system_config.urls')),
     path('configuration/', ConfigurationView.as_view(), name='configuration'),
 ]

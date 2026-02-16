@@ -36,17 +36,34 @@
             <tbody>
                 {% for item in scheduled_inspections %}
                 <tr>
-                    <td style="font-weight: 600;">{{ item.scheduled_date|date:"d/m/Y" }}</td>
+                    <td style="font-weight: 600;">
+                        {{ item.scheduled_date|date:"d/m/Y" }}
+                        {% if item.is_overdue %}
+                        <span class="badge"
+                            style="background-color: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 6px;">Vencida</span>
+                        {% elif item.is_due_soon %}
+                        <span class="badge"
+                            style="background-color: #ffc107; color: #212529; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 6px;">Próxima</span>
+                        {% endif %}
+                    </td>
                     <td>{{ item.area }}</td>
                     <td>{{ item.responsible.get_full_name|default:item.responsible.username }}</td>
                     <td><span class="badge" style="background: #e3f2fd; color: #1976d2;">{{ item.frequency }}</span>
                     </td>
                     <td>{{ item.observations|truncatewords:8|default:"—" }}</td>
                     <td>
+                        {% if item.can_execute %}
                         <a href="{% url 'first_aid_create' %}?schedule_item={{ item.pk }}" class="btn btn-primary"
                             style="padding: 6px 12px; font-size: 0.8rem;">
                             <i class="fas fa-play" style="margin-right: 5px;"></i> Ejecutar
                         </a>
+                        {% else %}
+                        <button class="btn" disabled
+                            style="padding: 6px 12px; font-size: 0.8rem; background: #e9ecef; color: #adb5bd; cursor: not-allowed;"
+                            title="Disponible 5 días antes de la fecha programada">
+                            <i class="fas fa-clock" style="margin-right: 5px;"></i> Espera
+                        </button>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -78,18 +95,31 @@
                     <td>{{ inspection.area }}</td>
                     <td>{{ inspection.inspector }}</td>
                     <td>
-                        <span
-                            class="compliance-badge {% if inspection.general_status == 'Cumple' %}badge-success{% else %}badge-warning{% endif %}"
-                            style="font-size: 0.75rem;">
-                            {{ inspection.general_status }}
-                        </span>
+                        <div class="d-flex flex-column">
+                            <span
+                                class="badge {% if inspection.status == 'Cerrada' %}badge-success{% elif inspection.status == 'Cerrada con Hallazgos' %}badge-warning{% elif inspection.status == 'En proceso' %}badge-primary{% elif inspection.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                                style="font-size: 0.75rem; width: fit-content;">
+                                {{ inspection.status }}
+                            </span>
+                            {% if inspection.follow_ups_count > 0 %}
+                            <small class="text-muted mt-1" style="font-size: 0.7rem;">
+                                Seguimientos: {{ inspection.follow_ups_count }}
+                            </small>
+                            {% endif %}
+                        </div>
                     </td>
                     <td>
                         <div style="display: flex; gap: 8px;">
-                            <a href="{% url 'first_aid_detail' inspection.pk %}" class="btn-link" title="Ver Detalle"><i
-                                    class="fas fa-eye"></i></a>
-                            <a href="{% url 'first_aid_edit' inspection.pk %}" class="btn-link"
-                                style="color: var(--text-light);" title="Editar"><i class="fas fa-edit"></i></a>
+                            <a href="{% url 'first_aid_detail' inspection.pk %}" class="btn btn-sm"
+                                style="background: #6c757d; color: white; padding: 6px 12px;" title="Ver Detalle">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% if inspection.status == 'En proceso' or inspection.status == 'Programada' %}
+                            <a href="{% url 'first_aid_edit' inspection.pk %}" class="btn btn-sm"
+                                style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>

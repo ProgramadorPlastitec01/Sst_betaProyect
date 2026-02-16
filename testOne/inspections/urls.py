@@ -9,6 +9,7 @@ from .views import (
     SignExtinguisherInspectionView, ExtinguisherReportView,
     ExtinguisherItemCreateView, ExtinguisherItemUpdateView,
     FirstAidListView, FirstAidCreateView, FirstAidUpdateView, FirstAidDetailView,
+    SignFirstAidInspectionView, FirstAidReportView,
     FirstAidItemCreateView, FirstAidItemUpdateView,
     ProcessListView, ProcessCreateView, ProcessUpdateView, ProcessDetailView,
     StorageListView, StorageCreateView, StorageUpdateView, StorageDetailView,
@@ -44,6 +45,8 @@ urlpatterns = [
     path('first-aid/add/', FirstAidCreateView.as_view(), name='first_aid_create'),
     path('first-aid/<int:pk>/', FirstAidDetailView.as_view(), name='first_aid_detail'),
     path('first-aid/<int:pk>/edit/', FirstAidUpdateView.as_view(), name='first_aid_edit'),
+    path('first-aid/<int:pk>/sign/', SignFirstAidInspectionView.as_view(), name='first_aid_sign'),
+    path('first-aid/<int:pk>/report/', FirstAidReportView.as_view(), name='first_aid_report'),
 
     # Items
     path('first-aid/<int:pk>/add-item/', FirstAidItemCreateView.as_view(), name='first_aid_item_create'),

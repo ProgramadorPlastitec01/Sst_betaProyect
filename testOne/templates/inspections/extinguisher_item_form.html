@@ -18,8 +18,29 @@
         <form method="post" novalidate>
             {% csrf_token %}
 
+            {% if form.errors %}
+            <div
+                style="background-color: #fee; border: 1px solid #fcc; padding: 10px; border-radius: 5px; margin-bottom: 15px; color: #c00;">
+                <p style="margin: 0; font-weight: bold;">Error al guardar:</p>
+                <ul style="margin: 5px 0 0 20px;">
+                    {% for field in form %}
+                    {% for error in field.errors %}
+                    <li>{{ field.label }}: {{ error }}</li>
+                    {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
             <h3 class="inspection-section-title"><i class="fas fa-tag"></i> Datos Básicos</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+                <div class="form-group">
+                    <label style="font-weight: 600;">{{ form.extinguisher_number.label }}</label>
+                    {{ form.extinguisher_number }}
+                </div>
                 <div class="form-group">
                     <label style="font-weight: 600;">{{ form.location.label }}</label>
                     {{ form.location }}

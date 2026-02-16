@@ -272,12 +272,22 @@ class ExtinguisherInspection(BaseInspection):
         ('Programada', 'Programada'),
         ('En proceso', 'En proceso'),
         ('Cerrada', 'Cerrada'),
+        ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
     ]
     status = models.CharField(
-        max_length=20, 
+        max_length=30,  # Increased length for "Cerrada con Hallazgos"
         choices=INSPECTION_STATUS_CHOICES, 
-        default='En proceso', 
+        default='Programada', 
         verbose_name="Estado de Inspección"
+    )
+    
+    parent_inspection = models.ForeignKey(
+        'self', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='follow_ups',
+        verbose_name="Inspección de Origen"
     )
 
     class Meta(BaseInspection.Meta):
@@ -342,6 +352,29 @@ class FirstAidInspection(BaseInspection):
         verbose_name="Rol del Inspector"
     )
 
+    INSPECTION_STATUS_CHOICES = [
+        ('Programada', 'Programada'),
+        ('En proceso', 'En proceso'),
+        ('Cerrada', 'Cerrada'),
+        ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
+        ('Seguimiento', 'Seguimiento'),
+    ]
+    status = models.CharField(
+        max_length=30, 
+        choices=INSPECTION_STATUS_CHOICES, 
+        default='Programada', 
+        verbose_name="Estado de Inspección"
+    )
+    
+    parent_inspection = models.ForeignKey(
+        'self', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='follow_ups',
+        verbose_name="Inspección de Origen"
+    )
+
     class Meta(BaseInspection.Meta):
         verbose_name = "Inspección de Botiquín"
         verbose_name_plural = "Inspecciones de Botiquines"
@@ -358,6 +391,17 @@ class FirstAidItem(models.Model):
     expiration_date = models.DateField(verbose_name="Fecha de Vencimiento", blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Existe', verbose_name="Estado")
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observaciones")
+
+class FirstAidSignature(models.Model):
+    inspection = models.ForeignKey(FirstAidInspection, related_name='signatures', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Firmante")
+    signature = models.TextField(verbose_name="Firma Base64 (Snapshot)")
+    signed_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Firma")
+
+    class Meta:
+        verbose_name = "Firma de Inspección de Botiquín"
+        verbose_name_plural = "Firmas de Inspección de Botiquines"
+        unique_together = ('inspection', 'user')
 
 # 3. Process Facility Inspection (R-RH-SST-030)
 class ProcessInspection(BaseInspection):

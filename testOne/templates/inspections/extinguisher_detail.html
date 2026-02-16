@@ -13,7 +13,8 @@
             <p style="color: var(--text-light); font-size: 0.9rem;">Realizada por
                 <b>{{ object.inspector }}</b> el <b>{{ object.inspection_date|date:"d/m/Y" }}</b>
                 <span
-                    style="margin-left:8px; padding:2px 6px; border-radius:4px; font-size:0.8rem; background-color:{% if object.status == 'Cerrada' %}#28a745{% elif object.status == 'En proceso' %}#17a2b8{% else %}#ffc107{% endif %}; color:white;">
+                    class="badge {% if object.status == 'Cerrada' %}badge-success{% elif object.status == 'Cerrada con Hallazgos' %}badge-warning{% elif object.status == 'En proceso' %}badge-primary{% elif object.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                    style="margin-left:8px; font-size:0.8rem;">
                     {{ object.status }}
                 </span>
             </p>
@@ -30,7 +31,7 @@
             <a href="{% url 'extinguisher_list' %}" class="btn" style="background: #e9ecef; color: #495057;"><i
                     class="fas fa-arrow-left"></i> Volver</a>
 
-            {% if object.status != 'Cerrada' %}
+            {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
             <a href="{% url 'extinguisher_edit' object.pk %}" class="btn btn-primary"><i class="fas fa-edit"></i>
                 Editar</a>
             {% endif %}
@@ -60,6 +61,25 @@
                     style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Rol</label>
                 <div style="font-weight: 600;">{{ object.inspector_role|default:"N/A" }}</div>
             </div>
+            {% if object.parent_inspection %}
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Inspección
+                    Origen</label>
+                <a href="{% url 'extinguisher_detail' object.parent_inspection.pk %}"
+                    style="font-weight: 600; color: var(--primary-color);">Ver # {{ object.parent_inspection.pk }}</a>
+            </div>
+            {% endif %}
+            {% with followup=object.follow_ups.last %}
+            {% if followup %}
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Seguimiento</label>
+                <a href="{% url 'extinguisher_detail' followup.pk %}" style="font-weight: 600; color: #fd7e14;">Ver #
+                    {{ followup.pk }}</a>
+            </div>
+            {% endif %}
+            {% endwith %}
         </div>
 
         {% if object.observations %}
@@ -75,11 +95,57 @@
         {% endif %}
     </div>
 
+    {% if timeline_inspections %}
+    <!-- Historial de Inspecciones (Timeline) -->
+    <div style="margin-bottom: 24px;">
+        <h3 class="inspection-section-title"><i class="fas fa-history"></i> Historial de Seguimiento</h3>
+        <div
+            style="padding: 20px; display: flex; overflow-x: auto; padding-bottom: 12px; gap: 12px; align-items: center;">
+            {% for item in timeline_inspections %}
+            <!-- Timeline Item -->
+            <a href="{% url 'extinguisher_detail' item.pk %}" class="card"
+                style="min-width: 200px; text-decoration: none; color: inherit; margin-bottom: 0; flex-shrink: 0;
+                          transition: transform 0.2s, box-shadow 0.2s;
+                          {% if item.pk == object.pk %}border: 2px solid var(--primary-color); background-color: #f8faf9; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px);{% else %}border: 1px solid #eee; opacity: 0.9;{% endif %}">
+                <div style="padding: 12px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <span
+                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-light); text-transform: uppercase;">
+                            {% if item.parent_inspection %}Seguimiento{% else %}Inicial{% endif %}
+                        </span>
+                        <span
+                            class="badge {% if item.status == 'Cerrada' %}badge-success{% elif item.status == 'Cerrada con Hallazgos' %}badge-warning{% elif item.status == 'En proceso' %}badge-primary{% elif item.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                            style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; color: white;">
+                            {{ item.status }}
+                        </span>
+                    </div>
+                    <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 4px;">
+                        {{ item.inspection_date|date:"d/m/Y" }}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.75rem; color: var(--text-light);">ID: #{{ item.pk }}</span>
+                        {% if item.pk != object.pk %}
+                        <i class="fas fa-external-link-alt" style="font-size: 0.7rem; color: var(--primary-color);"></i>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+
+            <!-- Connector (except for last item) -->
+            {% if not forloop.last %}
+            <div style="color: #ccc; font-size: 1.2rem;"><i class="fas fa-chevron-right"></i></div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="card">
         <div class="card-header" style="margin-bottom: 15px;">
             <h3 class="inspection-section-title" style="margin: 0; border: none;"><i
                     class="fas fa-fire-extinguisher"></i> Extintores Inspeccionados</h3>
-            {% if object.status != 'Cerrada' %}
+            {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
             <a href="{% url 'extinguisher_item_create' object.pk %}" class="btn"
                 style="background-color: #f8faf9; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 6px 12px; font-size: 0.8rem;">
                 <i class="fas fa-plus-circle"></i> Agregar Extintor
@@ -131,7 +197,7 @@
                         </td>
                         <td style="text-align: center;">
                             <div class="action-buttons">
-                                {% if object.status != 'Cerrada' %}
+                                {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
                                 <a href="{% url 'extinguisher_item_edit' item.pk %}" class="btn btn-sm"
                                     style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar">
                                     <i class="fas fa-edit"></i>

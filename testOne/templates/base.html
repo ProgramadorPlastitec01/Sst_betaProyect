@@ -1,4 +1,4 @@
-{% load static %}
+{% load static permission_tags %}
 <!DOCTYPE html>
 <html lang="es">
 
@@ -30,44 +30,69 @@
                 </a>
             </div>
             <ul class="sidebar-menu">
+                {% has_permission 'users' 'view' as can_view_dashboard %}
                 <li>
                     <a href="{% url 'dashboard' %}"
                         class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                         <i class="fas fa-th-large"></i> <span>Dashboard</span>
                     </a>
                 </li>
+
+                {% has_permission 'schedule' 'view' as can_view_schedule %}
+                {% if can_view_schedule %}
                 <li>
                     <a href="{% url 'inspection_list' %}"
                         class="{% if request.resolver_match.url_name == 'inspection_list' %}active{% endif %}">
                         <i class="fas fa-calendar-alt"></i> <span>Cronograma Anual</span>
                     </a>
                 </li>
+                {% endif %}
+
+                {% has_permission 'extinguisher' 'view' as can_view_extinguisher %}
+                {% if can_view_extinguisher %}
                 <li>
                     <a href="{% url 'extinguisher_list' %}"
                         class="{% if 'extinguisher' in request.path %}active{% endif %}">
                         <i class="fas fa-fire-extinguisher"></i> <span>Extintores</span>
                     </a>
                 </li>
+                {% endif %}
+
+                {% has_permission 'first_aid' 'view' as can_view_first_aid %}
+                {% if can_view_first_aid %}
                 <li>
                     <a href="{% url 'first_aid_list' %}" class="{% if 'first-aid' in request.path %}active{% endif %}">
                         <i class="fas fa-medkit"></i> <span>Botiquines</span>
                     </a>
                 </li>
+                {% endif %}
+
+                {% has_permission 'process' 'view' as can_view_process %}
+                {% if can_view_process %}
                 <li>
                     <a href="{% url 'process_list' %}" class="{% if 'process' in request.path %}active{% endif %}">
                         <i class="fas fa-cogs"></i> <span>Procesos</span>
                     </a>
                 </li>
+                {% endif %}
+
+                {% has_permission 'storage' 'view' as can_view_storage %}
+                {% if can_view_storage %}
                 <li>
                     <a href="{% url 'storage_list' %}" class="{% if 'storage' in request.path %}active{% endif %}">
                         <i class="fas fa-boxes"></i> <span>Almacenamiento</span>
                     </a>
                 </li>
+                {% endif %}
+
+                {% has_permission 'forklift' 'view' as can_view_forklift %}
+                {% if can_view_forklift %}
                 <li>
                     <a href="{% url 'forklift_list' %}" class="{% if 'forklift' in request.path %}active{% endif %}">
                         <i class="fas fa-truck-loading"></i> <span>Montacargas</span>
                     </a>
                 </li>
+                {% endif %}
             </ul>
         </aside>
 

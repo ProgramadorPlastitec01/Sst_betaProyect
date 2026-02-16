@@ -2,7 +2,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, D
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy, reverse
 from django.db import transaction, models
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from .models import (
@@ -12,6 +12,8 @@ from .models import (
     ProcessInspection, StorageInspection,
     ForkliftInspection, ForkliftCheckItem
 )
+from datetime import date, timedelta
+from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from .forms import (
     InspectionScheduleForm, InspectionUpdateForm,
@@ -19,8 +21,11 @@ from .forms import (
     FirstAidInspectionForm, FirstAidItemFormSet, FirstAidItemForm,
     ProcessInspectionForm, ProcessItemFormSet,
     StorageInspectionForm, StorageItemFormSet,
+    StorageInspectionForm, StorageItemFormSet,
     ForkliftInspectionForm, ForkliftItemFormSet
 )
+from notifications.models import NotificationGroup, Notification
+from roles.mixins import RolePermissionRequiredMixin
 
 # --- Mixin to provide matrix context to any view ---
 class MatrixContextMixin:
@@ -111,6 +116,11 @@ class MatrixContextMixin:
                     actual_qs = actual_model.objects.filter(inspection_date__month=m)
                     if selected_year: actual_qs = actual_qs.filter(inspection_date__year=selected_year)
                     if selected_area: actual_qs = actual_qs.filter(area_id=selected_area)
+                    
+                    # Exclude follow-ups from metrics
+                    if hasattr(actual_model, 'parent_inspection'):
+                         actual_qs = actual_qs.filter(parent_inspection__isnull=True)
+                         
                     unlinked_count = actual_qs.filter(schedule_item__isnull=True).count()
                     e_count += unlinked_count
 
@@ -194,9 +204,19 @@ class ScheduledInspectionsMixin:
             else:
                 qs = qs.filter(status='Programada')
                 
-            context['scheduled_inspections'] = qs.select_related('responsible').order_by('scheduled_date')
+            # Enrich items with timeline logic
+            today = timezone.now().date()
+            enhanced_items = []
+            for item in qs.select_related('responsible').order_by('scheduled_date'):
+                item.is_overdue = item.scheduled_date < today
+                item.is_due_soon = today <= item.scheduled_date <= (today + timedelta(days=5))
+                # Allow execution if overdue or within next 5 days
+                item.can_execute = item.scheduled_date <= (today + timedelta(days=5))
+                enhanced_items.append(item)
+                
+            context['scheduled_inspections'] = enhanced_items
         else:
-            context['scheduled_inspections'] = InspectionSchedule.objects.none()
+            context['scheduled_inspections'] = []
         
         return context
 
@@ -228,6 +248,10 @@ class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
         def add_inspections(model, inspection_type, detail_url_name):
             qs = model.objects.all()
             
+            # Filter Only Initial Inspections (Hide Follow-ups)
+            if hasattr(model, 'parent_inspection'):
+                 qs = qs.filter(parent_inspection__isnull=True).annotate(follow_ups_count=Count('follow_ups'))
+            
             # Apply filters
             if year_filter:
                 qs = qs.filter(inspection_date__year=int(year_filter))
@@ -242,9 +266,10 @@ class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
                     'area': insp.area,
                     'type': inspection_type,
                     'inspector': insp.inspector.get_full_name() if insp.inspector else 'N/A',
-                    'status': insp.general_status,
+                    'status': getattr(insp, 'status', insp.general_status),
                     'detail_url': reverse(detail_url_name, args=[insp.pk]),
                     'schedule_linked': insp.schedule_item is not None,
+                    'follow_ups_count': getattr(insp, 'follow_ups_count', 0)
                 })
         
         # Add inspections from each module
@@ -416,7 +441,8 @@ class FormsetMixin:
         return super().form_valid(form)
 
 # 1. Extinguishers
-class ExtinguisherListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListView):
+class ExtinguisherListView(LoginRequiredMixin, RolePermissionRequiredMixin, ScheduledInspectionsMixin, ListView):
+    permission_required = ('extinguisher', 'view')
     model = ExtinguisherInspection
     template_name = 'inspections/extinguisher_list.html'
     context_object_name = 'inspections'
@@ -426,20 +452,24 @@ class ExtinguisherListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListVi
         qs = super().get_queryset()
         from django.utils import timezone
         current_year = timezone.now().year
-        return qs.filter(inspection_date__year=current_year)
+        return qs.filter(inspection_date__year=current_year, parent_inspection__isnull=True).annotate(follow_ups_count=Count('follow_ups'))
         
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         from django.utils import timezone
         current_year = timezone.now().year
         
-        # Filter scheduled inspections by year
+        # Filter scheduled inspections by year (using list comprehension since it's a list now)
         if 'scheduled_inspections' in context:
-            context['scheduled_inspections'] = context['scheduled_inspections'].filter(scheduled_date__year=current_year)
+            context['scheduled_inspections'] = [
+                item for item in context['scheduled_inspections'] 
+                if item.scheduled_date.year == current_year
+            ]
             
         return context
 
-class ExtinguisherCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
+class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, CreateView):
+    permission_required = ('extinguisher', 'create')
     model = ExtinguisherInspection
     form_class = ExtinguisherInspectionForm
     formset_class = ExtinguisherItemFormSet
@@ -478,7 +508,8 @@ class ExtinguisherCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
     def get_success_url(self):
         return reverse('extinguisher_detail', kwargs={'pk': self.object.pk})
 
-class ExtinguisherUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
+class ExtinguisherUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, UpdateView):
+    permission_required = ('extinguisher', 'edit')
     model = ExtinguisherInspection
     form_class = ExtinguisherInspectionForm
     formset_class = ExtinguisherItemFormSet
@@ -492,7 +523,8 @@ class ExtinguisherUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
     def get_success_url(self):
         return reverse('extinguisher_detail', kwargs={'pk': self.object.pk})
 
-class ExtinguisherDetailView(LoginRequiredMixin, DetailView):
+class ExtinguisherDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
+    permission_required = ('extinguisher', 'view')
     model = ExtinguisherInspection
     template_name = 'inspections/extinguisher_detail.html'
     
@@ -501,6 +533,24 @@ class ExtinguisherDetailView(LoginRequiredMixin, DetailView):
         inspection = self.object
         user = self.request.user
         
+        # Timeline Logic
+        root = inspection
+        while root.parent_inspection:
+            root = root.parent_inspection
+            
+        timeline = [root]
+        
+        def get_descendants(parent):
+            children = parent.follow_ups.all().order_by('inspection_date', 'pk')
+            for child in children:
+                timeline.append(child)
+                get_descendants(child)
+                
+        get_descendants(root)
+        
+        if len(timeline) > 1:
+            context['timeline_inspections'] = timeline
+            
         context['signatures'] = inspection.signatures.select_related('user').all()
         context['user_has_signed'] = inspection.signatures.filter(user=user).exists()
         context['is_participant'] = (user == inspection.inspector)
@@ -514,31 +564,93 @@ class SignExtinguisherInspectionView(LoginRequiredMixin, View):
         user = request.user
         
         if user != inspection.inspector:
-             messages.error(request, 'No tiene permiso para firmar esta inspección')
+             messages.error(request, 'No tiene permiso para firmar esta inspección.')
              return redirect('extinguisher_detail', pk=pk)
              
         if not getattr(user, 'digital_signature', None):
-             messages.error(request, 'Debe registrar su firma digital en el Perfil antes de firmar')
+             messages.error(request, 'Debe registrar su firma digital en el Perfil antes de firmar.')
              return redirect('extinguisher_detail', pk=pk)
              
         if inspection.signatures.filter(user=user).exists():
-             messages.warning(request, 'Ya ha firmado esta inspección')
+             messages.warning(request, 'Ya ha firmado esta inspección.')
              return redirect('extinguisher_detail', pk=pk)
              
-        if inspection.status == 'Cerrada':
-             messages.error(request, 'La inspección ya está cerrada')
+        if inspection.status in ['Cerrada', 'Cerrada con Hallazgos']:
+             messages.error(request, 'La inspección ya está cerrada.')
              return redirect('extinguisher_detail', pk=pk)
+
+        # 1. Validation for findings (Only 'Malo' triggers follow-up)
+        failed_items = inspection.items.filter(status='Malo')
+        for item in failed_items:
+            if not item.observations:
+                messages.error(request, f'El ítem {item.extinguisher_number} ({item.location}) requiere observación.')
+                return redirect('extinguisher_detail', pk=pk)
 
         InspectionSignature.objects.create(
             inspection=inspection,
             user=user,
             signature=user.digital_signature
         )
-        messages.success(request, 'Inspección firmada exitosamente')
+        messages.success(request, 'Inspección firmada exitosamente.')
         
-        inspection.status = 'Cerrada'
-        inspection.save()
-        messages.info(request, 'La inspección ha sido cerrada automáticamente')
+        # Determine status
+        if failed_items.exists():
+            inspection.status = 'Cerrada con Hallazgos'
+            inspection.save()
+            
+            # Create Follow-up
+            from system_config.models import SystemConfig
+            days = SystemConfig.get_value('dias_seguimiento_auto', 15)
+            follow_up_date = timezone.now().date() + timedelta(days=days)
+            follow_up = ExtinguisherInspection.objects.create(
+                parent_inspection=inspection,
+                area=inspection.area,
+                inspector=inspection.inspector, 
+                inspector_role=inspection.inspector_role,
+                inspection_date=follow_up_date,
+                status='Programada',
+            )
+            
+            # Copy failed items
+            new_items = []
+            for item in failed_items:
+                new_items.append(ExtinguisherItem(
+                    inspection=follow_up,
+                    extinguisher_number=item.extinguisher_number,
+                    location=item.location,
+                    extinguisher_type=item.extinguisher_type,
+                    capacity=item.capacity,
+                    last_recharge_date=item.last_recharge_date,
+                    next_recharge_date=item.next_recharge_date,
+                    status=item.status,
+                    pressure_gauge_ok=item.pressure_gauge_ok,
+                    safety_pin_ok=item.safety_pin_ok,
+                    hose_nozzle_ok=item.hose_nozzle_ok,
+                    signage_ok=item.signage_ok,
+                    observations=f"Seguimiento: {item.observations}"[:200] if item.observations else "Seguimiento"
+                ))
+            
+            ExtinguisherItem.objects.bulk_create(new_items)
+            
+            # Notify Jefes
+            try:
+                jefes_group = NotificationGroup.objects.get(name="Jefes", is_active=True)
+                for boss in jefes_group.users.all():
+                    Notification.objects.create(
+                        user=boss,
+                        title=f"Hallazgos Críticos - Inspección #{inspection.pk}",
+                        message=f"Se ha cerrado la inspección de extintores en {inspection.area} con hallazgos (Estado: Malo). Se generó seguimiento automático para el {follow_up_date.strftime('%d/%m/%Y')}.",
+                        link=reverse('extinguisher_detail', kwargs={'pk': follow_up.pk}),
+                        notification_type='alert'
+                    )
+            except NotificationGroup.DoesNotExist:
+                pass
+
+            messages.warning(request, f'Inspección cerrada con hallazgos. Se ha generado un seguimiento automático para el {follow_up_date.strftime("%d/%m/%Y")}.')
+        else:
+            inspection.status = 'Cerrada'
+            inspection.save()
+            messages.info(request, 'La inspección ha sido cerrada automáticamente.')
         
         return redirect('extinguisher_detail', pk=pk)
 
@@ -564,13 +676,21 @@ class ExtinguisherItemUpdateView(LoginRequiredMixin, UpdateView):
     def get_success_url(self): return reverse('extinguisher_detail', kwargs={'pk': self.object.inspection.pk})
 
 # 2. First Aid
-class FirstAidListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListView):
+class FirstAidListView(LoginRequiredMixin, RolePermissionRequiredMixin, ScheduledInspectionsMixin, ListView):
+    permission_required = ('first_aid', 'view')
     model = FirstAidInspection
     template_name = 'inspections/first_aid_list.html'
     context_object_name = 'inspections'
     inspection_module_type = 'first_aid'
 
-class FirstAidCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
+    def get_queryset(self):
+        qs = super().get_queryset()
+        from django.utils import timezone
+        current_year = timezone.now().year
+        return qs.filter(inspection_date__year=current_year, parent_inspection__isnull=True).annotate(follow_ups_count=Count('follow_ups'))
+
+class FirstAidCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, CreateView):
+    permission_required = ('first_aid', 'create')
     model = FirstAidInspection
     form_class = FirstAidInspectionForm
     formset_class = FirstAidItemFormSet
@@ -585,7 +705,8 @@ class FirstAidCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
     def get_success_url(self):
         return reverse('first_aid_detail', kwargs={'pk': self.object.pk})
 
-class FirstAidUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
+class FirstAidUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, UpdateView):
+    permission_required = ('first_aid', 'edit')
     model = FirstAidInspection
     form_class = FirstAidInspectionForm
     formset_class = FirstAidItemFormSet
@@ -599,8 +720,129 @@ class FirstAidUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
     def get_success_url(self):
         return reverse('first_aid_detail', kwargs={'pk': self.object.pk})
 
-class FirstAidDetailView(LoginRequiredMixin, DetailView):
-    model = FirstAidInspection; template_name = 'inspections/first_aid_detail.html'
+class FirstAidDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
+    permission_required = ('first_aid', 'view')
+    model = FirstAidInspection
+    template_name = 'inspections/first_aid_detail.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        inspection = self.object
+        user = self.request.user
+        
+        # Timeline Logic
+        root = inspection
+        while root.parent_inspection:
+            root = root.parent_inspection
+            
+        timeline = [root]
+        
+        def get_descendants(parent):
+            children = parent.follow_ups.all().order_by('inspection_date', 'pk')
+            for child in children:
+                timeline.append(child)
+                get_descendants(child)
+                
+        get_descendants(root)
+        
+        if len(timeline) > 1:
+            context['timeline_inspections'] = timeline
+            
+        context['signatures'] = inspection.signatures.select_related('user').all()
+        context['user_has_signed'] = inspection.signatures.filter(user=user).exists()
+        context['is_participant'] = (user == inspection.inspector)
+        context['can_sign'] = context['is_participant'] and not context['user_has_signed'] and getattr(user, 'digital_signature', None)
+        
+        return context
+
+class SignFirstAidInspectionView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        inspection = get_object_or_404(FirstAidInspection, pk=pk)
+        user = request.user
+        
+        if user != inspection.inspector:
+             messages.error(request, 'No tiene permiso para firmar esta inspección.')
+             return redirect('first_aid_detail', pk=pk)
+             
+        if not getattr(user, 'digital_signature', None):
+             messages.error(request, 'Debe registrar su firma digital en el Perfil antes de firmar.')
+             return redirect('first_aid_detail', pk=pk)
+             
+        if inspection.signatures.filter(user=user).exists():
+             messages.warning(request, 'Ya ha firmado esta inspección.')
+             return redirect('first_aid_detail', pk=pk)
+             
+        if inspection.status in ['Cerrada', 'Cerrada con Hallazgos']:
+             messages.error(request, 'La inspección ya está cerrada.')
+             return redirect('first_aid_detail', pk=pk)
+
+        # Validation for findings (Only 'No Existe' triggers follow-up)
+        missing_items = inspection.items.filter(status='No Existe')
+        for item in missing_items:
+            if not item.observations:
+                messages.error(request, f'El ítem {item.element_name} no existe y requiere observación.')
+                return redirect('first_aid_detail', pk=pk)
+
+        from .models import FirstAidSignature, FirstAidItem
+        FirstAidSignature.objects.create(
+            inspection=inspection,
+            user=user,
+            signature=user.digital_signature
+        )
+        messages.success(request, 'Inspección firmada exitosamente.')
+        
+        # Determine status
+        if missing_items.exists():
+            inspection.status = 'Cerrada con Hallazgos'
+            inspection.general_status = 'No Cumple'
+            inspection.save()
+            
+            # Create Follow-up
+            from system_config.models import SystemConfig
+            days = SystemConfig.get_value('dias_seguimiento_auto', 15)
+            follow_up_date = timezone.now().date() + timedelta(days=days)
+            
+            follow_up = FirstAidInspection.objects.create(
+                parent_inspection=inspection,
+                area=inspection.area,
+                inspector=inspection.inspector, 
+                inspector_role=inspection.inspector_role,
+                inspection_date=follow_up_date,
+                status='Programada',
+            )
+            
+            # Copy missing items
+            for item in missing_items:
+                FirstAidItem.objects.create(
+                    inspection=follow_up,
+                    element_name=item.element_name,
+                    quantity=item.quantity,
+                    expiration_date=item.expiration_date,
+                    status='No Existe',
+                    observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento"
+                )
+            
+            messages.info(request, f"Se ha generado una inspección de seguimiento para el {follow_up_date.strftime('%d/%m/%Y')}")
+
+        else:
+            inspection.status = 'Cerrada'
+            inspection.general_status = 'Cumple'
+            inspection.save()
+            
+            # Close Schedule Item logic
+            if inspection.schedule_item:
+                s_item = inspection.schedule_item
+                s_item.status = 'Realizada'
+                s_item.save()
+                next_s = s_item.generate_next_schedule()
+                if next_s:
+                    messages.info(request, f"📅 Nueva programación generada para {next_s.scheduled_date}")
+        
+        return redirect('first_aid_detail', pk=pk)
+
+class FirstAidReportView(LoginRequiredMixin, DetailView):
+    model = FirstAidInspection
+    template_name = 'inspections/first_aid_report.html'
 
 class FirstAidItemCreateView(LoginRequiredMixin, CreateView):
     model = FirstAidItem; form_class = FirstAidItemForm; template_name = 'inspections/first_aid_item_form.html'
@@ -615,13 +857,15 @@ class FirstAidItemUpdateView(LoginRequiredMixin, UpdateView):
     def get_success_url(self): return reverse('first_aid_detail', kwargs={'pk': self.object.inspection.pk})
 
 # 3. Process
-class ProcessListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListView):
+class ProcessListView(LoginRequiredMixin, RolePermissionRequiredMixin, ScheduledInspectionsMixin, ListView):
+    permission_required = ('process', 'view')
     model = ProcessInspection
     template_name = 'inspections/process_list.html'
     context_object_name = 'inspections'
     inspection_module_type = 'process'
 
-class ProcessCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
+class ProcessCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, CreateView):
+    permission_required = ('process', 'create')
     model = ProcessInspection
     form_class = ProcessInspectionForm
     formset_class = ProcessItemFormSet
@@ -656,7 +900,8 @@ class ProcessCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
     def get_success_url(self):
         return reverse('process_detail', kwargs={'pk': self.object.pk})
 
-class ProcessUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
+class ProcessUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, UpdateView):
+    permission_required = ('process', 'edit')
     model = ProcessInspection
     form_class = ProcessInspectionForm
     formset_class = ProcessItemFormSet
@@ -670,17 +915,20 @@ class ProcessUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
     def get_success_url(self):
         return reverse('process_detail', kwargs={'pk': self.object.pk})
 
-class ProcessDetailView(LoginRequiredMixin, DetailView):
+class ProcessDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
+    permission_required = ('process', 'view')
     model = ProcessInspection; template_name = 'inspections/process_detail.html'
 
 # 4. Storage
-class StorageListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListView):
+class StorageListView(LoginRequiredMixin, RolePermissionRequiredMixin, ScheduledInspectionsMixin, ListView):
+    permission_required = ('storage', 'view')
     model = StorageInspection
     template_name = 'inspections/storage_list.html'
     context_object_name = 'inspections'
     inspection_module_type = 'storage'
 
-class StorageCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
+class StorageCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, CreateView):
+    permission_required = ('storage', 'create')
     model = StorageInspection
     form_class = StorageInspectionForm
     formset_class = StorageItemFormSet
@@ -713,7 +961,8 @@ class StorageCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
     def get_success_url(self):
         return reverse('storage_detail', kwargs={'pk': self.object.pk})
 
-class StorageUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
+class StorageUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, UpdateView):
+    permission_required = ('storage', 'edit')
     model = StorageInspection
     form_class = StorageInspectionForm
     formset_class = StorageItemFormSet
@@ -727,17 +976,20 @@ class StorageUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
     def get_success_url(self):
         return reverse('storage_detail', kwargs={'pk': self.object.pk})
 
-class StorageDetailView(LoginRequiredMixin, DetailView):
+class StorageDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
+    permission_required = ('storage', 'view')
     model = StorageInspection; template_name = 'inspections/storage_detail.html'
 
 # 5. Forklift
-class ForkliftListView(LoginRequiredMixin, ScheduledInspectionsMixin, ListView):
+class ForkliftListView(LoginRequiredMixin, RolePermissionRequiredMixin, ScheduledInspectionsMixin, ListView):
+    permission_required = ('forklift', 'view')
     model = ForkliftInspection
     template_name = 'inspections/forklift_list.html'
     context_object_name = 'inspections'
     inspection_module_type = 'forklift'
 
-class ForkliftCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
+class ForkliftCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, CreateView):
+    permission_required = ('forklift', 'create')
     model = ForkliftInspection
     form_class = ForkliftInspectionForm
     formset_class = ForkliftItemFormSet
@@ -784,7 +1036,8 @@ class ForkliftCreateView(LoginRequiredMixin, FormsetMixin, CreateView):
     def get_success_url(self):
         return reverse('forklift_detail', kwargs={'pk': self.object.pk})
 
-class ForkliftUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
+class ForkliftUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, UpdateView):
+    permission_required = ('forklift', 'edit')
     model = ForkliftInspection
     form_class = ForkliftInspectionForm
     formset_class = ForkliftItemFormSet
@@ -798,5 +1051,6 @@ class ForkliftUpdateView(LoginRequiredMixin, FormsetMixin, UpdateView):
     def get_success_url(self):
         return reverse('forklift_detail', kwargs={'pk': self.object.pk})
 
-class ForkliftDetailView(LoginRequiredMixin, DetailView):
+class ForkliftDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
+    permission_required = ('forklift', 'view')
     model = ForkliftInspection; template_name = 'inspections/forklift_detail.html'

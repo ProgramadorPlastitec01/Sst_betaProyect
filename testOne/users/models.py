@@ -21,8 +21,16 @@ class CustomUser(AbstractUser):
         """
         Verifica si el usuario tiene un permiso específico a través de su rol.
         """
+        # Acceso total para superusuarios y rol Administrador
+        if self.is_superuser:
+            return True
+            
+        if self.role and self.role.name == 'Administrador':
+            return True
+            
         if not self.role or not self.role.is_active:
             return False
+            
         return self.role.has_permission(module, action)
     
     def get_role_name(self):

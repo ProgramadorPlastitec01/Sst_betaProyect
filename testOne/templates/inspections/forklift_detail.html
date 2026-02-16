@@ -46,7 +46,7 @@
                     style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Estado
                     General</label>
                 <span
-                    class="compliance-badge {% if object.general_status == 'Cumple' %}badge-success{% else %}badge-danger{% endif %}">
+                    class="compliance-badge {% if object.general_status == 'Cumple' %}badge-success{% elif object.general_status == 'No Cumple' %}badge-danger{% else %}badge-secondary{% endif %}">
                     {{ object.general_status }}
                 </span>
             </div>

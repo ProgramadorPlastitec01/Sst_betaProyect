@@ -169,11 +169,18 @@
                     <td>{{ insp.type }}</td>
                     <td>{{ insp.inspector }}</td>
                     <td>
-                        <span
-                            class="compliance-badge {% if insp.status == 'Cumple' %}badge-success{% elif insp.status == 'No Cumple' %}badge-danger{% else %}badge-warning{% endif %}"
-                            style="font-size: 0.75rem;">
-                            {{ insp.status }}
-                        </span>
+                        <div class="d-flex flex-column">
+                            <span
+                                class="compliance-badge {% if insp.status == 'Cumple' or insp.status == 'Realizada' or insp.status == 'Cerrada' %}badge-success{% elif insp.status == 'No Cumple' or insp.status == 'Vencida' %}badge-danger{% elif insp.status == 'Cerrada con Hallazgos' %}badge-warning{% elif insp.status == 'En proceso' %}badge-primary{% elif insp.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                                style="font-size: 0.75rem; width: fit-content;">
+                                {{ insp.status }}
+                            </span>
+                            {% if insp.follow_ups_count > 0 %}
+                            <small class="text-muted mt-1" style="font-size: 0.7rem;">
+                                Seguimientos: {{ insp.follow_ups_count }}
+                            </small>
+                            {% endif %}
+                        </div>
                     </td>
                     <td>
                         <div style="display: flex; gap: 8px;">

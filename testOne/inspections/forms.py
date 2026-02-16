@@ -106,6 +106,16 @@ class ExtinguisherItemForm(forms.ModelForm):
             'observations': forms.Textarea(attrs={'rows': 2}),
         }
 
+    def clean(self):
+        cleaned_data = super().clean()
+        status = cleaned_data.get('status')
+        observations = cleaned_data.get('observations')
+
+        if status == 'Malo' and not observations:
+            self.add_error('observations', 'La observación es obligatoria para ítems en estado Malo.')
+
+        return cleaned_data
+
 ExtinguisherItemFormSet = inlineformset_factory(
     ExtinguisherInspection, ExtinguisherItem,
     fields=['extinguisher_number', 'location', 'extinguisher_type', 'capacity', 'last_recharge_date', 'next_recharge_date', 
@@ -127,16 +137,31 @@ ExtinguisherItemFormSet = inlineformset_factory(
 class FirstAidInspectionForm(forms.ModelForm):
     class Meta:
         model = FirstAidInspection
-        fields = ['inspection_date', 'area', 'inspector_role', 'general_status', 'observations']
+        fields = ['inspection_date', 'area', 'inspector_role']
         widgets = {
             'inspection_date': forms.DateInput(attrs={'type': 'date'}),
-            'observations': forms.Textarea(attrs={'rows': 3}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        from django.utils import timezone
+        
+        # Set default date to today if not provided
+        if not self.instance.pk:
+            if 'inspection_date' not in self.initial:
+                today = timezone.now().strftime('%Y-%m-%d')
+                self.fields['inspection_date'].initial = today
+                self.fields['inspection_date'].widget.attrs['value'] = today
+            
         self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
         self.fields['area'].empty_label = "Seleccione un área"
+        
+        # Lock area if provided (e.g. from schedule)
+        if self.initial.get('area'):
+            self.fields['area'].widget.attrs.update({
+                'style': 'pointer-events: none; background-color: #e9ecef;',
+                'readonly': 'readonly'
+            })
 
 class FirstAidItemForm(forms.ModelForm):
     class Meta:
@@ -146,6 +171,16 @@ class FirstAidItemForm(forms.ModelForm):
             'expiration_date': forms.DateInput(attrs={'type': 'date'}),
             'observations': forms.Textarea(attrs={'rows': 2}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        status = cleaned_data.get('status')
+        observations = cleaned_data.get('observations')
+
+        if status == 'No Existe' and not observations:
+            self.add_error('observations', 'La observación es obligatoria para ítems que "No Existen".')
+
+        return cleaned_data
 
 FirstAidItemFormSet = inlineformset_factory(
     FirstAidInspection, FirstAidItem,

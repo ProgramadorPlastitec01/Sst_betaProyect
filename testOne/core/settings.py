@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'users',
     'inspections',
     'roles',
+    'notifications',
+    'system_config',
 ]
 
 MIDDLEWARE = [

@@ -6,7 +6,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from .models import CustomUser
 from .forms import CustomUserCreationForm, CustomUserChangeForm, UserProfileForm, UserSignatureForm
-from inspections.models import InspectionSchedule
+from inspections.models import InspectionSchedule, ExtinguisherInspection
 from datetime import date, timedelta
 
 class CustomLoginView(LoginView):
@@ -38,6 +38,20 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             scheduled_date__gte=today,
             scheduled_date__lte=week_ahead
         ).exclude(status='Realizada').order_by('scheduled_date')
+
+        # Active Findings (Inspections marked as 'Cerrada con Hallazgos' that are not fully resolved)
+        closed_with_findings = ExtinguisherInspection.objects.filter(status='Cerrada con Hallazgos')
+        active_findings = []
+        for insp in closed_with_findings:
+            # Check the latest follow-up
+            follow_up = insp.follow_ups.last()
+            if not follow_up or follow_up.status != 'Cerrada':
+                active_findings.append(insp)
+        
+        context['active_findings'] = active_findings
+        
+        # User Notifications
+        context['notifications'] = self.request.user.notifications.filter(is_read=False).order_by('-created_at')[:5]
         
         return context
 

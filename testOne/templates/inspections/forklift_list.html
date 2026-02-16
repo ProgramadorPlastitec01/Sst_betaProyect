@@ -80,7 +80,7 @@
                     <td>{{ inspection.inspector }}</td>
                     <td>
                         <span
-                            class="compliance-badge {% if inspection.general_status == 'Cumple' %}badge-success{% else %}badge-danger{% endif %}"
+                            class="compliance-badge {% if inspection.general_status == 'Cumple' %}badge-success{% elif inspection.general_status == 'No Cumple' %}badge-danger{% else %}badge-secondary{% endif %}"
                             style="font-size: 0.75rem;">
                             {{ inspection.general_status }}
                         </span>
