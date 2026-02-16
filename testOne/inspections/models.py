@@ -290,9 +290,21 @@ class ExtinguisherInspection(BaseInspection):
         verbose_name="Inspección de Origen"
     )
 
+    def get_total_follow_ups_count(self):
+        """
+        Cuenta recursivamente TODOS los seguimientos asociados a esta inspección.
+        Incluye hijos directos, nietos, bisnietos, etc.
+        """
+        count = 0
+        for child in self.follow_ups.all():
+            count += 1  # Contar el hijo directo
+            count += child.get_total_follow_ups_count()  # Contar sus descendientes
+        return count
+
     class Meta(BaseInspection.Meta):
         verbose_name = "Inspección de Extintores"
         verbose_name_plural = "Inspecciones de Extintores"
+
 
 class InspectionSignature(models.Model):
     inspection = models.ForeignKey(ExtinguisherInspection, related_name='signatures', on_delete=models.CASCADE)
@@ -375,9 +387,21 @@ class FirstAidInspection(BaseInspection):
         verbose_name="Inspección de Origen"
     )
 
+    def get_total_follow_ups_count(self):
+        """
+        Cuenta recursivamente TODOS los seguimientos asociados a esta inspección.
+        Incluye hijos directos, nietos, bisnietos, etc.
+        """
+        count = 0
+        for child in self.follow_ups.all():
+            count += 1  # Contar el hijo directo
+            count += child.get_total_follow_ups_count()  # Contar sus descendientes
+        return count
+
     class Meta(BaseInspection.Meta):
         verbose_name = "Inspección de Botiquín"
         verbose_name_plural = "Inspecciones de Botiquines"
+
 
 class FirstAidItem(models.Model):
     STATUS_CHOICES = [

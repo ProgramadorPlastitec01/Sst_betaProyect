@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}SST - Inspecciones de Extintores{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock %}
 
 {% block header_title %}Módulo de Extintores{% endblock %}
 
@@ -87,13 +92,14 @@
                     <td>
                         <div class="d-flex flex-column">
                             <span
-                                class="badge {% if inspection.status == 'Cerrada' %}badge-success{% elif inspection.status == 'Cerrada con Hallazgos' %}badge-warning{% elif inspection.status == 'En proceso' %}badge-primary{% elif inspection.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                                class="compliance-badge {% if inspection.status == 'Cerrada' %}badge-success{% elif inspection.status == 'Cerrada con Hallazgos' %}badge-warning{% elif inspection.status == 'En proceso' %}badge-primary{% elif inspection.status == 'Programada' or inspection.status == 'Programado' %}badge-secondary{% else %}badge-secondary{% endif %}"
                                 style="font-size: 0.75rem; width: fit-content;">
-                                {{ inspection.status }}
-                            </span>
-                            {% if inspection.follow_ups_count > 0 %}
+                                {% if inspection.status == 'Programada' %}Programado{% else %}{{ inspection.status }}
+                                {% endif %}
+                            </span><br>
+                            {% if inspection.get_total_follow_ups_count > 0 %}
                             <small class="text-muted mt-1" style="font-size: 0.7rem;">
-                                Seguimientos: {{ inspection.follow_ups_count }}
+                                Seguimientos: {{ inspection.get_total_follow_ups_count }}
                             </small>
                             {% endif %}
                         </div>

@@ -171,9 +171,9 @@
                     <td>
                         <div class="d-flex flex-column">
                             <span
-                                class="compliance-badge {% if insp.status == 'Cumple' or insp.status == 'Realizada' or insp.status == 'Cerrada' %}badge-success{% elif insp.status == 'No Cumple' or insp.status == 'Vencida' %}badge-danger{% elif insp.status == 'Cerrada con Hallazgos' %}badge-warning{% elif insp.status == 'En proceso' %}badge-primary{% elif insp.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                                class="compliance-badge {% if insp.status == 'Cumple' or insp.status == 'Realizada' or insp.status == 'Cerrada' %}badge-success{% elif insp.status == 'No Cumple' or insp.status == 'Vencida' %}badge-danger{% elif insp.status == 'Cerrada con Hallazgos' %}badge-warning{% elif insp.status == 'En proceso' %}badge-primary{% elif insp.status == 'Programada' or insp.status == 'Programado' %}badge-secondary{% else %}badge-secondary{% endif %}"
                                 style="font-size: 0.75rem; width: fit-content;">
-                                {{ insp.status }}
+                                {% if insp.status == 'Programada' %}Programado{% else %}{{ insp.status }}{% endif %}
                             </span>
                             {% if insp.follow_ups_count > 0 %}
                             <small class="text-muted mt-1" style="font-size: 0.7rem;">

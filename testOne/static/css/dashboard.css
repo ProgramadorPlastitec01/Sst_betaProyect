@@ -139,6 +139,16 @@
     color: #842029;
 }
 
+.badge-primary {
+    background-color: #cfe2ff;
+    color: #084298;
+}
+
+.badge-secondary {
+    background-color: #e2e3e5;
+    color: #41464b;
+}
+
 /* Chart Styling */
 .chart-card {
     padding: 30px;

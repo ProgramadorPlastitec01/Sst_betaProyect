@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}SST - Inspecciones de Almacenamiento{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock %}
 
 {% block header_title %}Módulo de Almacenamiento{% endblock %}
 
@@ -77,11 +82,19 @@
                     <td>{{ inspection.area }}</td>
                     <td>{{ inspection.inspector }}</td>
                     <td>
-                        class="compliance-badge {% if inspection.general_status == 'Cumple' %}badge-success{% elif
-                        inspection.general_status == 'No Cumple' %}badge-danger{% else %}badge-secondary{% endif %}"
-                        style="font-size: 0.75rem;">
-                        {{ inspection.general_status }}
-                        </span>
+                        <div class="d-flex flex-column">
+                            <span
+                                class="compliance-badge {% if inspection.general_status == 'Cumple' %}badge-success{% elif inspection.general_status == 'No Cumple' %}badge-danger{% elif inspection.general_status == 'Programada' or inspection.general_status == 'Programado' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                                style="font-size: 0.75rem; width: fit-content;">
+                                {% if inspection.general_status == 'Programada' %}Programado{% else %}{{
+                                inspection.general_status }}{% endif %}
+                            </span>
+                            {% if inspection.follow_ups_count > 0 %}
+                            <small class="text-muted mt-1" style="font-size: 0.7rem;">
+                                Seguimientos: {{ inspection.follow_ups_count }}
+                            </small>
+                            {% endif %}
+                        </div>
                     </td>
                     <td>
                         <div style="display: flex; gap: 8px;">

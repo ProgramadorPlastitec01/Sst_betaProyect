@@ -250,7 +250,7 @@ class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
             
             # Filter Only Initial Inspections (Hide Follow-ups)
             if hasattr(model, 'parent_inspection'):
-                 qs = qs.filter(parent_inspection__isnull=True).annotate(follow_ups_count=Count('follow_ups'))
+                 qs = qs.filter(parent_inspection__isnull=True)
             
             # Apply filters
             if year_filter:
@@ -259,6 +259,9 @@ class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
                 qs = qs.filter(area__id=area_filter)
             
             for insp in qs:
+                # Use the model method to get total follow-ups count
+                follow_ups_count = insp.get_total_follow_ups_count() if hasattr(insp, 'get_total_follow_ups_count') else 0
+                
                 all_inspections.append({
                     'id': insp.pk,
                     'date': insp.inspection_date,
@@ -269,7 +272,7 @@ class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
                     'status': getattr(insp, 'status', insp.general_status),
                     'detail_url': reverse(detail_url_name, args=[insp.pk]),
                     'schedule_linked': insp.schedule_item is not None,
-                    'follow_ups_count': getattr(insp, 'follow_ups_count', 0)
+                    'follow_ups_count': follow_ups_count
                 })
         
         # Add inspections from each module
@@ -452,7 +455,7 @@ class ExtinguisherListView(LoginRequiredMixin, RolePermissionRequiredMixin, Sche
         qs = super().get_queryset()
         from django.utils import timezone
         current_year = timezone.now().year
-        return qs.filter(inspection_date__year=current_year, parent_inspection__isnull=True).annotate(follow_ups_count=Count('follow_ups'))
+        return qs.filter(inspection_date__year=current_year, parent_inspection__isnull=True)
         
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -687,7 +690,7 @@ class FirstAidListView(LoginRequiredMixin, RolePermissionRequiredMixin, Schedule
         qs = super().get_queryset()
         from django.utils import timezone
         current_year = timezone.now().year
-        return qs.filter(inspection_date__year=current_year, parent_inspection__isnull=True).annotate(follow_ups_count=Count('follow_ups'))
+        return qs.filter(inspection_date__year=current_year, parent_inspection__isnull=True)
 
 class FirstAidCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, CreateView):
     permission_required = ('first_aid', 'create')
