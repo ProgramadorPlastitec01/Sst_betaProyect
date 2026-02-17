@@ -235,98 +235,126 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const form = document.querySelector('form');
+    (function () {
+        console.log("Inicializando validación estricta de inspección...");
 
-        if (!form) return;
-
-        form.addEventListener('submit', function (event) {
+        function validateForm(event) {
+            console.log("Validando formulario...");
             let hasError = false;
             let firstErrorInput = null;
+            let errorCount = 0;
 
-            // Try to find status selects by class first, then by name fallback
-            let statusSelects = document.querySelectorAll('.js-status-select');
-            if (statusSelects.length === 0) {
-                // Fallback
-                statusSelects = document.querySelectorAll('select[name$="-item_status"]');
-            }
+            // Selectores universales para mayor robustez
+            const rows = document.querySelectorAll('tbody tr');
 
-            statusSelects.forEach(function (statusSelect) {
-                // Find corresponding observation input in the same row
-                const row = statusSelect.closest('tr');
-                if (!row) return;
+            rows.forEach(function (row, index) {
+                // Buscamos selects y textareas en la fila
+                // Asumimos que el primer select es el estado y el primer textarea es la observación
+                // O buscamos por coincidencia parcial de nombre si existen atributos name
+                let statusSelect = row.querySelector('select[name*="item_status"]');
+                let obsInput = row.querySelector('textarea[name*="observations"]');
 
-                let obsInput = row.querySelector('.js-obs-input');
-                if (!obsInput) {
-                    obsInput = row.querySelector('textarea[name$="-observations"]');
-                }
+                if (!statusSelect) statusSelect = row.querySelector('select'); // Fallback
+                if (!obsInput) obsInput = row.querySelector('textarea'); // Fallback
 
+                // Verificamos si es una fila válida con ambos controles
                 if (statusSelect && obsInput) {
-                    if (statusSelect.value === 'Malo') {
-                        if (!obsInput.value.trim()) {
-                            hasError = true;
-                            obsInput.style.borderColor = '#dc3545';
-                            obsInput.style.borderWidth = '2px';
+                    const status = statusSelect.value;
+                    const obs = obsInput.value.trim();
 
-                            // Add message if not exists
-                            let errorDiv = obsInput.parentNode.querySelector('.js-error-msg');
+                    if (status === 'Malo') {
+                        if (obs === '') {
+                            console.error(`ERROR en Fila ${index}: Malo sin observación.`);
+                            hasError = true;
+                            errorCount++;
+
+                            // Estilos de error visuales fuertes
+                            obsInput.style.border = '2px solid #dc3545';
+                            obsInput.style.backgroundColor = '#fff8f8';
+
+                            // Mensaje de error
+                            let errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
                             if (!errorDiv) {
                                 errorDiv = document.createElement('div');
-                                errorDiv.className = 'text-danger small js-error-msg';
-                                errorDiv.style.marginTop = '4px';
+                                errorDiv.className = 'text-danger small js-strict-error';
                                 errorDiv.style.fontWeight = 'bold';
+                                errorDiv.style.marginTop = '4px';
                                 errorDiv.innerText = 'Debe ingresar una observación en el ítem marcado como "Malo".';
                                 obsInput.parentNode.appendChild(errorDiv);
                             }
 
                             if (!firstErrorInput) firstErrorInput = obsInput;
                         } else {
-                            obsInput.style.borderColor = ''; // Reset
-                            obsInput.style.borderWidth = '';
-                            const errorDiv = obsInput.parentNode.querySelector('.js-error-msg');
+                            // Limpiar error si se corrige
+                            obsInput.style.border = '';
+                            obsInput.style.backgroundColor = '';
+                            const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
                             if (errorDiv) errorDiv.remove();
                         }
                     } else {
-                        obsInput.style.borderColor = ''; // Reset
-                        obsInput.style.borderWidth = '';
-                        const errorDiv = obsInput.parentNode.querySelector('.js-error-msg');
+                        // Limpiar error si cambia estado
+                        obsInput.style.border = '';
+                        obsInput.style.backgroundColor = '';
+                        const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
                         if (errorDiv) errorDiv.remove();
                     }
                 }
             });
 
             if (hasError) {
+                console.error(`Validación fallida: ${errorCount} errores encontrados.`);
                 event.preventDefault();
-                event.stopImmediatePropagation(); // Ensure it stops other handlers if any
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+
                 alert('Existen ítems en estado "Malo" sin observación. Por favor complete la información antes de continuar.');
+
                 if (firstErrorInput) {
                     firstErrorInput.focus();
                     firstErrorInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
+
+                return false;
             }
-        });
 
-        // Clear errors on change (using delegation)
-        document.body.addEventListener('change', function (e) {
-            if (e.target.matches('.js-obs-input') || e.target.matches('.js-status-select') ||
-                e.target.matches('textarea[name$="-observations"]') || e.target.matches('select[name$="-item_status"]')) {
+            console.log("Validación exitosa, enviando formulario.");
+            return true;
+        }
 
-                const row = e.target.closest('tr');
-                if (!row) return;
+        // Usamos captura (tercer argumento true) para interceptar el evento antes que nadie
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            // Verificar si el target es un formulario (o si el evento burbujeó desde un submit inside form, pero submit dispara en form)
+            if (form.tagName === 'FORM') {
+                if (!validateForm(e)) {
+                    e.preventDefault();
+                }
+            }
+        }, true); // useCapture = true
 
-                let statusSelect = row.querySelector('.js-status-select') || row.querySelector('select[name$="-item_status"]');
-                let obsInput = row.querySelector('.js-obs-input') || row.querySelector('textarea[name$="-observations"]');
+        // Limpiar errores en tiempo real
+        document.addEventListener('change', function (e) {
+            const target = e.target;
+            if (target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+                const row = target.closest('tr');
+                if (row) {
+                    const statusSelect = row.querySelector('select');
+                    const obsInput = row.querySelector('textarea');
 
-                if (statusSelect && obsInput) {
-                    if (statusSelect.value !== 'Malo' || obsInput.value.trim()) {
-                        obsInput.style.borderColor = '';
-                        obsInput.style.borderWidth = '';
-                        const errorDiv = obsInput.parentNode.querySelector('.js-error-msg');
-                        if (errorDiv) errorDiv.remove();
+                    if (statusSelect && obsInput) {
+                        if (statusSelect.value !== 'Malo' || obsInput.value.trim() !== '') {
+                            obsInput.style.border = '';
+                            obsInput.style.backgroundColor = '';
+                            const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                            if (errorDiv) errorDiv.remove();
+                        }
                     }
                 }
             }
-        });
-    });
+        }, true); // Use capture para change event también por seguridad
+
+        console.log("Sistema de validación estricta activado (Modo Captura).");
+
+    })();
 </script>
 {% endblock %}

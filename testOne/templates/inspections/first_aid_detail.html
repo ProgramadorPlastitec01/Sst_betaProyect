@@ -13,9 +13,9 @@
             <p style="color: var(--text-light); font-size: 0.9rem;">Realizada por
                 <b>{{ object.inspector }}</b> el <b>{{ object.inspection_date|date:"d/m/Y" }}</b>
                 <span
-                    class="badge {% if object.status == 'Cerrada' %}badge-success{% elif object.status == 'Cerrada con Hallazgos' %}badge-warning{% elif object.status == 'En proceso' %}badge-primary{% elif object.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                    class="compliance-badge {% if object.status == 'Cerrada' %}badge-success{% elif object.status == 'Cerrada con Hallazgos' %}badge-warning{% elif object.status == 'En proceso' %}badge-primary{% elif object.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
                     style="margin-left:8px; font-size:0.8rem;">
-                    {{ object.status }}
+                    {{ object.get_status_display }}
                 </span>
             </p>
         </div>
@@ -48,53 +48,7 @@
         </div>
     </div>
 
-    <!-- Timeline Section -->
-    {% if timeline_inspections %}
-    <!-- Historial de Inspecciones (Timeline) -->
-    <div style="margin-bottom: 24px;">
-        <h3 class="inspection-section-title"><i class="fas fa-history"></i> Historial de Seguimiento</h3>
-        <div
-            style="padding: 20px; display: flex; overflow-x: auto; padding-bottom: 12px; gap: 12px; align-items: center;">
-            {% for item in timeline_inspections %}
-            <!-- Timeline Item -->
-            <a href="{% url 'first_aid_detail' item.pk %}" class="card"
-                style="min-width: 200px; text-decoration: none; color: inherit; margin-bottom: 0; flex-shrink: 0;
-                          transition: transform 0.2s, box-shadow 0.2s;
-                          {% if item.pk == object.pk %}border: 2px solid var(--primary-color); background-color: #f8faf9; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px);{% else %}border: 1px solid #eee; opacity: 0.9;{% endif %}">
-                <div style="padding: 12px;">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                        <span
-                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-light); text-transform: uppercase;">
-                            {% if item.parent_inspection %}Seguimiento{% else %}Inicial{% endif %}
-                        </span>
-                        <span
-                            class="badge {% if item.status == 'Cerrada' %}badge-success{% elif item.status == 'Cerrada con Hallazgos' %}badge-warning{% elif item.status == 'En proceso' %}badge-primary{% elif item.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
-                            style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; color: white;">
-                            {{ item.status }}
-                        </span>
-                    </div>
-                    <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 4px;">
-                        {{ item.inspection_date|date:"d/m/Y" }}
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.75rem; color: var(--text-light);">ID: #{{ item.pk }}</span>
-                        {% if item.pk != object.pk %}
-                        <i class="fas fa-external-link-alt" style="font-size: 0.7rem; color: var(--primary-color);"></i>
-                        {% endif %}
-                    </div>
-                </div>
-            </a>
-
-            <!-- Connector (except for last item) -->
-            {% if not forloop.last %}
-            <div style="color: #ccc; font-size: 1.2rem;"><i class="fas fa-chevron-right"></i></div>
-            {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-
+    <!-- General Info Card (MOVIDO ARRIBA) -->
     <div class="card">
         <h3 class="inspection-section-title"><i class="fas fa-info-circle"></i> Información General</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px;">
@@ -132,6 +86,52 @@
         </div>
         {% endif %}
     </div>
+
+    <!-- Timeline Section (MOVIDO ABAJO) -->
+    {% if timeline_inspections %}
+    <div style="margin-bottom: 24px;">
+        <h3 class="inspection-section-title"><i class="fas fa-history"></i> Historial de Seguimiento</h3>
+        <div
+            style="padding: 20px; display: flex; overflow-x: auto; padding-bottom: 12px; gap: 12px; align-items: center;">
+            {% for item in timeline_inspections %}
+            <!-- Timeline Item -->
+            <a href="{% url 'first_aid_detail' item.pk %}" class="card"
+                style="min-width: 200px; text-decoration: none; color: inherit; margin-bottom: 0; flex-shrink: 0;
+                          transition: transform 0.2s, box-shadow 0.2s;
+                          {% if item.pk == object.pk %}border: 2px solid var(--primary-color); background-color: #f8faf9; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px);{% else %}border: 1px solid #eee; opacity: 0.9;{% endif %}">
+                <div style="padding: 12px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <span
+                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-light); text-transform: uppercase;">
+                            {% if item.parent_inspection %}Seguimiento{% else %}Inicial{% endif %}
+                        </span>
+                        <span
+                            class="compliance-badge {% if item.status == 'Cerrada' %}badge-success{% elif item.status == 'Cerrada con Hallazgos' %}badge-warning{% elif item.status == 'En proceso' %}badge-primary{% elif item.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                            style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; color: white;">
+                            {{ item.get_status_display }}
+                        </span>
+                    </div>
+                    <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 4px;">
+                        {{ item.inspection_date|date:"d/m/Y" }}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.75rem; color: var(--text-light);">ID: #{{ item.pk }}</span>
+                        {% if item.pk != object.pk %}
+                        <i class="fas fa-external-link-alt" style="font-size: 0.7rem; color: var(--primary-color);"></i>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+
+            <!-- Connector (except for last item) -->
+            {% if not forloop.last %}
+            <div style="color: #ccc; font-size: 1.2rem;"><i class="fas fa-chevron-right"></i></div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
     <div class="card">
         <div class="card-header" style="margin-bottom: 15px;">

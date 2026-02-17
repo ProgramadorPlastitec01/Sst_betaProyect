@@ -164,29 +164,105 @@ class InspectionSchedule(models.Model):
         verbose_name_plural = "Cronogramas de Inspección"
         ordering = ['scheduled_date']
 
+    def get_actual_inspection(self):
+        """Helper to find the actual inspection object related to this schedule item."""
+        if hasattr(self, 'extinguisherinspection_actual_inspections'):
+            obj = self.extinguisherinspection_actual_inspections.first()
+            if obj: return obj
+        if hasattr(self, 'firstaidinspection_actual_inspections'):
+            obj = self.firstaidinspection_actual_inspections.first()
+            if obj: return obj
+        if hasattr(self, 'processinspection_actual_inspections'):
+            obj = self.processinspection_actual_inspections.first()
+            if obj: return obj
+        if hasattr(self, 'storageinspection_actual_inspections'):
+            obj = self.storageinspection_actual_inspections.first()
+            if obj: return obj
+        if hasattr(self, 'forkliftinspection_actual_inspections'):
+            obj = self.forkliftinspection_actual_inspections.first()
+            if obj: return obj
+        return None
+
     def get_absolute_url_result(self):
         """Returns the URL of the actual inspection registered for this schedule item."""
         from django.urls import reverse
         if self.status == 'Realizada':
-            # Check each related set (added via BaseInspection link)
-            if hasattr(self, 'extinguisherinspection_actual_inspections'):
-                resp = self.extinguisherinspection_actual_inspections.first()
-                if resp: return reverse('extinguisher_detail', args=[resp.pk])
-            
-            if hasattr(self, 'firstaidinspection_actual_inspections'):
-                resp = self.firstaidinspection_actual_inspections.first()
-                if resp: return reverse('first_aid_detail', args=[resp.pk])
-                
-            if hasattr(self, 'processinspection_actual_inspections'):
-                resp = self.processinspection_actual_inspections.first()
-                if resp: return reverse('process_detail', args=[resp.pk])
-                
-            if hasattr(self, 'storageinspection_actual_inspections'):
-                resp = self.storageinspection_actual_inspections.first()
-                if resp: return reverse('storage_detail', args=[resp.pk])
-
-                if resp: return reverse('forklift_detail', args=[resp.pk])
+            insp = self.get_actual_inspection()
+            if insp:
+                cls_name = insp.__class__.__name__
+                if 'Extinguisher' in cls_name: return reverse('extinguisher_detail', args=[insp.pk])
+                if 'FirstAid' in cls_name: return reverse('first_aid_detail', args=[insp.pk])
+                if 'Process' in cls_name: return reverse('process_detail', args=[insp.pk])
+                if 'Storage' in cls_name: return reverse('storage_detail', args=[insp.pk])
+                if 'Forklift' in cls_name: return reverse('forklift_detail', args=[insp.pk])
         return None
+
+    @property
+    def status_label(self):
+        if self.status == 'Realizada':
+            insp = self.get_actual_inspection()
+            if insp:
+                # Check for 'status' field (workflow)
+                if hasattr(insp, 'status'):
+                    # Use get_status_display if available
+                    if hasattr(insp, 'get_status_display'):
+                        label = insp.get_status_display()
+                    else:
+                        label = insp.status
+                    
+                    if label == 'Pendiente': return 'Pendiente por ejecutar'
+                    if label == 'Programada': return 'Pendiente por ejecutar'
+                    return label
+                
+                # Fallback to general_status
+                if hasattr(insp, 'general_status'):
+                     gs = insp.general_status
+                     if gs == 'No Cumple': return 'Cerrada con Hallazgos'
+                     if gs == 'Cumple': return 'Cerrada'
+                     if hasattr(insp, 'get_general_status_display'):
+                         return insp.get_general_status_display()
+                     return gs
+            # Fallback for orphan 'Realizada' -> Treat as Pendiente
+            return "Pendiente por ejecutar"
+        # Non-realized - Always conform to 'Pendiente por ejecutar'
+        return "Pendiente por ejecutar"
+
+    @property
+    def status_css_class(self):
+        if self.status == 'Realizada':
+            insp = self.get_actual_inspection()
+            if insp:
+                if hasattr(insp, 'status'):
+                    st = insp.status
+                    if st == 'Cerrada': return 'badge-success' # Green
+                    if st == 'Cerrada con Hallazgos': return 'badge-warning' # Orange/Yellow
+                    if st == 'En proceso': return 'badge-primary' # Blue
+                    return 'badge-secondary'
+                
+                if hasattr(insp, 'general_status'):
+                    gs = insp.general_status
+                    if gs == 'Cumple': return 'badge-success'
+                    if gs == 'No Cumple': return 'badge-warning'
+            # Fallback for orphan 'Realizada' -> Treat as Pendiente (Grey)
+            return 'badge-secondary'
+        if self.scheduled_date < date.today():
+             return 'badge-danger' # Red
+        return 'badge-secondary' # Grey
+
+    @property
+    def is_overdue(self):
+         return self.status != 'Realizada' and self.scheduled_date < date.today()
+    
+    @property
+    def is_upcoming(self):
+         return self.status != 'Realizada' and self.scheduled_date > date.today()
+
+    @property
+    def is_executable(self):
+         # If 'Realizada' but orphan (no actual inspection), treat as executable if date passed
+         if self.status == 'Realizada' and not self.get_actual_inspection():
+             return self.scheduled_date <= date.today()
+         return self.scheduled_date <= date.today() and self.status != 'Realizada'
 
     def get_module_url(self):
         """Returns the URL for the corresponding inspection module list."""
@@ -448,11 +524,11 @@ class ProcessInspection(BaseInspection):
 
     # New fields for standardized logic
     STATUS_CHOICES = [
-        ('Pendiente', 'Pendiente'),
+        ('Pendiente', 'Pendiente por ejecutar'),
         ('En proceso', 'En proceso'),
         ('Cerrada', 'Cerrada'),
         ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
-        ('Seguimiento', 'Seguimiento'),
+        # ('Seguimiento', 'Seguimiento'), # Deprecated as status, use relationship
     ]
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Pendiente', verbose_name="Estado")
     additional_observations = models.TextField(blank=True, null=True, verbose_name="Observaciones Adicionales")
@@ -491,7 +567,7 @@ class ProcessCheckItem(models.Model):
 
     inspection = models.ForeignKey(ProcessInspection, related_name='items', on_delete=models.CASCADE)
     question = models.CharField(max_length=500, verbose_name="Ítem a Evaluar")
-    response = models.CharField(max_length=10, choices=RESPONSE_CHOICES, default='Si', verbose_name="Cumple")
+    response = models.CharField(max_length=10, choices=RESPONSE_CHOICES, default='No', verbose_name="Cumple")
     item_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Bueno', verbose_name="Estado")
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observaciones")
 

@@ -234,60 +234,77 @@
                     <td>{{ i.scheduled_date|date:"d/m/Y" }}</td>
                     <td>{{ i.responsible.get_full_name }}</td>
                     <td>
-                        <span
-                            class="compliance-badge {% if i.status == 'Realizada' %}badge-success{% elif i.is_overdue %}badge-danger{% elif i.is_upcoming %}badge-warning{% else %}badge-info{% endif %}"
-                            style="font-size: 0.75rem;">
+                        <span class="compliance-badge {{ i.status_css_class }}" style="font-size: 0.75rem;">
                             {{ i.status_label }}
                         </span>
                     </td>
                     <td>
-                        <div style="display: flex; gap: 8px;">
-                            <a href="{% url 'inspection_edit' i.pk %}" class="btn btn-sm btn-primary" title="Editar">
-                                <i class="fas fa-edit"></i>
-                            </a>
+                        <div style="position: relative;">
+                            <button type="button" class="btn btn-sm btn-light"
+                                onclick="toggleActionMenu(event, 'menu-{{ i.pk }}')"
+                                style="border: 1px solid #ddd; color: #555; width: 32px; height: 32px; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-cog"></i>
+                            </button>
 
-                            {% if i.status != 'Realizada' %}
-                            {% if i.is_executable %}
-                            {% with t=i.inspection_type|lower %}
-                            {% if "extintor" in t %}
-                            <a href="{% url 'extinguisher_create' %}?schedule_item={{ i.pk }}"
-                                class="btn btn-sm btn-success" title="Ejecutar">
-                                <i class="fas fa-play-circle"></i>
-                            </a>
-                            {% elif "botiquin" in t %}
-                            <a href="{% url 'first_aid_create' %}?schedule_item={{ i.pk }}"
-                                class="btn btn-sm btn-success" title="Ejecutar">
-                                <i class="fas fa-play-circle"></i>
-                            </a>
-                            {% elif "proceso" in t %}
-                            <a href="{% url 'process_create' %}?schedule_item={{ i.pk }}" class="btn btn-sm btn-success"
-                                title="Ejecutar">
-                                <i class="fas fa-play-circle"></i>
-                            </a>
-                            {% elif "almacen" in t %}
-                            <a href="{% url 'storage_create' %}?schedule_item={{ i.pk }}" class="btn btn-sm btn-success"
-                                title="Ejecutar">
-                                <i class="fas fa-play-circle"></i>
-                            </a>
-                            {% elif "montacarga" in t %}
-                            <a href="{% url 'forklift_create' %}?schedule_item={{ i.pk }}"
-                                class="btn btn-sm btn-success" title="Ejecutar">
-                                <i class="fas fa-play-circle"></i>
-                            </a>
-                            {% endif %}
-                            {% endwith %}
-                            {% else %}
-                            <span class="btn btn-sm btn-secondary" style="cursor: not-allowed; opacity: 0.7;"
-                                title="Disponible a partir del {{ i.scheduled_date|date:'d/m/Y' }}">
-                                <i class="fas fa-clock"></i>
-                            </span>
-                            {% endif %}
-                            {% endif %}
+                            <!-- Dropdown Menu -->
+                            <div id="menu-{{ i.pk }}" class="action-dropdown-menu"
+                                style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; width: 160px; 
+                                       background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; overflow: hidden;">
 
-                            <a href="{% url 'inspection_delete' i.pk %}" class="btn btn-sm btn-danger" title="Eliminar"
-                                onclick="return confirm('¿Está seguro de eliminar esta programación?')">
-                                <i class="fas fa-trash"></i>
-                            </a>
+                                {% with linked_url=i.get_absolute_url_result %}
+
+                                <!-- View Action (Only if fully linked) -->
+                                {% if linked_url %}
+                                <a href="{{ linked_url }}" class="dropdown-item">
+                                    <i class="fas fa-eye" style="color: #17a2b8; width: 16px;"></i> Ver
+                                </a>
+                                {% endif %}
+
+                                <!-- Edit Action (If NOT linked/orphan or pending) -->
+                                {% if not linked_url %}
+                                <a href="{% url 'inspection_edit' i.pk %}" class="dropdown-item">
+                                    <i class="fas fa-edit" style="color: #49BAA0; width: 16px;"></i> Editar
+                                </a>
+                                {% endif %}
+
+                                <!-- Execute Action (If NOT linked/orphan and executable by date) -->
+                                {% if not linked_url and i.is_executable %}
+                                {% with t=i.inspection_type|lower %}
+                                {% if "extintor" in t %}
+                                <a href="{% url 'extinguisher_create' %}?schedule_item={{ i.pk }}"
+                                    class="dropdown-item">
+                                    <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i> Ejecutar
+                                </a>
+                                {% elif "botiquin" in t %}
+                                <a href="{% url 'first_aid_create' %}?schedule_item={{ i.pk }}" class="dropdown-item">
+                                    <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i> Ejecutar
+                                </a>
+                                {% elif "proceso" in t %}
+                                <a href="{% url 'process_create' %}?schedule_item={{ i.pk }}" class="dropdown-item">
+                                    <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i> Ejecutar
+                                </a>
+                                {% elif "almacen" in t %}
+                                <a href="{% url 'storage_create' %}?schedule_item={{ i.pk }}" class="dropdown-item">
+                                    <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i> Ejecutar
+                                </a>
+                                {% elif "montacarga" in t %}
+                                <a href="{% url 'forklift_create' %}?schedule_item={{ i.pk }}" class="dropdown-item">
+                                    <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i> Ejecutar
+                                </a>
+                                {% endif %}
+                                {% endwith %}
+                                {% endif %}
+
+                                <!-- Delete Action (If NOT linked/orphan) -->
+                                {% if not linked_url %}
+                                <a href="{% url 'inspection_delete' i.pk %}" class="dropdown-item"
+                                    onclick="return confirm('¿Está seguro de eliminar esta programación?')">
+                                    <i class="fas fa-trash" style="color: #dc3545; width: 16px;"></i> Eliminar
+                                </a>
+                                {% endif %}
+
+                                {% endwith %}
+                            </div>
                         </div>
                     </td>
                 </tr>
@@ -356,5 +373,50 @@
             closeModal();
         }
     }
+
+    // Action Menu Toggle for Table
+    function toggleActionMenu(event, menuId) {
+        event.stopPropagation(); // Prevent document click closing immediately
+
+        // Close all other menus first
+        document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
+            if (menu.id !== menuId) {
+                menu.style.display = 'none';
+            }
+        });
+
+        const menu = document.getElementById(menuId);
+        if (menu.style.display === 'none' || menu.style.display === '') {
+            menu.style.display = 'block';
+        } else {
+            menu.style.display = 'none';
+        }
+    }
+
+    // Close action menus when clicking outside
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('.action-menu-container')) {
+            document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
+                menu.style.display = 'none';
+            });
+        }
+    });
 </script>
+
+<style>
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        text-decoration: none;
+        color: #333;
+        transition: background 0.2s;
+        font-size: 0.85rem;
+    }
+
+    .dropdown-item:hover {
+        background: #f8f9fa;
+    }
+</style>
 {% endblock %}

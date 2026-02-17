@@ -229,8 +229,12 @@ class ProcessCheckItemForm(forms.ModelForm):
         cleaned_data = super().clean()
         status = cleaned_data.get('item_status')
         observations = cleaned_data.get('observations')
-
-        if status == 'Malo' and not observations:
+        
+        # Ensure observations is treated as string and stripped
+        if observations is None:
+            observations = ''
+            
+        if status == 'Malo' and not observations.strip():
             self.add_error('observations', 'La observación es obligatoria para ítems en estado Malo.')
 
         return cleaned_data

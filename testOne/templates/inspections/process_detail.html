@@ -13,11 +13,11 @@
             <h1 style="font-size: 1.5rem; font-weight: 700;">Detalle de Inspección #{{ object.pk }}</h1>
             <p style="color: var(--text-light); font-size: 0.9rem;">Realizada por
                 <b>{{ object.inspector.get_full_name|default:object.inspector.username }}</b> el <b>
-				{{ object.inspection_date|date:"d/m/Y" }}</b>
+                    {{ object.inspection_date|date:"d/m/Y" }}</b>
                 <span
-                    class="badge {% if object.status == 'Cerrada' %}badge-success{% elif object.status == 'Cerrada con Hallazgos' %}badge-warning{% elif object.status == 'En proceso' %}badge-primary{% else %}badge-secondary{% endif %}"
+                    class="compliance-badge {% if object.status == 'Cerrada' %}badge-success{% elif object.status == 'Cerrada con Hallazgos' %}badge-warning{% elif object.status == 'En proceso' %}badge-primary{% elif object.status == 'Pendiente' %}badge-secondary{% else %}badge-secondary{% endif %}"
                     style="margin-left:8px; font-size:0.8rem;">
-                    {{ object.status }}
+                    {{ object.get_status_display }}
                 </span>
             </p>
         </div>
@@ -85,8 +85,8 @@
             <div>
                 <label
                     style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Seguimiento</label>
-                <a href="{% url 'process_detail' followup.pk %}" style="font-weight: 600; color: #fd7e14;">Ver # 
-				{{ followup.pk }}</a>
+                <a href="{% url 'process_detail' followup.pk %}" style="font-weight: 600; color: #fd7e14;">Ver #
+                    {{ followup.pk }}</a>
             </div>
             {% endif %}
             {% endwith %}
@@ -124,14 +124,14 @@
                             {% if item.parent_inspection %}Seguimiento{% else %}Inicial{% endif %}
                         </span>
                         <span
-                            class="badge {% if item.status == 'Cerrada' %}badge-success{% elif item.status == 'Cerrada con Hallazgos' %}badge-warning{% elif item.status == 'En proceso' %}badge-primary{% else %}badge-secondary{% endif %}"
+                            class="compliance-badge {% if item.status == 'Cerrada' %}badge-success{% elif item.status == 'Cerrada con Hallazgos' %}badge-warning{% elif item.status == 'En proceso' %}badge-primary{% elif item.status == 'Pendiente' %}badge-secondary{% else %}badge-secondary{% endif %}"
                             style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; color: white;">
-                            {{ item.status }}
+                            {{ item.get_status_display }}
                         </span>
                     </div>
                     <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 4px;">
-					{{ item.inspection_date|date:"d/m/Y" }}
-					</div>
+                        {{ item.inspection_date|date:"d/m/Y" }}
+                    </div>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.75rem; color: var(--text-light);">ID: #{{ item.pk }}</span>
                         {% if item.pk != object.pk %}
@@ -162,6 +162,7 @@
                         <th class="text-center">Cumple</th>
                         <th class="text-center">Estado</th>
                         <th>Observaciones</th>
+                        <th style="width: 80px;" class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -170,24 +171,34 @@
                         <td>{{ item.question }}</td>
                         <td class="text-center">
                             {% if item.response == 'Si' %}
-                            <span class="badge badge-success">Sí</span>
+                            <span class="compliance-badge badge-success">Sí</span>
                             {% elif item.response == 'No' %}
-                            <span class="badge badge-danger">No</span>
+                            <span class="compliance-badge badge-danger">No</span>
                             {% else %}
-                            <span class="badge badge-secondary">{{ item.response }}</span>
+                            <span class="compliance-badge badge-secondary">{{ item.response }}</span>
                             {% endif %}
                         </td>
                         <td class="text-center">
                             <span
-                                class="compliance-badge {% if item.item_status == 'Bueno' %}badge-success{% elif item.item_status == 'Malo' %}badge-danger{% else %}badge-warning{% endif %}">
+                                class="compliance-badge {% if item.item_status == 'Bueno' %}badge-success{% elif item.item_status == 'Malo' %}badge-danger{% elif item.item_status == 'Regular' %}badge-warning{% else %}badge-secondary{% endif %}">
                                 {{ item.item_status }}
                             </span>
                         </td>
                         <td>{{ item.observations|default:"-" }}</td>
+                        <td class="text-center">
+                            {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
+                            <a href="{% url 'process_item_edit' item.pk %}" class="btn btn-sm"
+                                style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% else %}
+                            <span style="color:#aaa; font-size:0.8rem;">Bloqueado</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center p-4">No hay ítems registrados.</td>
+                        <td colspan="5" class="text-center p-4">No hay ítems registrados.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

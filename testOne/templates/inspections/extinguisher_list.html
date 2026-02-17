@@ -40,23 +40,32 @@
             <tbody>
                 {% for item in scheduled_inspections %}
                 <tr>
-                    <td style="font-weight: 600;">{{ item.scheduled_date|date:"d/m/Y" }}</td>
+                    <td style="font-weight: 600;">
+                        {{ item.scheduled_date|date:"d/m/Y" }}
+                        {% if item.is_overdue %}
+                        <span class="badge"
+                            style="background-color: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 6px;">Vencida</span>
+                        {% elif item.is_due_soon %}
+                        <span class="badge"
+                            style="background-color: #ffc107; color: #212529; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 6px;">Próxima</span>
+                        {% endif %}
+                    </td>
                     <td>{{ item.area }}</td>
                     <td>{{ item.responsible.get_full_name|default:item.responsible.username }}</td>
                     <td><span class="badge" style="background: #e3f2fd; color: #1976d2;">{{ item.frequency }}</span>
                     </td>
                     <td>{{ item.observations|truncatewords:8|default:"—" }}</td>
                     <td>
-                        {% if item.is_executable %}
+                        {% if item.can_execute %}
                         <a href="{% url 'extinguisher_create' %}?schedule_item={{ item.pk }}" class="btn btn-primary"
                             style="padding: 6px 12px; font-size: 0.8rem;">
                             <i class="fas fa-play" style="margin-right: 5px;"></i> Ejecutar
                         </a>
                         {% else %}
-                        <button class="btn btn-secondary disabled"
-                            style="padding: 6px 12px; font-size: 0.8rem; cursor: not-allowed; opacity: 0.7;" disabled
-                            title="Disponible el {{ item.scheduled_date|date:'d/m/Y' }}">
-                            <i class="fas fa-clock" style="margin-right: 5px;"></i> {{ item.scheduled_date|date:"d/m" }}
+                        <button class="btn" disabled
+                            style="padding: 6px 12px; font-size: 0.8rem; background: #e9ecef; color: #adb5bd; cursor: not-allowed;"
+                            title="Disponible 5 días antes de la fecha programada">
+                            <i class="fas fa-clock" style="margin-right: 5px;"></i> Espera
                         </button>
                         {% endif %}
                     </td>

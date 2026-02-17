@@ -3,16 +3,21 @@ from .views import (
     InspectionListView, InspectionCreateView, 
     InspectionUpdateView, InspectionDeleteView,
     
-    # New Views
-    # New Views
+    # Extinguisher Views
     ExtinguisherListView, ExtinguisherCreateView, ExtinguisherUpdateView, ExtinguisherDetailView, 
     SignExtinguisherInspectionView, ExtinguisherReportView,
     ExtinguisherItemCreateView, ExtinguisherItemUpdateView,
+
+    # First Aid Views
     FirstAidListView, FirstAidCreateView, FirstAidUpdateView, FirstAidDetailView,
     SignFirstAidInspectionView, FirstAidReportView,
     FirstAidItemCreateView, FirstAidItemUpdateView,
-    ProcessListView, ProcessCreateView, ProcessUpdateView, ProcessDetailView,
+
+    # Process Views
+    ProcessListView, ProcessCreateView, ProcessUpdateView, ProcessDetailView, ProcessItemUpdateView,
     SignProcessInspectionView, ProcessReportView,
+
+    # Storage Views
     StorageListView, StorageCreateView, StorageUpdateView, StorageDetailView,
     
     # Forklift Views
@@ -25,7 +30,7 @@ from .area_views import AreaListView, AreaCreateView, AreaUpdateView
 urlpatterns = [
     # Existing Schedule
     path('', InspectionListView.as_view(), name='inspection_list'),
-    path('schedule/create/', InspectionCreateView.as_view(), name='inspection_create'), # Renamed slightly to avoid confusion? No, keep existing pattern but maybe prefix 'schedule/'
+    path('schedule/create/', InspectionCreateView.as_view(), name='inspection_create'),
     path('schedule/<int:pk>/edit/', InspectionUpdateView.as_view(), name='inspection_edit'),
     path('schedule/<int:pk>/delete/', InspectionDeleteView.as_view(), name='inspection_delete'),
 
@@ -58,6 +63,7 @@ urlpatterns = [
     path('process/add/', ProcessCreateView.as_view(), name='process_create'),
     path('process/<int:pk>/', ProcessDetailView.as_view(), name='process_detail'),
     path('process/<int:pk>/edit/', ProcessUpdateView.as_view(), name='process_edit'),
+    path('process/item/<int:pk>/edit/', ProcessItemUpdateView.as_view(), name='process_item_edit'),
     path('process/<int:pk>/sign/', SignProcessInspectionView.as_view(), name='sign_process_inspection'),
     path('process/<int:pk>/report/', ProcessReportView.as_view(), name='process_report'),
 

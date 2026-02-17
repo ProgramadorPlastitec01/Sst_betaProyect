@@ -173,8 +173,8 @@
         <div class="info-item">
             <label>Resultado General:</label>
             <div class="status-box"
-                style="background: {% if object.status == 'Cerrada' %}#d4edda{% else %}#fff3cd{% endif %};">
-                {{ object.status }}
+                style="background: {% if object.status == 'Cerrada' %}#d4edda{% elif object.status == 'Cerrada con Hallazgos' %}#fff3cd{% elif object.status == 'En proceso' %}#cce5ff{% else %}#e2e3e5{% endif %}; color: {% if object.status == 'Cerrada' %}#155724{% elif object.status == 'Cerrada con Hallazgos' %}#856404{% elif object.status == 'En proceso' %}#004085{% else %}#383d41{% endif %};">
+                {{ object.get_status_display }}
             </div>
         </div>
     </div>

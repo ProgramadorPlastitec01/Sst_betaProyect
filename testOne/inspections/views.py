@@ -20,8 +20,7 @@ from .forms import (
     InspectionScheduleForm, InspectionUpdateForm,
     ExtinguisherInspectionForm, ExtinguisherItemFormSet, ExtinguisherItemForm,
     FirstAidInspectionForm, FirstAidItemFormSet, FirstAidItemForm,
-    ProcessInspectionForm, ProcessItemFormSet,
-    StorageInspectionForm, StorageItemFormSet,
+    ProcessInspectionForm, ProcessItemFormSet, ProcessCheckItemForm,
     StorageInspectionForm, StorageItemFormSet,
     ForkliftInspectionForm, ForkliftItemFormSet
 )
@@ -179,11 +178,11 @@ class ScheduledInspectionsMixin:
     """
     # Map of module types to their inspection_type keywords
     INSPECTION_TYPE_MAP = {
-        'extinguisher': 'extintor',
-        'first_aid': 'botiquin',
-        'process': 'proceso',
-        'storage': 'almacenamiento',
-        'forklift': 'montacarga',
+        'extinguisher': 'Extintores',
+        'first_aid': 'Botiquin',
+        'process': 'Instalaciones de Proceso',
+        'storage': 'Almacenamiento',
+        'forklift': 'Montacargas',
     }
     
     # Override this in the view to specify which module type
@@ -209,7 +208,7 @@ class ScheduledInspectionsMixin:
             today = timezone.now().date()
             enhanced_items = []
             for item in qs.select_related('responsible').order_by('scheduled_date'):
-                item.is_overdue = item.scheduled_date < today
+                # item.is_overdue is now a model property, do not overwrite
                 item.is_due_soon = today <= item.scheduled_date <= (today + timedelta(days=5))
                 # Allow execution if overdue or within next 5 days
                 item.can_execute = item.scheduled_date <= (today + timedelta(days=5))
@@ -966,6 +965,15 @@ class ProcessUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Formset
     
     def get_success_url(self):
         return reverse('process_detail', kwargs={'pk': self.object.pk})
+
+class ProcessItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView):
+    permission_required = ('process', 'edit')
+    model = ProcessCheckItem
+    form_class = ProcessCheckItemForm
+    template_name = 'inspections/process_item_form.html'
+    
+    def get_success_url(self):
+        return reverse('process_detail', kwargs={'pk': self.object.inspection.pk})
 
 class ProcessDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
     permission_required = ('process', 'view')
