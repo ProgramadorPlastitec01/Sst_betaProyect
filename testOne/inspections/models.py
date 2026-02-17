@@ -446,6 +446,36 @@ class ProcessInspection(BaseInspection):
         verbose_name = "Inspección de Procesos"
         verbose_name_plural = "Inspecciones de Procesos"
 
+    # New fields for standardized logic
+    STATUS_CHOICES = [
+        ('Pendiente', 'Pendiente'),
+        ('En proceso', 'En proceso'),
+        ('Cerrada', 'Cerrada'),
+        ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
+        ('Seguimiento', 'Seguimiento'),
+    ]
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Pendiente', verbose_name="Estado")
+    additional_observations = models.TextField(blank=True, null=True, verbose_name="Observaciones Adicionales")
+    parent_inspection = models.ForeignKey(
+        'self', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        related_name='follow_ups',
+        verbose_name="Inspección Padre"
+    )
+
+    def get_total_follow_ups_count(self):
+        """
+        Cuenta recursivamente TODOS los seguimientos asociados a esta inspección.
+        Incluye hijos directos, nietos, bisnietos, etc.
+        """
+        count = 0
+        for child in self.follow_ups.all():
+            count += 1  # Contar el hijo directo
+            count += child.get_total_follow_ups_count()  # Contar sus descendientes
+        return count
+
 class ProcessCheckItem(models.Model):
     RESPONSE_CHOICES = [
         ('Si', 'Si'),
@@ -464,6 +494,17 @@ class ProcessCheckItem(models.Model):
     response = models.CharField(max_length=10, choices=RESPONSE_CHOICES, default='Si', verbose_name="Cumple")
     item_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Bueno', verbose_name="Estado")
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observaciones")
+
+class ProcessSignature(models.Model):
+    inspection = models.ForeignKey(ProcessInspection, related_name='signatures', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Firmante")
+    signature = models.TextField(verbose_name="Firma Base64 (Snapshot)")
+    signed_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Firma")
+
+    class Meta:
+        verbose_name = "Firma de Inspección de Procesos"
+        verbose_name_plural = "Firmas de Inspección de Procesos"
+        unique_together = ('inspection', 'user')
 
 # 4. Storage Area Inspection (R-RH-SST-031)
 class StorageInspection(BaseInspection):

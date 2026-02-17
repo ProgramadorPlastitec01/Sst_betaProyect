@@ -199,26 +199,47 @@ FirstAidItemFormSet = inlineformset_factory(
 class ProcessInspectionForm(forms.ModelForm):
     class Meta:
         model = ProcessInspection
-        fields = ['inspection_date', 'area', 'inspector_role', 'inspected_process', 'general_status', 'observations']
+        fields = ['inspection_date', 'area', 'inspector_role', 'inspected_process', 'additional_observations']
         widgets = {
             'inspection_date': forms.DateInput(attrs={'type': 'date'}),
-            'observations': forms.Textarea(attrs={'rows': 3}),
+            'additional_observations': forms.Textarea(attrs={'rows': 3}),
+            'area': forms.HiddenInput(), # Hidden as per user request
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
-        self.fields['area'].empty_label = "Seleccione un área"
+        # If area is not in initial (manual creation without schedule) and not an existing instance with area, make it visible.
+        # This handles the user request to hide it in the header when coming from schedule, but allows selection if manual.
+        if not self.initial.get('area') and not (self.instance and self.instance.pk and getattr(self.instance, 'area_id', None)):
+            self.fields['area'].widget = forms.Select()
+            self.fields['area'].queryset = self.fields['area'].queryset # Ensure queryset is kept
+
+
+class ProcessCheckItemForm(forms.ModelForm):
+    class Meta:
+        model = ProcessCheckItem
+        fields = ['question', 'response', 'item_status', 'observations']
+        widgets = {
+            'question': forms.TextInput(attrs={'readonly': 'readonly', 'style': 'width: 100%; border: none; background: transparent;'}),
+            'item_status': forms.Select(attrs={'class': 'js-status-select form-control', 'style': 'min-width: 100px;'}),
+            'observations': forms.Textarea(attrs={'class': 'js-obs-input form-control', 'rows': 1, 'placeholder': 'Observaciones'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        status = cleaned_data.get('item_status')
+        observations = cleaned_data.get('observations')
+
+        if status == 'Malo' and not observations:
+            self.add_error('observations', 'La observación es obligatoria para ítems en estado Malo.')
+
+        return cleaned_data
 
 ProcessItemFormSet = inlineformset_factory(
     ProcessInspection, ProcessCheckItem,
-    fields=['question', 'response', 'item_status', 'observations'],
-    extra=0, # We will populate this in the view
-    can_delete=False, # Standard questions shouldn't be deleted usually
-    widgets={
-        'question': forms.TextInput(attrs={'readonly': 'readonly', 'style': 'width: 100%; border: none; background: transparent;'}),
-        'observations': forms.Textarea(attrs={'rows': 1}),
-    }
+    form=ProcessCheckItemForm,
+    extra=0, 
+    can_delete=False,
 )
 
 # 4. Storage Forms

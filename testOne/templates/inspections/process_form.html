@@ -4,86 +4,329 @@
 {% block title %}SST - {% if object %}Editar{% else %}Nueva{% endif %} Inspección de Procesos{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+<!-- Reuse existing styles -->
+<style>
+    .inspection-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f2f5;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--text-color);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+        outline: none;
+    }
+
+    .item-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .item-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-light);
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .item-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+        vertical-align: top;
+    }
+
+    .status-select {
+        min-width: 120px;
+    }
+
+    .obs-input {
+        width: 100%;
+        min-height: 60px;
+    }
+</style>
 {% endblock %}
 
 {% block header_title %}Inspecciones de Seguridad - Instalaciones de Proceso{% endblock %}
 
 {% block content %}
-<div class="inspection-form-container">
-    <div class="dashboard-header">
+<div class="container-fluid" style="max-width: 1200px; padding: 20px;">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <div>
-            <h1 style="font-size: 1.5rem; font-weight: 700;">{% if object %}Editar{% else %}Nueva{% endif %} Inspección
-                de Proceso</h1>
-            <p style="color: var(--text-light); font-size: 0.9rem;">Formato R-RH-SST-030</p>
+            <h1 style="font-size: 1.8rem; font-weight: 700; color: var(--text-color); margin-bottom: 4px;">
+                {% if object %}Editar{% else %}Nueva{% endif %} Inspección de Proceso
+            </h1>
+            <p style="color: var(--text-light); margin: 0;">Formato R-RH-SST-030</p>
         </div>
-        <a href="{% url 'process_list' %}" class="btn-link"><i class="fas fa-arrow-left"></i> Volver</a>
+        <a href="{% url 'process_list' %}" class="btn btn-secondary"
+            style="background: white; border: 1px solid #dee2e6; color: var(--text-color);">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
     </div>
 
     <form method="post" novalidate>
         {% csrf_token %}
 
-        <div class="card">
-            <h3 class="inspection-section-title"><i class="fas fa-info-circle"></i> Datos Generales</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
-                {% for field in form %}
+        <!-- Render hidden fields (like area) -->
+        {% for field in form.hidden_fields %}
+        {{ field }}
+        {% endfor %}
+
+        <!-- General Data Card -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-info-circle"></i> Datos Generales</h3>
+
+            <div class="form-grid">
+                <!-- Inspection Date -->
                 <div class="form-group">
-                    <label style="font-weight: 600;">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.errors %}
-                    <div style="color: #dc3545; font-size: 0.8rem; margin-top: 5px;">{{ field.errors }}</div>
+                    <label>Fecha de Inspección</label>
+                    {{ form.inspection_date }}
+                    {% if form.inspection_date.errors %}
+                    <div class="text-danger small">{{ form.inspection_date.errors }}</div>
                     {% endif %}
                 </div>
+
+                <!-- Inspector Role -->
+                <div class="form-group">
+                    <label>Rol del Inspector</label>
+                    {{ form.inspector_role }}
+                    {% if form.inspector_role.errors %}
+                    <div class="text-danger small">{{ form.inspector_role.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Inspected Process -->
+                <div class="form-group">
+                    <label>Proceso Inspeccionado</label>
+                    {{ form.inspected_process }}
+                    {% if form.inspected_process.errors %}
+                    <div class="text-danger small">{{ form.inspected_process.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Render other visible fields dynamically (e.g., area if visible) -->
+                {% for field in form.visible_fields %}
+                {% if field.name != 'inspection_date' and field.name != 'inspector_role' and field.name != 'inspected_process' and field.name != 'additional_observations' %}
+                <div class="form-group">
+                    <label>{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <div class="text-danger small">{{ field.errors }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
                 {% endfor %}
             </div>
+
+            <!-- If there are other visible fields not manually rendered, show them here (excluding additional_observations which goes at the end) -->
         </div>
 
-        <div class="card">
-            <h3 class="inspection-section-title"><i class="fas fa-check-list"></i> Verificación de Instalaciones</h3>
+        <!-- Items Checklist -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-tasks"></i> Lista de Verificación</h3>
             {{ items.management_form }}
 
-            <div class="table-wrapper">
-                <table>
+            {% if items.non_form_errors %}
+            <div class="alert alert-danger">{{ items.non_form_errors }}</div>
+            {% endif %}
+
+            <div style="overflow-x: auto;">
+                <table class="item-table">
                     <thead>
                         <tr>
-                            <th class="inspection-table-header" style="width: 45%;">ÍTEM A EVALUAR</th>
-                            <th class="inspection-table-header" style="width: 120px; text-align: center;">CUMPLE</th>
-                            <th class="inspection-table-header" style="width: 150px; text-align: center;">ESTADO</th>
-                            <th class="inspection-table-header">OBSERVACIONES</th>
+                            <th style="width: 40%;">Ítem a Evaluar</th>
+                            <th style="width: 15%;">Cumple</th>
+                            <th style="width: 15%;">Estado</th>
+                            <th style="width: 30%;">Observaciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item_form in items %}
-                        <tr class="item-row">
+                        {{ item_form.id }}
+                        <tr>
                             <td>
-                                {{ item_form.id }}
-                                <div style="font-weight: 500;">
-                                    {{ item_form.question.value|default:"" }}
-                                    <input type="hidden" name="{{ item_form.prefix }}-question"
-                                        value="{{ item_form.question.value|default:'' }}">
-                                </div>
+                                {{ item_form.question }}
                             </td>
-                            <td style="text-align: center;">{{ item_form.response }}</td>
-                            <td style="text-align: center;">{{ item_form.item_status }}</td>
-                            <td>{{ item_form.observations }}</td>
+                            <td>
+                                {{ item_form.response }}
+                                {% if item_form.response.errors %}
+                                <div class="text-danger small">{{ item_form.response.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.item_status }}
+                                {% if item_form.item_status.errors %}
+                                <div class="text-danger small">{{ item_form.item_status.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.observations }}
+                                {% if item_form.observations.errors %}
+                                <div class="text-danger small">{{ item_form.observations.errors }}</div>
+                                {% endif %}
+                            </td>
                         </tr>
-                        {% if item_form.errors %}
-                        <tr class="error-row">
-                            <td colspan="4">{{ item_form.errors }}</td>
-                        </tr>
-                        {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <div style="margin-top: 32px; display: flex; gap: 12px; justify-content: flex-end;">
-            <a href="{% url 'process_list' %}" class="btn" style="background: #e9ecef; color: #495057;">Cancelar</a>
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save" style="margin-right: 8px;"></i> Guardar Inspección
+        <!-- Additional Observations -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-comment-alt"></i> Observaciones Adicionales</h3>
+            <div class="form-group">
+                {{ form.additional_observations }}
+                {% if form.additional_observations.errors %}
+                <div class="text-danger small">{{ form.additional_observations.errors }}</div>
+                {% endif %}
+                <small class="text-muted">Cualquier otra observación relevante que no esté cubierta en los ítems
+                    anteriores.</small>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+            <a href="{% url 'process_list' %}" class="btn btn-light"
+                style="background: white; border: 1px solid #dee2e6;">Cancelar</a>
+            <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 500;">
+                <i class="fas fa-save"></i> Guardar Inspección
             </button>
         </div>
     </form>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form');
+
+        if (!form) return;
+
+        form.addEventListener('submit', function (event) {
+            let hasError = false;
+            let firstErrorInput = null;
+
+            // Try to find status selects by class first, then by name fallback
+            let statusSelects = document.querySelectorAll('.js-status-select');
+            if (statusSelects.length === 0) {
+                // Fallback
+                statusSelects = document.querySelectorAll('select[name$="-item_status"]');
+            }
+
+            statusSelects.forEach(function (statusSelect) {
+                // Find corresponding observation input in the same row
+                const row = statusSelect.closest('tr');
+                if (!row) return;
+
+                let obsInput = row.querySelector('.js-obs-input');
+                if (!obsInput) {
+                    obsInput = row.querySelector('textarea[name$="-observations"]');
+                }
+
+                if (statusSelect && obsInput) {
+                    if (statusSelect.value === 'Malo') {
+                        if (!obsInput.value.trim()) {
+                            hasError = true;
+                            obsInput.style.borderColor = '#dc3545';
+                            obsInput.style.borderWidth = '2px';
+
+                            // Add message if not exists
+                            let errorDiv = obsInput.parentNode.querySelector('.js-error-msg');
+                            if (!errorDiv) {
+                                errorDiv = document.createElement('div');
+                                errorDiv.className = 'text-danger small js-error-msg';
+                                errorDiv.style.marginTop = '4px';
+                                errorDiv.style.fontWeight = 'bold';
+                                errorDiv.innerText = 'Debe ingresar una observación en el ítem marcado como "Malo".';
+                                obsInput.parentNode.appendChild(errorDiv);
+                            }
+
+                            if (!firstErrorInput) firstErrorInput = obsInput;
+                        } else {
+                            obsInput.style.borderColor = ''; // Reset
+                            obsInput.style.borderWidth = '';
+                            const errorDiv = obsInput.parentNode.querySelector('.js-error-msg');
+                            if (errorDiv) errorDiv.remove();
+                        }
+                    } else {
+                        obsInput.style.borderColor = ''; // Reset
+                        obsInput.style.borderWidth = '';
+                        const errorDiv = obsInput.parentNode.querySelector('.js-error-msg');
+                        if (errorDiv) errorDiv.remove();
+                    }
+                }
+            });
+
+            if (hasError) {
+                event.preventDefault();
+                event.stopImmediatePropagation(); // Ensure it stops other handlers if any
+                alert('Existen ítems en estado "Malo" sin observación. Por favor complete la información antes de continuar.');
+                if (firstErrorInput) {
+                    firstErrorInput.focus();
+                    firstErrorInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+
+        // Clear errors on change (using delegation)
+        document.body.addEventListener('change', function (e) {
+            if (e.target.matches('.js-obs-input') || e.target.matches('.js-status-select') ||
+                e.target.matches('textarea[name$="-observations"]') || e.target.matches('select[name$="-item_status"]')) {
+
+                const row = e.target.closest('tr');
+                if (!row) return;
+
+                let statusSelect = row.querySelector('.js-status-select') || row.querySelector('select[name$="-item_status"]');
+                let obsInput = row.querySelector('.js-obs-input') || row.querySelector('textarea[name$="-observations"]');
+
+                if (statusSelect && obsInput) {
+                    if (statusSelect.value !== 'Malo' || obsInput.value.trim()) {
+                        obsInput.style.borderColor = '';
+                        obsInput.style.borderWidth = '';
+                        const errorDiv = obsInput.parentNode.querySelector('.js-error-msg');
+                        if (errorDiv) errorDiv.remove();
+                    }
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}

@@ -12,6 +12,7 @@ from .views import (
     SignFirstAidInspectionView, FirstAidReportView,
     FirstAidItemCreateView, FirstAidItemUpdateView,
     ProcessListView, ProcessCreateView, ProcessUpdateView, ProcessDetailView,
+    SignProcessInspectionView, ProcessReportView,
     StorageListView, StorageCreateView, StorageUpdateView, StorageDetailView,
     
     # Forklift Views
@@ -57,6 +58,8 @@ urlpatterns = [
     path('process/add/', ProcessCreateView.as_view(), name='process_create'),
     path('process/<int:pk>/', ProcessDetailView.as_view(), name='process_detail'),
     path('process/<int:pk>/edit/', ProcessUpdateView.as_view(), name='process_edit'),
+    path('process/<int:pk>/sign/', SignProcessInspectionView.as_view(), name='sign_process_inspection'),
+    path('process/<int:pk>/report/', ProcessReportView.as_view(), name='process_report'),
 
     # 4. Storage Checklists
     path('storage/', StorageListView.as_view(), name='storage_list'),

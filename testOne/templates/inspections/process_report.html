@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reporte Inspección de Procesos #{{ object.pk }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    @media print {
+        body {
+            background: white;
+            padding: 0;
+        }
+
+        .no-print {
+            display: none !important;
+        }
+
+        .report-container {
+            box-shadow: none !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+    }
+
+    .report-container {
+        max-width: 900px;
+        margin: 20px auto;
+        background: white;
+        padding: 40px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .report-header {
+        text-align: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 20px;
+    }
+
+    .report-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin: 10px 0;
+    }
+
+    .report-subtitle {
+        font-size: 1rem;
+        color: #666;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-bottom: 30px;
+        background: #f8f9fa;
+        padding: 20px;
+        border: 1px solid #dee2e6;
+    }
+
+    .info-item label {
+        font-weight: 700;
+        display: block;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        color: #555;
+    }
+
+    .status-box {
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .table-report {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+    }
+
+    .table-report th {
+        background: #333;
+        color: white;
+        padding: 10px;
+        text-align: left;
+        font-size: 0.9rem;
+    }
+
+    .table-report td {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        font-size: 0.9rem;
+    }
+
+    .table-report tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+
+    .observations-box {
+        border: 1px solid #dee2e6;
+        padding: 15px;
+        margin-bottom: 30px;
+        background: #fff;
+    }
+
+    .signatures-section {
+        margin-top: 50px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 40px;
+    }
+
+    .signature-box {
+        text-align: center;
+        border-top: 1px solid #333;
+        padding-top: 10px;
+    }
+
+    .signature-img {
+        max-height: 80px;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row no-print mb-4">
+    <div class="col-12 text-center">
+        <button onclick="window.print()" class="btn btn-primary btn-lg">
+            <i class="fas fa-print"></i> Imprimir / Guardar PDF
+        </button>
+        <a href="{% url 'process_detail' object.pk %}" class="btn btn-secondary btn-lg ml-2">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<div class="report-container">
+    <div class="report-header">
+        <h1 class="report-title">Reporte de Inspección de Procesos</h1>
+        <p class="report-subtitle">Código: R-RH-SST-030 | Estado: {{ object.status }}</p>
+    </div>
+
+    <!-- General Info -->
+    <div class="info-grid">
+        <div class="info-item">
+            <label>Fecha de Inspección:</label>
+            <div>{{ object.inspection_date|date:"d/m/Y" }}</div>
+        </div>
+        <div class="info-item">
+            <label>Área:</label>
+            <div>{{ object.area }}</div>
+        </div>
+        <div class="info-item">
+            <label>Inspector:</label>
+            <div>{{ object.inspector.get_full_name|default:object.inspector.username }}</div>
+        </div>
+        <div class="info-item">
+            <label>Rol:</label>
+            <div>{{ object.inspector_role }}</div>
+        </div>
+        <div class="info-item">
+            <label>Proceso:</label>
+            <div>{{ object.inspected_process|default:"N/A" }}</div>
+        </div>
+        <div class="info-item">
+            <label>Resultado General:</label>
+            <div class="status-box"
+                style="background: {% if object.status == 'Cerrada' %}#d4edda{% else %}#fff3cd{% endif %};">
+                {{ object.status }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Checklist -->
+    <h3><i class="fas fa-tasks"></i> Resultados de Verificación</h3>
+    <table class="table-report">
+        <thead>
+            <tr>
+                <th style="width: 45%;">Ítem Evaluado</th>
+                <th style="width: 10%;">Cumple</th>
+                <th style="width: 15%;">Estado</th>
+                <th style="width: 30%;">Observaciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in object.items.all %}
+            <tr>
+                <td>{{ item.question }}</td>
+                <td style="text-align: center;">{{ item.response }}</td>
+                <td
+                    style="text-align: center; {% if item.item_status == 'Malo' %}color: red; font-weight: bold;{% endif %}">
+                    {{ item.item_status }}
+                </td>
+                <td>{{ item.observations|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Observations -->
+    {% if object.additional_observations %}
+    <h3><i class="fas fa-comment-dots"></i> Observaciones Adicionales</h3>
+    <div class="observations-box">
+        {{ object.additional_observations|linebreaks }}
+    </div>
+    {% endif %}
+
+    <!-- Signatures (Only in Report) -->
+    <div class="page-break"></div>
+    <div class="signatures-section">
+        {% for sig in object.signatures.all %}
+        <div class="signature-box">
+            {% if sig.signature %}
+            <img src="{{ sig.signature }}" class="signature-img" alt="Firma Digital">
+            {% else %}
+            <div style="height: 60px; display: flex; align-items: center; justify-content: center; color: #ccc;">Firma
+                Digital No Disponible</div>
+            {% endif %}
+            <div>{{ sig.user.get_full_name|default:sig.user.username }}</div>
+            <div style="font-size: 0.8rem; color: #666;">Firma Inspector/Responsable</div>
+            <div style="font-size: 0.7rem; color: #999;">{{ sig.signed_at|date:"d/m/Y H:i" }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="margin-top: 40px; text-align: center; font-size: 0.8rem; color: #999;">
+        <p>Generado automáticamente por el Sistema de Gestión SST - Antigravity</p>
+    </div>
+</div>
+{% endblock %}

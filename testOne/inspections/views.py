@@ -9,7 +9,8 @@ from .models import (
     InspectionSchedule, InspectionSignature,
     ExtinguisherInspection, ExtinguisherItem, 
     FirstAidInspection, FirstAidItem,
-    ProcessInspection, StorageInspection,
+    ProcessInspection, ProcessSignature, ProcessCheckItem,
+    StorageInspection, StorageCheckItem,
     ForkliftInspection, ForkliftCheckItem
 )
 from datetime import date, timedelta
@@ -422,7 +423,12 @@ class FormsetMixin:
         if self.request.POST:
             context['items'] = self.formset_class(self.request.POST, instance=self.object)
         else:
-            if not getattr(self, 'object', None) and self.initial_items:
+            # Check if existing object has no items (e.g. failed creation or manual deletion)
+            object_has_items = False
+            if getattr(self, 'object', None) and hasattr(self.object, 'items'):
+                object_has_items = self.object.items.exists()
+
+            if (not getattr(self, 'object', None) or (getattr(self, 'object', None) and not object_has_items)) and self.initial_items:
                 initial = [{'question': q} for q in self.initial_items]
                 context['items'] = self.formset_class(instance=self.object, initial=initial)
                 context['items'].extra = len(initial)
@@ -440,6 +446,7 @@ class FormsetMixin:
                 items.instance = self.object
                 items.save()
             else:
+                transaction.set_rollback(True)
                 return self.form_invalid(form)
         return super().form_valid(form)
 
@@ -867,6 +874,25 @@ class ProcessListView(LoginRequiredMixin, RolePermissionRequiredMixin, Scheduled
     context_object_name = 'inspections'
     inspection_module_type = 'process'
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        from django.utils import timezone
+        current_year = timezone.now().year
+        return qs.filter(inspection_date__year=current_year, parent_inspection__isnull=True)
+        
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from django.utils import timezone
+        current_year = timezone.now().year
+        
+        if 'scheduled_inspections' in context:
+            context['scheduled_inspections'] = [
+                item for item in context['scheduled_inspections'] 
+                if item.scheduled_date.year == current_year
+            ]
+            
+        return context
+
 class ProcessCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, FormsetMixin, CreateView):
     permission_required = ('process', 'create')
     model = ProcessInspection
@@ -893,9 +919,32 @@ class ProcessCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, Formset
         "16. ¿La señalización de evacuación o de emergencia se encuentra en buen estado?"
     ]
 
+    def get_initial(self):
+        initial = super().get_initial()
+        schedule_item_id = self.request.GET.get('schedule_item')
+        if schedule_item_id:
+            try:
+                from .models import InspectionSchedule
+                obj = InspectionSchedule.objects.get(pk=schedule_item_id)
+                initial['area'] = obj.area
+            except InspectionSchedule.DoesNotExist:
+                pass
+        return initial
 
     def form_valid(self, form):
         form.instance.inspector = self.request.user
+        
+        schedule_item_id = self.request.GET.get('schedule_item')
+        if schedule_item_id:
+            try:
+                from .models import InspectionSchedule
+                obj = InspectionSchedule.objects.get(pk=schedule_item_id)
+                form.instance.schedule_item = obj
+                obj.status = 'Realizada'
+                obj.save()
+            except InspectionSchedule.DoesNotExist:
+                pass
+
         response = super().form_valid(form)
         messages.success(self.request, f'Inspección de procesos guardada exitosamente para {form.instance.area}')
         return response
@@ -920,7 +969,126 @@ class ProcessUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Formset
 
 class ProcessDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
     permission_required = ('process', 'view')
-    model = ProcessInspection; template_name = 'inspections/process_detail.html'
+    model = ProcessInspection
+    template_name = 'inspections/process_detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        inspection = self.object
+        user = self.request.user
+        
+        # Timeline Logic
+        root = inspection
+        while root.parent_inspection:
+            root = root.parent_inspection
+            
+        timeline = [root]
+        
+        def get_descendants(parent):
+            children = parent.follow_ups.all().order_by('inspection_date', 'pk')
+            for child in children:
+                timeline.append(child)
+                get_descendants(child)
+                
+        get_descendants(root)
+        
+        if len(timeline) > 1:
+            context['timeline_inspections'] = timeline
+            
+        context['signatures'] = inspection.signatures.select_related('user').all()
+        context['user_has_signed'] = inspection.signatures.filter(user=user).exists()
+        context['is_participant'] = (user == inspection.inspector)
+        context['can_sign'] = context['is_participant'] and not context['user_has_signed'] and getattr(user, 'digital_signature', None)
+        
+        return context
+
+class SignProcessInspectionView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        inspection = get_object_or_404(ProcessInspection, pk=pk)
+        user = request.user
+        
+        if user != inspection.inspector:
+             messages.error(request, 'No tiene permiso para firmar esta inspección.')
+             return redirect('process_detail', pk=pk)
+             
+        if not getattr(user, 'digital_signature', None):
+             messages.error(request, 'Debe registrar su firma digital en el Perfil antes de firmar.')
+             return redirect('process_detail', pk=pk)
+             
+        if inspection.signatures.filter(user=user).exists():
+             messages.warning(request, 'Ya ha firmado esta inspección.')
+             return redirect('process_detail', pk=pk)
+             
+        if inspection.status in ['Cerrada', 'Cerrada con Hallazgos']:
+             messages.error(request, 'La inspección ya está cerrada.')
+             return redirect('process_detail', pk=pk)
+
+        # 1. Validation for findings (Only 'Malo' triggers follow-up)
+        failed_items = inspection.items.filter(item_status='Malo')
+        for item in failed_items:
+            if not item.observations:
+                messages.error(request, f'El ítem "{item.question}" requiere observación.')
+                return redirect('process_detail', pk=pk)
+
+        ProcessSignature.objects.create(
+            inspection=inspection,
+            user=user,
+            signature=user.digital_signature
+        )
+        messages.success(request, 'Inspección firmada exitosamente.')
+        
+        # Determine status
+        if failed_items.exists():
+            inspection.status = 'Cerrada con Hallazgos'
+            # inspection.general_status = 'No Cumple' # Legacy field
+            inspection.save()
+            
+            # Create Follow-up
+            from system_config.models import SystemConfig
+            days = SystemConfig.get_value('dias_seguimiento_auto', 15)
+            follow_up_date = timezone.now().date() + timedelta(days=days)
+            
+            follow_up = ProcessInspection.objects.create(
+                parent_inspection=inspection,
+                area=inspection.area,
+                inspector=inspection.inspector, 
+                inspector_role=inspection.inspector_role,
+                inspected_process=inspection.inspected_process,
+                inspection_date=follow_up_date,
+                status='Pendiente',
+            )
+            
+            # Copy missing items
+            for item in failed_items:
+                ProcessCheckItem.objects.create(
+                    inspection=follow_up,
+                    question=item.question,
+                    response='No',
+                    item_status='Malo',
+                    observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento"
+                )
+            
+            messages.info(request, f"Se ha generado una inspección de seguimiento para el {follow_up_date.strftime('%d/%m/%Y')}")
+
+        else:
+            inspection.status = 'Cerrada'
+            # inspection.general_status = 'Cumple' # Legacy
+            inspection.save()
+            
+            # Close Schedule Item logic
+            if inspection.schedule_item:
+                s_item = inspection.schedule_item
+                s_item.status = 'Realizada'
+                s_item.save()
+                next_s = s_item.generate_next_schedule()
+                if next_s:
+                    messages.info(request, f"📅 Nueva programación generada para {next_s.scheduled_date}")
+        
+        return redirect('process_detail', pk=pk)
+
+class ProcessReportView(LoginRequiredMixin, DetailView):
+    model = ProcessInspection
+    template_name = 'inspections/process_report.html'
 
 # 4. Storage
 class StorageListView(LoginRequiredMixin, RolePermissionRequiredMixin, ScheduledInspectionsMixin, ListView):
