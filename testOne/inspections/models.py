@@ -130,7 +130,7 @@ class InspectionSchedule(models.Model):
         ('Pendiente', 'Pendiente'),
     ]
 
-    year = models.IntegerField(verbose_name="Año de Programación")
+    year = models.IntegerField(verbose_name="Año de Programación", blank=True, null=True)
     area = models.ForeignKey(
         'Area',
         on_delete=models.PROTECT,
@@ -144,7 +144,9 @@ class InspectionSchedule(models.Model):
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
         related_name='scheduled_inspections',
-        verbose_name="Responsable"
+        verbose_name="Responsable",
+        blank=True,
+        null=True
     )
     status = models.CharField(
         max_length=20, 
@@ -155,6 +157,11 @@ class InspectionSchedule(models.Model):
     observations = models.TextField(blank=True, null=True, verbose_name="Observaciones")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if self.scheduled_date:
+            self.year = self.scheduled_date.year
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.inspection_type} - {self.area} ({self.scheduled_date})"
@@ -224,7 +231,10 @@ class InspectionSchedule(models.Model):
                      return gs
             # Fallback for orphan 'Realizada' -> Treat as Pendiente
             return "Pendiente por ejecutar"
-        # Non-realized - Always conform to 'Pendiente por ejecutar'
+        # Non-realized - Check if overdue
+        from datetime import date
+        if self.scheduled_date < date.today():
+            return "Vencida"
         return "Pendiente por ejecutar"
 
     @property
@@ -347,15 +357,26 @@ class ExtinguisherInspection(BaseInspection):
     INSPECTION_STATUS_CHOICES = [
         ('Programada', 'Programada'),
         ('En proceso', 'En proceso'),
+        ('Pendiente de Firmas', 'Pendiente de Firmas'),
         ('Cerrada', 'Cerrada'),
         ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
     ]
     status = models.CharField(
-        max_length=30,  # Increased length for "Cerrada con Hallazgos"
+        max_length=30, 
         choices=INSPECTION_STATUS_CHOICES, 
         default='Programada', 
         verbose_name="Estado de Inspección"
     )
+
+    def get_participants(self):
+        """Returns unique users who registered items or is the main inspector."""
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user_ids = set(self.items.values_list('registered_by', flat=True))
+        user_ids.discard(None)
+        if self.inspector:
+            user_ids.add(self.inspector.id)
+        return User.objects.filter(id__in=user_ids)
     
     parent_inspection = models.ForeignKey(
         'self', 
@@ -376,6 +397,11 @@ class ExtinguisherInspection(BaseInspection):
             count += 1  # Contar el hijo directo
             count += child.get_total_follow_ups_count()  # Contar sus descendientes
         return count
+
+    @property
+    def get_detail_url(self):
+        from django.urls import reverse
+        return reverse('extinguisher_detail', args=[self.pk])
 
     class Meta(BaseInspection.Meta):
         verbose_name = "Inspección de Extintores"
@@ -408,7 +434,7 @@ class ExtinguisherItem(models.Model):
     ]
 
     inspection = models.ForeignKey(ExtinguisherInspection, related_name='items', on_delete=models.CASCADE)
-    extinguisher_number = models.CharField(max_length=50, verbose_name="Número", default="N/A")
+    extinguisher_number = models.PositiveIntegerField(verbose_name="Número", blank=True, null=True)
     location = models.CharField(max_length=100, verbose_name="Ubicación Específica")
     extinguisher_type = models.CharField(max_length=20, choices=TYPE_CHOICES, verbose_name="Tipo")
     capacity = models.CharField(max_length=50, verbose_name="Capacidad (lbs/kg)")
@@ -425,6 +451,7 @@ class ExtinguisherItem(models.Model):
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Bueno', verbose_name="Estado")
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observaciones")
+    registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
 
 # 2. First Aid Inspection (R-RH-SST-020)
 class FirstAidInspection(BaseInspection):
@@ -443,6 +470,7 @@ class FirstAidInspection(BaseInspection):
     INSPECTION_STATUS_CHOICES = [
         ('Programada', 'Programada'),
         ('En proceso', 'En proceso'),
+        ('Pendiente de Firmas', 'Pendiente de Firmas'),
         ('Cerrada', 'Cerrada'),
         ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
         ('Seguimiento', 'Seguimiento'),
@@ -453,6 +481,15 @@ class FirstAidInspection(BaseInspection):
         default='Programada', 
         verbose_name="Estado de Inspección"
     )
+
+    def get_participants(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user_ids = set(self.items.values_list('registered_by', flat=True))
+        user_ids.discard(None)
+        if self.inspector:
+            user_ids.add(self.inspector.id)
+        return User.objects.filter(id__in=user_ids)
     
     parent_inspection = models.ForeignKey(
         'self', 
@@ -474,6 +511,11 @@ class FirstAidInspection(BaseInspection):
             count += child.get_total_follow_ups_count()  # Contar sus descendientes
         return count
 
+    @property
+    def get_detail_url(self):
+        from django.urls import reverse
+        return reverse('first_aid_detail', args=[self.pk])
+
     class Meta(BaseInspection.Meta):
         verbose_name = "Inspección de Botiquín"
         verbose_name_plural = "Inspecciones de Botiquines"
@@ -491,6 +533,7 @@ class FirstAidItem(models.Model):
     expiration_date = models.DateField(verbose_name="Fecha de Vencimiento", blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Existe', verbose_name="Estado")
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observaciones")
+    registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
 
 class FirstAidSignature(models.Model):
     inspection = models.ForeignKey(FirstAidInspection, related_name='signatures', on_delete=models.CASCADE)
@@ -518,6 +561,11 @@ class ProcessInspection(BaseInspection):
     )
     inspected_process = models.CharField(max_length=200, verbose_name="Proceso Inspeccionado", blank=True, null=True)
 
+    @property
+    def get_detail_url(self):
+        from django.urls import reverse
+        return reverse('process_detail', args=[self.pk])
+
     class Meta(BaseInspection.Meta):
         verbose_name = "Inspección de Procesos"
         verbose_name_plural = "Inspecciones de Procesos"
@@ -526,11 +574,20 @@ class ProcessInspection(BaseInspection):
     STATUS_CHOICES = [
         ('Pendiente', 'Pendiente por ejecutar'),
         ('En proceso', 'En proceso'),
+        ('Pendiente de Firmas', 'Pendiente de Firmas'),
         ('Cerrada', 'Cerrada'),
         ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
-        # ('Seguimiento', 'Seguimiento'), # Deprecated as status, use relationship
     ]
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Pendiente', verbose_name="Estado")
+
+    def get_participants(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user_ids = set(self.items.values_list('registered_by', flat=True))
+        user_ids.discard(None)
+        if self.inspector:
+            user_ids.add(self.inspector.id)
+        return User.objects.filter(id__in=user_ids)
     additional_observations = models.TextField(blank=True, null=True, verbose_name="Observaciones Adicionales")
     parent_inspection = models.ForeignKey(
         'self', 
@@ -570,6 +627,7 @@ class ProcessCheckItem(models.Model):
     response = models.CharField(max_length=10, choices=RESPONSE_CHOICES, default='No', verbose_name="Cumple")
     item_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Bueno', verbose_name="Estado")
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observaciones")
+    registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
 
 class ProcessSignature(models.Model):
     inspection = models.ForeignKey(ProcessInspection, related_name='signatures', on_delete=models.CASCADE)
@@ -597,9 +655,52 @@ class StorageInspection(BaseInspection):
     )
     inspected_process = models.CharField(max_length=200, verbose_name="Proceso Inspeccionado", blank=True, null=True)
 
+    @property
+    def get_detail_url(self):
+        from django.urls import reverse
+        return reverse('storage_detail', args=[self.pk])
+
     class Meta(BaseInspection.Meta):
         verbose_name = "Inspección de Almacenamiento"
         verbose_name_plural = "Inspecciones de Almacenamiento"
+
+    # Standardized logic matching ProcessInspection
+    STATUS_CHOICES = [
+        ('Pendiente', 'Pendiente por ejecutar'),
+        ('En proceso', 'En proceso'),
+        ('Pendiente de Firmas', 'Pendiente de Firmas'),
+        ('Cerrada', 'Cerrada'),
+        ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
+    ]
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Pendiente', verbose_name="Estado")
+
+    def get_participants(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user_ids = set(self.items.values_list('registered_by', flat=True))
+        user_ids.discard(None)
+        if self.inspector:
+            user_ids.add(self.inspector.id)
+        return User.objects.filter(id__in=user_ids)
+    additional_observations = models.TextField(blank=True, null=True, verbose_name="Observaciones Adicionales")
+    parent_inspection = models.ForeignKey(
+        'self', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        related_name='follow_ups',
+        verbose_name="Inspección Padre"
+    )
+
+    def get_total_follow_ups_count(self):
+        """
+        Cuenta recursivamente TODOS los seguimientos asociados a esta inspección.
+        """
+        count = 0
+        for child in self.follow_ups.all():
+            count += 1
+            count += child.get_total_follow_ups_count()
+        return count
 
 class StorageCheckItem(models.Model):
     RESPONSE_CHOICES = [
@@ -616,12 +717,37 @@ class StorageCheckItem(models.Model):
 
     inspection = models.ForeignKey(StorageInspection, related_name='items', on_delete=models.CASCADE)
     question = models.CharField(max_length=500, verbose_name="Ítem a Evaluar")
-    response = models.CharField(max_length=10, choices=RESPONSE_CHOICES, default='Si', verbose_name="Cumple")
+    response = models.CharField(max_length=10, choices=RESPONSE_CHOICES, default='No', verbose_name="Cumple")
     item_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Bueno', verbose_name="Estado")
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observaciones")
+    registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
+
+class StorageSignature(models.Model):
+    inspection = models.ForeignKey(StorageInspection, related_name='signatures', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Firmante")
+    signature = models.TextField(verbose_name="Firma Base64 (Snapshot)")
+    signed_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Firma")
+
+    class Meta:
+        verbose_name = "Firma de Inspección de Almacenamiento"
+        verbose_name_plural = "Firmas de Inspección de Almacenamiento"
+        unique_together = ('inspection', 'user')
 
 # 5. Forklift Inspection (R-RH-SST-022)
+# 5. Forklift Inspection (R-RH-SST-022)
 class ForkliftInspection(BaseInspection):
+    ROLE_CHOICES = [
+        ('Brigadista', 'Brigadista'),
+        ('Equipo SST', 'Equipo SST'),
+        ('Copasst', 'Copasst'),
+    ]
+    inspector_role = models.CharField(
+        max_length=20, 
+        choices=ROLE_CHOICES, 
+        default='Equipo SST',
+        verbose_name="Rol del Inspector"
+    )
+    
     FORKLIFT_TYPE_CHOICES = [
         ('Combustible', 'Montacarga de Combustible'),
         ('Electrico', 'Montacarga Eléctrico'),
@@ -633,9 +759,49 @@ class ForkliftInspection(BaseInspection):
         verbose_name="Tipo de Montacarga"
     )
 
+    STATUS_CHOICES = [
+        ('Pendiente', 'Pendiente'),
+        ('En proceso', 'En proceso'),
+        ('Pendiente de Firmas', 'Pendiente de Firmas'),
+        ('Cerrada', 'Cerrada'),
+        ('Cerrada con Hallazgos', 'Cerrada con Hallazgos')
+    ]
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Pendiente', verbose_name="Estado")
+
+    def get_participants(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user_ids = set(self.items.values_list('registered_by', flat=True))
+        user_ids.discard(None)
+        if self.inspector:
+            user_ids.add(self.inspector.id)
+        return User.objects.filter(id__in=user_ids)
+    additional_observations = models.TextField(blank=True, null=True, verbose_name="Observaciones Adicionales")
+    parent_inspection = models.ForeignKey(
+        'self', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        related_name='follow_ups',
+        verbose_name="Inspección Padre"
+    )
+
+    def get_total_follow_ups_count(self):
+        count = 0
+        for child in self.follow_ups.all():
+            count += 1
+            count += child.get_total_follow_ups_count()
+        return count
+
+    @property
+    def get_detail_url(self):
+        from django.urls import reverse
+        return reverse('forklift_detail', args=[self.pk])
+
     class Meta(BaseInspection.Meta):
         verbose_name = "Inspección de Montacargas"
         verbose_name_plural = "Inspecciones de Montacargas"
+
 
 class ForkliftCheckItem(models.Model):
     RESPONSE_CHOICES = [
@@ -643,7 +809,27 @@ class ForkliftCheckItem(models.Model):
         ('No', 'No'),
         ('NA', 'N/A'),
     ]
+    STATUS_CHOICES = [
+        ('Bueno', 'Bueno'),
+        ('Regular', 'Regular'),
+        ('Malo', 'Malo'),
+        ('NA', 'No Aplica'),
+    ]
+
     inspection = models.ForeignKey(ForkliftInspection, related_name='items', on_delete=models.CASCADE)
     question = models.CharField(max_length=500, verbose_name="Ítem a Evaluar")
     response = models.CharField(max_length=10, choices=RESPONSE_CHOICES, default='Si', verbose_name="Cumple")
+    item_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Bueno', verbose_name="Estado")
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observación")
+    registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
+
+class ForkliftSignature(models.Model):
+    inspection = models.ForeignKey(ForkliftInspection, related_name='signatures', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Firmante")
+    signature = models.TextField(verbose_name="Firma Base64 (Snapshot)")
+    signed_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Firma")
+
+    class Meta:
+        verbose_name = "Firma de Inspección de Montacargas"
+        verbose_name_plural = "Firmas de Inspección de Montacargas"
+        unique_together = ('inspection', 'user')

@@ -18,10 +18,15 @@ from .views import (
     SignProcessInspectionView, ProcessReportView,
 
     # Storage Views
-    StorageListView, StorageCreateView, StorageUpdateView, StorageDetailView,
+    StorageListView, StorageCreateView, StorageUpdateView, StorageDetailView, StorageItemUpdateView,
+    SignStorageInspectionView, StorageReportView,
     
     # Forklift Views
-    ForkliftListView, ForkliftCreateView, ForkliftUpdateView, ForkliftDetailView
+    ForkliftListView, ForkliftCreateView, ForkliftUpdateView, ForkliftDetailView, ForkliftItemUpdateView,
+    SignForkliftInspectionView, ForkliftReportView,
+
+    # Reports
+    InspectionReportView, InspectionReportExportView
 )
 
 # Area Management Views
@@ -72,15 +77,25 @@ urlpatterns = [
     path('storage/add/', StorageCreateView.as_view(), name='storage_create'),
     path('storage/<int:pk>/', StorageDetailView.as_view(), name='storage_detail'),
     path('storage/<int:pk>/edit/', StorageUpdateView.as_view(), name='storage_edit'),
+    path('storage/item/<int:pk>/edit/', StorageItemUpdateView.as_view(), name='storage_item_edit'),
+    path('storage/<int:pk>/sign/', SignStorageInspectionView.as_view(), name='sign_storage_inspection'),
+    path('storage/<int:pk>/report/', StorageReportView.as_view(), name='storage_report'),
 
     # 5. Forklift Checklists
     path('forklift/', ForkliftListView.as_view(), name='forklift_list'),
     path('forklift/add/', ForkliftCreateView.as_view(), name='forklift_create'),
     path('forklift/<int:pk>/', ForkliftDetailView.as_view(), name='forklift_detail'),
     path('forklift/<int:pk>/edit/', ForkliftUpdateView.as_view(), name='forklift_edit'),
+    path('forklift/item/<int:pk>/edit/', ForkliftItemUpdateView.as_view(), name='forklift_item_edit'),
+    path('forklift/<int:pk>/sign/', SignForkliftInspectionView.as_view(), name='sign_forklift_inspection'),
+    path('forklift/<int:pk>/report/', ForkliftReportView.as_view(), name='forklift_report'),
     
     # 6. Area Management
     path('areas/', AreaListView.as_view(), name='area_list'),
     path('areas/add/', AreaCreateView.as_view(), name='area_create'),
     path('areas/<int:pk>/edit/', AreaUpdateView.as_view(), name='area_update'),
+
+    # 7. Reports
+    path('reports/', InspectionReportView.as_view(), name='inspection_reports'),
+    path('reports/export/', InspectionReportExportView.as_view(), name='inspection_reports_export'),
 ]

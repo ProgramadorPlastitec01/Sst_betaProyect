@@ -79,26 +79,40 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width: 50px;">#</th>
+
                     <th>Email / Usuario</th>
                     <th>Nombre Completo</th>
+                    <th>Rol</th>
                     <th>Documento</th>
-                    <th style="width: 150px;">Acciones</th>
+                    <th style="width: 180px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 {% for user_item in users %}
                 <tr>
-                    <td style="font-weight: 600; color: #666;">{{ forloop.counter }}</td>
+
                     <td>{{ user_item.email }}</td>
-                    <td style="font-weight: 600;">{{ user_item.first_name }} {{ user_item.last_name }}</td>
-                    <td>{{ user_item.document_number }}</td>
+                    <td style="font-weight: 600;">{{ user_item.get_full_name|default:user_item.username }}</td>
+                    <td>
+                        <span class="badge"
+                            style="background-color: #e9ecef; color: #495057; border: 1px solid #ced4da;">
+                            {{ user_item.role.name|default:"Sin Rol" }}
+                        </span>
+                    </td>
+                    <td>{{ user_item.document_number|default:"-" }}</td>
                     <td>
                         <div style="display: flex; gap: 8px;">
                             <a href="{% url 'user_edit' user_item.pk %}" class="btn btn-sm"
                                 style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar usuario">
                                 <i class="fas fa-edit"></i>
                             </a>
+                            {% if request.user.role.name == 'Administrador' or request.user.is_superuser %}
+                            <a href="{% url 'user_reset_password' user_item.pk %}" class="btn btn-sm"
+                                style="background: #ffc107; color: #212529; padding: 6px 12px;"
+                                title="Restablecer Contraseña">
+                                <i class="fas fa-key"></i>
+                            </a>
+                            {% endif %}
                             <a href="{% url 'user_delete' user_item.pk %}" class="btn btn-sm"
                                 style="background: #dc3545; color: white; padding: 6px 12px;" title="Eliminar usuario"
                                 onclick="return confirm('¿Está seguro de eliminar este usuario?');">
@@ -109,7 +123,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" style="text-align: center; padding: 32px; color: var(--text-light);">
+                    <td colspan="6" style="text-align: center; padding: 32px; color: var(--text-light);">
                         No hay usuarios registrados en el sistema.
                     </td>
                 </tr>

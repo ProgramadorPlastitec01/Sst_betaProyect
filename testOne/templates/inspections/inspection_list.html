@@ -16,7 +16,7 @@
         <p style="color: var(--text-light); font-size: 0.9rem;">Resumen anual y programación de actividades de
             seguridad.</p>
     </div>
-    <button onclick="openModal()" class="btn btn-primary">
+    <button onclick="openModal('newRecordModal')" class="btn btn-primary">
         <i class="fas fa-plus" style="margin-right: 8px;"></i> Nueva Programación
     </button>
 </div>
@@ -41,7 +41,8 @@
             <p>{{ total_e_global }}</p>
         </div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card" onclick="openModal('complianceChartModal')" style="cursor: pointer;"
+        title="Ver gráfico de cumplimiento">
         <div class="stat-icon icon-orange">
             <i class="fas fa-percentage"></i>
         </div>
@@ -52,6 +53,92 @@
     </div>
 </div>
 
+<!-- Modal: Gráfico de Cumplimiento -->
+<div id="complianceChartModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-dark);">Tendencia de Cumplimiento Mensual
+            </h2>
+            <button onclick="closeModal('complianceChartModal')"
+                style="background:none; border:none; font-size: 1.5rem; cursor:pointer; color: #999;">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <div style="display: flex; gap: 20px; align-items: flex-start;">
+                <!-- Column 1: Chart -->
+                <div
+                    style="flex: 2; min-width: 0; background: #fff; padding: 20px 20px 20px 45px; border-radius: 8px; border: 1px solid #f0f0f0; position: relative;">
+                    <div
+                        style="height: 300px; display: flex; align-items: flex-end; justify-content: space-around; border-bottom: 2px solid #eee; position: relative;">
+                        <!-- Y-Axis Labels -->
+                        <div
+                            style="position: absolute; top: 0; left: -45px; font-size: 0.65rem; color: #999; font-weight: 700;">
+                            {{ modal_y_max_label }}%</div>
+                        <div
+                            style="position: absolute; top: 50%; left: -45px; font-size: 0.65rem; color: #999; font-weight: 700;">
+                            {{ modal_y_mid_label }}%</div>
+                        <!-- Grid lines -->
+                        <div
+                            style="position: absolute; top: 5%; left: 0; right: 0; border-top: 1px dashed #f0f0f0; z-index: 0;">
+                        </div>
+                        <div
+                            style="position: absolute; top: 52.5%; left: 0; right: 0; border-top: 1px dashed #f0f0f0; z-index: 0;">
+                        </div>
+                        {% for s in modal_monthly_stats %}
+                        <div
+                            style="width: 7%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; z-index: 1;">
+                            <div style="height: {{ s.height_px|default:0 }}px; width: 100%; background: var(--primary-color); border-radius: 4px 4px 0 0; position: relative; transition: height 0.5s ease; box-shadow: 0 4px 6px rgba(73, 186, 160, 0.2);"
+                                title="{{ s.month_name }}: {{ s.compliance }}% ({{ s.e }}/{{ s.p }})">
+                                {% if s.compliance > 0 %}
+                                <span
+                                    style="position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 0.6rem; font-weight: 700; color: #4B5563; white-space: nowrap;">
+                                    {{ s.compliance }}%</span>
+                                {% endif %}
+                            </div>
+                            <span style="margin-top: 10px; font-size: 0.65rem; color: #6B7280; font-weight: 700;">
+                                {{ s.month_name }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Column 2: Data Table -->
+                <div
+                    style="flex: 1; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #eee; max-height: 340px; overflow-y: auto;">
+                    <h4
+                        style="font-size: 0.8rem; margin-bottom: 12px; color: #374151; border-bottom: 1px solid #ddd; padding-bottom: 5px; font-weight: 700;">
+                        Detalle Mensual</h4>
+                    <table style="width: 100%; font-size: 0.75rem; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align: left; color: #6b7280; border-bottom: 2px solid #eee;">
+                                <th style="padding: 6px 4px;">Mes</th>
+                                <th style="padding: 6px 4px; text-align: center;">%</th>
+                                <th style="padding: 6px 4px; text-align: right;">E/P</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in modal_monthly_stats %}
+                            <tr style="border-bottom: 1px solid #f3f4f6;">
+                                <td style="padding: 6px 4px; font-weight: 700;">{{ s.month_name }}</td>
+                                <td
+                                    style="padding: 6px 4px; text-align: center; color: var(--primary-color); font-weight: 800;">
+                                    {{ s.compliance }}%</td>
+                                <td style="padding: 6px 4px; text-align: right; color: #6B7280;">{{ s.e }}/{{ s.p }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer" style="text-align: right; background: #f9fafb;">
+            <button onclick="closeModal('complianceChartModal')" class="btn"
+                style="background: #ef4444; color: white;">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+
 <!-- Filters -->
 <form method="get" class="filters-bar card">
     <h3 style="font-size: 0.9rem; font-weight: 600; margin-right: 10px;">Filtros:</h3>
@@ -59,6 +146,12 @@
         <option value="">Año</option>
         {% for y in years_data %}
         <option value="{{ y.val }}" {% if y.selected %}selected{% endif %}>{{ y.val }}</option>
+        {% endfor %}
+    </select>
+    <select name="inspection_type" onchange="this.form.submit()">
+        <option value="">Inspección</option>
+        {% for t in types_data %}
+        <option value="{{ t.val }}" {% if t.selected %}selected{% endif %}>{{ t.val }}</option>
         {% endfor %}
     </select>
     <select name="area" onchange="this.form.submit()">
@@ -71,9 +164,11 @@
 </form>
 
 <!-- Main Visualizations -->
-<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+<!-- Main Visualizations - Stacked Layout -->
+<div style="display: flex; flex-direction: column; gap: 24px; margin-bottom: 24px;">
+
     <!-- Cronograma Table Card -->
-    <div class="card" style="margin-bottom: 0;">
+    <div class="card">
         <div class="card-header">
             <h3 class="card-title">Cronograma de Actividades - {{ year_display }}</h3>
         </div>
@@ -122,29 +217,16 @@
         </div>
     </div>
 
-    <!-- Chart Card -->
-    <div class="card chart-card" style="margin-bottom: 0;">
-        <h3 class="card-title" style="text-align: center; font-size: 1rem; margin-bottom: 10px;">Cumplimiento Mensual
-            (%)</h3>
-        <div class="bar-chart">
-            {% for s in monthly_stats %}
-            <div class="bar-item" style="height: calc({{ s.compliance }}% * 1.7);" title="{{ s.compliance }}%">
-                <span class="bar-label-val">{% if s.compliance > 0 %}{{ s.compliance }}%{% endif %}</span>
-                <span class="bar-label-month">
-                    {% with m_name=months_names|slice:forloop.counter|last %}
-                    {{ m_name }}
-                    {% endwith %}
-                </span>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
+
 </div>
 
-<!-- Management Table -->
+<!-- TABLA 1: Gestión de Registros de Programación -->
 <div class="card">
-    <div class="card-header">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h3 class="card-title">Gestión de Registros de Programación</h3>
+        <button onclick="openModal('registrosModal')" class="btn btn-sm btn-primary">
+            Ver más
+        </button>
     </div>
     <div class="table-wrapper">
         <table>
@@ -160,8 +242,9 @@
                 </tr>
             </thead>
             <tbody>
-                {% if all_inspections %}
-                {% for insp in all_inspections %}
+                {% if latest_inspections %}
+                <!-- Limit to 10 records for default view -->
+                {% for insp in latest_inspections %}
                 <tr>
                     <td style="font-weight: 600;">{{ insp.date|date:"d/m/Y" }}</td>
                     <td>{{ insp.year }}</td>
@@ -208,11 +291,14 @@
     </div>
 </div>
 
-<!-- Schedule Management Table (if needed) -->
+<!-- TABLA 2: Cronograma Programado -->
 {% if schedule %}
 <div class="card">
-    <div class="card-header">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h3 class="card-title">Cronograma Programado</h3>
+        <button onclick="openModal('cronogramaModal')" class="btn btn-sm btn-primary">
+            Ver más
+        </button>
     </div>
     <div class="table-wrapper">
         <table>
@@ -221,18 +307,17 @@
                     <th>Área</th>
                     <th>Tipo de Inspección</th>
                     <th>Fecha Programada</th>
-                    <th>Responsable</th>
                     <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
-                {% for i in schedule %}
+                <!-- Limit to 10 records -->
+                {% for i in latest_schedule %}
                 <tr>
                     <td style="font-weight: 600;">{{ i.area }}</td>
                     <td>{{ i.inspection_type }}</td>
                     <td>{{ i.scheduled_date|date:"d/m/Y" }}</td>
-                    <td>{{ i.responsible.get_full_name }}</td>
                     <td>
                         <span class="compliance-badge {{ i.status_css_class }}" style="font-size: 0.75rem;">
                             {{ i.status_label }}
@@ -240,9 +325,9 @@
                     </td>
                     <td>
                         <div style="position: relative;">
-                            <button type="button" class="btn btn-sm btn-light"
+                            <button type="button" class="btn btn-sm"
                                 onclick="toggleActionMenu(event, 'menu-{{ i.pk }}')"
-                                style="border: 1px solid #ddd; color: #555; width: 32px; height: 32px; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                                style="background: rgba(73, 186, 160, 0.1); border: 1px solid rgba(73, 186, 160, 0.2); color: var(--primary-color); width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
                                 <i class="fas fa-cog"></i>
                             </button>
 
@@ -253,21 +338,18 @@
 
                                 {% with linked_url=i.get_absolute_url_result %}
 
-                                <!-- View Action (Only if fully linked) -->
                                 {% if linked_url %}
                                 <a href="{{ linked_url }}" class="dropdown-item">
                                     <i class="fas fa-eye" style="color: #17a2b8; width: 16px;"></i> Ver
                                 </a>
                                 {% endif %}
 
-                                <!-- Edit Action (If NOT linked/orphan or pending) -->
                                 {% if not linked_url %}
                                 <a href="{% url 'inspection_edit' i.pk %}" class="dropdown-item">
                                     <i class="fas fa-edit" style="color: #49BAA0; width: 16px;"></i> Editar
                                 </a>
                                 {% endif %}
 
-                                <!-- Execute Action (If NOT linked/orphan and executable by date) -->
                                 {% if not linked_url and i.is_executable %}
                                 {% with t=i.inspection_type|lower %}
                                 {% if "extintor" in t %}
@@ -295,7 +377,6 @@
                                 {% endwith %}
                                 {% endif %}
 
-                                <!-- Delete Action (If NOT linked/orphan) -->
                                 {% if not linked_url %}
                                 <a href="{% url 'inspection_delete' i.pk %}" class="dropdown-item"
                                     onclick="return confirm('¿Está seguro de eliminar esta programación?')">
@@ -320,19 +401,16 @@
 </div>
 {% endif %}
 
-<!-- MODAL SECTION -->
+<!-- MODAL: Nueva Programación -->
 <div id="newRecordModal" class="modal-overlay">
     <div class="modal-content">
-        <!-- Modal Header -->
         <div class="modal-header">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin: 0; color: var(--primary-color);">Nueva Programación Anual</h3>
-                <button onclick="closeModal()"
+                <button onclick="closeModal('newRecordModal')"
                     style="background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer;">&times;</button>
             </div>
         </div>
-
-        <!-- Modal Body (scrollable) -->
         <div class="modal-body">
             <form id="inspectionForm" method="post" action="{% url 'inspection_create' %}">
                 {% csrf_token %}
@@ -346,31 +424,213 @@
                 </div>
             </form>
         </div>
-
-        <!-- Modal Footer (fixed) -->
         <div class="modal-footer">
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('newRecordModal')">Cancelar</button>
                 <button type="submit" form="inspectionForm" class="btn btn-primary">Guardar Registro</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- MODAL: Todos los Registros de Programación -->
+<div id="registrosModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 900px; width: 95%;">
+        <div class="modal-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: var(--primary-color);">Todos los Registros de Programación</h3>
+                <button onclick="closeModal('registrosModal')"
+                    style="background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer;">&times;</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <input type="text" id="registrosSearch" onkeyup="filterTable('registrosTable', 'registrosSearch')"
+                placeholder="Buscar en la tabla..." class="form-control" style="margin-bottom: 15px;">
+            <div class="table-wrapper">
+                <table id="registrosTable">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Año</th>
+                            <th>Área</th>
+                            <th>Tipo</th>
+                            <th>Inspector</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for insp in all_inspections %}
+                        <tr>
+                            <td style="font-weight: 600; white-space: nowrap;">{{ insp.date|date:"d/m/Y" }}</td>
+                            <td>{{ insp.year }}</td>
+                            <td>{{ insp.area }}</td>
+                            <td>{{ insp.type }}</td>
+                            <td>{{ insp.inspector }}</td>
+                            <td>
+                                <span
+                                    class="compliance-badge {% if insp.status == 'Cumple' or insp.status == 'Realizada' or insp.status == 'Cerrada' %}badge-success{% elif insp.status == 'No Cumple' or insp.status == 'Vencida' %}badge-danger{% elif insp.status == 'Cerrada con Hallazgos' %}badge-warning{% elif insp.status == 'En proceso' %}badge-primary{% elif insp.status == 'Programada' or insp.status == 'Programado' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                                    style="font-size: 0.75rem;">
+                                    {% if insp.status == 'Programada' %}Programado{% else %}{{ insp.status }}{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ insp.detail_url }}" class="btn btn-sm btn-info" title="Ver Detalle">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div style="display: flex; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('registrosModal')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Cronograma Programado Completo -->
+<div id="cronogramaModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 900px; width: 95%;">
+        <div class="modal-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: var(--primary-color);">Cronograma Programado Completo</h3>
+                <button onclick="closeModal('cronogramaModal')"
+                    style="background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer;">&times;</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <input type="text" id="cronogramaSearch" onkeyup="filterTable('cronogramaTable', 'cronogramaSearch')"
+                placeholder="Buscar en el cronograma..." class="form-control" style="margin-bottom: 15px;">
+            <div class="table-wrapper">
+                <table id="cronogramaTable">
+                    <thead>
+                        <tr>
+                            <th>Área</th>
+                            <th>Tipo</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in schedule %}
+                        <tr>
+                            <td style="font-weight: 600;">{{ i.area }}</td>
+                            <td>{{ i.inspection_type }}</td>
+                            <td style="white-space: nowrap;">{{ i.scheduled_date|date:"d/m/Y" }}</td>
+                            <td>
+                                <span class="compliance-badge {{ i.status_css_class }}" style="font-size: 0.75rem;">
+                                    {{ i.status_label }}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="position: relative;">
+                                    <button type="button" class="btn btn-sm"
+                                        onclick="toggleActionMenu(event, 'menu-modal-{{ i.pk }}')"
+                                        style="background: rgba(73, 186, 160, 0.1); border: 1px solid rgba(73, 186, 160, 0.2); color: var(--primary-color); width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                                        <i class="fas fa-cog"></i>
+                                    </button>
+
+                                    <!-- Dropdown Menu (Modal Unique ID) -->
+                                    <div id="menu-modal-{{ i.pk }}" class="action-dropdown-menu"
+                                        style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; width: 160px; 
+                                       background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; overflow: hidden;">
+
+                                        {% with linked_url=i.get_absolute_url_result %}
+
+                                        {% if linked_url %}
+                                        <a href="{{ linked_url }}" class="dropdown-item">
+                                            <i class="fas fa-eye" style="color: #17a2b8; width: 16px;"></i> Ver
+                                        </a>
+                                        {% endif %}
+
+                                        {% if not linked_url %}
+                                        <a href="{% url 'inspection_edit' i.pk %}" class="dropdown-item">
+                                            <i class="fas fa-edit" style="color: #49BAA0; width: 16px;"></i> Editar
+                                        </a>
+                                        {% endif %}
+
+                                        {% if not linked_url and i.is_executable %}
+                                        {% with t=i.inspection_type|lower %}
+                                        {% if "extintor" in t %}
+                                        <a href="{% url 'extinguisher_create' %}?schedule_item={{ i.pk }}"
+                                            class="dropdown-item">
+                                            <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i>
+                                            Ejecutar
+                                        </a>
+                                        {% elif "botiquin" in t %}
+                                        <a href="{% url 'first_aid_create' %}?schedule_item={{ i.pk }}"
+                                            class="dropdown-item">
+                                            <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i>
+                                            Ejecutar
+                                        </a>
+                                        {% elif "proceso" in t %}
+                                        <a href="{% url 'process_create' %}?schedule_item={{ i.pk }}"
+                                            class="dropdown-item">
+                                            <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i>
+                                            Ejecutar
+                                        </a>
+                                        {% elif "almacen" in t %}
+                                        <a href="{% url 'storage_create' %}?schedule_item={{ i.pk }}"
+                                            class="dropdown-item">
+                                            <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i>
+                                            Ejecutar
+                                        </a>
+                                        {% elif "montacarga" in t %}
+                                        <a href="{% url 'forklift_create' %}?schedule_item={{ i.pk }}"
+                                            class="dropdown-item">
+                                            <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i>
+                                            Ejecutar
+                                        </a>
+                                        {% endif %}
+                                        {% endwith %}
+                                        {% endif %}
+
+                                        {% if not linked_url %}
+                                        <a href="{% url 'inspection_delete' i.pk %}" class="dropdown-item"
+                                            onclick="return confirm('¿Está seguro de eliminar esta programación?')">
+                                            <i class="fas fa-trash" style="color: #dc3545; width: 16px;"></i> Eliminar
+                                        </a>
+                                        {% endif %}
+
+                                        {% endwith %}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div style="display: flex; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('cronogramaModal')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-    function openModal() {
-        document.getElementById('newRecordModal').style.display = 'flex';
+    function openModal(modalId) {
+        document.getElementById(modalId).style.display = 'flex';
         document.body.classList.add('modal-open');
     }
 
-    function closeModal() {
-        document.getElementById('newRecordModal').style.display = 'none';
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
         document.body.classList.remove('modal-open');
     }
 
     window.onclick = function (e) {
-        if (e.target == document.getElementById('newRecordModal')) {
-            closeModal();
+        if (e.target.classList.contains('modal-overlay')) {
+            e.target.style.display = 'none';
+            document.body.classList.remove('modal-open');
         }
     }
 
@@ -393,9 +653,32 @@
         }
     }
 
+    // Table Filtering
+    function filterTable(tableId, inputId) {
+        var input, filter, table, tr, td, i, j, txtValue;
+        input = document.getElementById(inputId);
+        filter = input.value.toUpperCase();
+        table = document.getElementById(tableId);
+        tr = table.getElementsByTagName("tr");
+
+        for (i = 1; i < tr.length; i++) {
+            tr[i].style.display = "none";
+            td = tr[i].getElementsByTagName("td");
+            for (j = 0; j < td.length; j++) {
+                if (td[j]) {
+                    txtValue = td[j].textContent || td[j].innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     // Close action menus when clicking outside
     document.addEventListener('click', function (event) {
-        if (!event.target.closest('.action-menu-container')) {
+        if (!event.target.closest('.action-menu-container') && !event.target.closest('.btn-light')) {
             document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
                 menu.style.display = 'none';
             });

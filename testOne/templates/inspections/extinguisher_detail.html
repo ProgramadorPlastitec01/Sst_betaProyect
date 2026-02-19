@@ -20,16 +20,20 @@
             </p>
         </div>
         <div style="display: flex; gap: 12px; align-items: center;">
+
+            <a href="{% url 'extinguisher_list' %}" class="btn" style="background: #e9ecef; color: #495057;"><i
+                    class="fas fa-arrow-left"></i> Volver</a>
+
             <a href="{% url 'extinguisher_report' object.pk %}" target="_blank" class="btn"
                 style="background: #17a2b8; color: white; display: flex; align-items: center; gap: 8px; text-decoration: none;">
                 <i class="fas fa-file-alt"></i> Ver Reporte
             </a>
+
             <button onclick="document.getElementById('signaturesModal').style.display='block'" class="btn"
                 style="background: #6c757d; color: white;">
                 <i class="fas fa-file-signature"></i> Firmas
             </button>
-            <a href="{% url 'extinguisher_list' %}" class="btn" style="background: #e9ecef; color: #495057;"><i
-                    class="fas fa-arrow-left"></i> Volver</a>
+
 
             {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
             <a href="{% url 'extinguisher_edit' object.pk %}" class="btn btn-primary"><i class="fas fa-edit"></i>
@@ -242,11 +246,14 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% for p in participants_data %}
                     <tr style="border-bottom:1px solid #f1f1f1;">
                         <td style="padding:12px; font-weight:600;">
-                            {{ object.inspector.get_full_name|default:object.inspector.username }} (Inspector)</td>
+                            {{ p.user.get_full_name|default:p.user.username }}
+                            {% if p.user == object.inspector %}<small class="text-muted">(Inspector)</small>{% endif %}
+                        </td>
                         <td style="padding:12px;">
-                            {% if object.status == 'Cerrada' %}
+                            {% if p.has_signed %}
                             <span class="badge"
                                 style="background:#28a745; color:white; padding:4px 8px; border-radius:4px; font-size:0.75rem;">FIRMADO</span>
                             {% else %}
@@ -255,21 +262,20 @@
                             {% endif %}
                         </td>
                         <td style="padding:12px; font-size:0.85rem; color:#6c757d;">
-                            {% for sig in signatures %}
-                            {% if sig.user == object.inspector %}
-                            {{ sig.signed_at|date:"d/m/Y H:i" }}
-                            {% endif %}
-                            {% empty %}
+                            {% if p.signed_at %}
+                            {{ p.signed_at|date:"d/m/Y H:i" }}
+                            {% else %}
                             -
-                            {% endfor %}
+                            {% endif %}
                         </td>
                     </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
 
         <div style="text-align:right; border-top:1px solid #eee; padding-top:20px;">
-            {% if object.status != 'Cerrada' %}
+            {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
             {% if can_sign %}
             <form action="{% url 'extinguisher_sign' object.pk %}" method="post" style="display:inline;"
                 onsubmit="return confirm('¿Está seguro de firmar esta inspección? Se utilizará su firma digital registrada en el Perfil.');">
@@ -278,10 +284,15 @@
                     <i class="fas fa-file-signature"></i> Firmar Inspección
                 </button>
             </form>
-            {% elif not user_has_signed and not can_sign %}
+            {% elif user_has_signed %}
+            <span style="color:#28a745; font-weight:600; margin-right:15px;"><i class="fas fa-check-circle"></i>
+                Firmado</span>
+            {% elif not is_participant %}
+            <span style="color:#6c757d; font-size:0.85rem; margin-right:15px;">No está en la lista de
+                participantes.</span>
+            {% elif not has_signature_profile %}
             <div style="display:inline-block; margin-right:10px; text-align:right;">
-                <p style="color:#dc3545; font-size:0.8rem; margin:0 0 5px 0;">* Debe registrar su firma en el Perfil.
-                </p>
+                <p style="color:#dc3545; font-size:0.8rem; margin:0 0 5px 0;">Debe registrar su firma en el perfil.</p>
                 <a href="{% url 'user_profile' %}" class="btn"
                     style="background-color: #6c757d; color: white; padding: 6px 12px; text-decoration: none; font-size:0.85rem;">Ir
                     al Perfil</a>

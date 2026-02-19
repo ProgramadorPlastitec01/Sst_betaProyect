@@ -1,8 +1,3 @@
-{% extends 'base.html' %}
-{% load static %}
-
-{% block title %}Reporte Inspección de Procesos #{{ object.pk }}{% endblock %}
-
 {% block extra_head %}
 <style>
     @media print {
@@ -119,25 +114,30 @@
 
     .signature-box {
         text-align: center;
-        border-top: 1px solid #333;
         padding-top: 10px;
     }
 
     .signature-img {
         max-height: 80px;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .signature-line {
+        border-top: 1px solid #333;
+        padding-top: 5px;
+        margin-top: 5px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="row no-print mb-4">
-    <div class="col-12 text-center">
-        <button onclick="window.print()" class="btn btn-primary btn-lg">
-            <i class="fas fa-print"></i> Imprimir / Guardar PDF
-        </button>
-        <a href="{% url 'process_detail' object.pk %}" class="btn btn-secondary btn-lg ml-2">
-            <i class="fas fa-arrow-left"></i> Volver
+    <div class="col-12">
+        <a href="{% url 'process_detail' object.pk %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Detalle
         </a>
     </div>
 </div>
@@ -221,18 +221,52 @@
             {% if sig.signature %}
             <img src="{{ sig.signature }}" class="signature-img" alt="Firma Digital">
             {% else %}
-            <div style="height: 60px; display: flex; align-items: center; justify-content: center; color: #ccc;">Firma
+            <div style="height: 80px; display: flex; align-items: center; justify-content: center; color: #ccc;">Firma
                 Digital No Disponible</div>
             {% endif %}
-            <div>{{ sig.user.get_full_name|default:sig.user.username }}</div>
-            <div style="font-size: 0.8rem; color: #666;">Firma Inspector/Responsable</div>
-            <div style="font-size: 0.7rem; color: #999;">{{ sig.signed_at|date:"d/m/Y H:i" }}</div>
+            <div class="signature-line">
+                <div style="font-weight: bold;">{{ sig.user.get_full_name|default:sig.user.username }}</div>
+                <div style="font-size: 0.8rem; color: #666;">Firma Inspector/Responsable</div>
+                <div style="font-size: 0.7rem; color: #999;">{{ sig.signed_at|date:"d/m/Y H:i" }}</div>
+            </div>
         </div>
         {% endfor %}
     </div>
 
     <div style="margin-top: 40px; text-align: center; font-size: 0.8rem; color: #999;">
         <p>Generado automáticamente por el Sistema de Gestión SST - Antigravity</p>
+    </div>
+</div>
+
+<!-- Bottom Buttons -->
+<div class="row no-print mt-4 mb-5">
+    <div class="col-12 text-center">
+        <div class="d-flex flex-column align-items-center gap-3" style="text-align: center;">
+            {% if object.status == 'Cerrada' or object.status == 'Cerrada con Hallazgos' %}
+            <div class="d-flex justify-content-center gap-2">
+                <button onclick="window.print()" class="btn btn-primary btn-lg">
+                    <i class="fas fa-print"></i> Imprimir / Guardar PDF
+                </button>
+                <a href="{% url 'process_detail' object.pk %}" class="btn btn-secondary btn-lg">
+                    <i class="fas fa-arrow-left"></i> Volver al Detalle
+                </a>
+            </div>
+            {% else %}
+            <div class="alert alert-warning d-inline-block mb-0">
+                <i class="fas fa-exclamation-triangle"></i>
+                El reporte debe estar <strong>Cerrado y Firmado</strong> para poder imprimirse.
+            </div>
+            <div class="d-flex justify-content-center gap-2">
+                <button class="btn btn-primary btn-lg disabled" style="cursor: not-allowed;"
+                    title="Pendiente de firmas">
+                    <i class="fas fa-print"></i> Imprimir (Bloqueado)
+                </button>
+                <a href="{% url 'process_detail' object.pk %}" class="btn btn-secondary btn-lg">
+                    <i class="fas fa-arrow-left"></i> Volver al Detalle
+                </a>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}

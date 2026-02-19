@@ -10,11 +10,10 @@ class InspectionScheduleForm(forms.ModelForm):
         ('Montacargas', 'Montacargas'),
     ]
     inspection_type = forms.ChoiceField(choices=TYPE_CHOICES, label="Tipo de Inspección")
-    year = forms.ChoiceField(label="Año de Programación")
 
     class Meta:
         model = InspectionSchedule
-        fields = ['year', 'area', 'inspection_type', 'frequency', 'scheduled_date', 'responsible', 'observations']
+        fields = ['area', 'inspection_type', 'frequency', 'scheduled_date', 'observations']
         widgets = {
             'scheduled_date': forms.DateInput(attrs={'type': 'date'}),
             'observations': forms.Textarea(attrs={'rows': 3}),
@@ -22,11 +21,6 @@ class InspectionScheduleForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from datetime import date
-        current_year = date.today().year
-        self.fields['year'].choices = [(current_year, str(current_year)), (current_year + 1, str(current_year + 1))]
-        self.fields['year'].initial = current_year
-        
         self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
         self.fields['area'].empty_label = "Seleccione un área"
 
@@ -42,7 +36,7 @@ class InspectionUpdateForm(forms.ModelForm):
 
     class Meta:
         model = InspectionSchedule
-        fields = ['year', 'area', 'inspection_type', 'frequency', 'scheduled_date', 'responsible', 'status', 'observations']
+        fields = ['area', 'inspection_type', 'frequency', 'scheduled_date', 'status', 'observations']
 
         widgets = {
             'scheduled_date': forms.DateInput(attrs={'type': 'date'}),
@@ -70,21 +64,37 @@ class ExtinguisherInspectionForm(forms.ModelForm):
         model = ExtinguisherInspection
         fields = ['inspection_date', 'area', 'inspector_role']
         widgets = {
-            'inspection_date': forms.DateInput(attrs={'type': 'date'}),
+            'inspection_date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date'}
+            ),
         }
     
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         from django.utils import timezone
         
-        # Set default date to today if not provided
+        # 1. Date Logic
         if not self.instance.pk:
-            # Check if initial is set, otherwise use today
             if 'inspection_date' not in self.initial:
-                today = timezone.now().strftime('%Y-%m-%d')
-                self.fields['inspection_date'].initial = today
-                # Explicitly set value attribute for HTML5 date input
-                self.fields['inspection_date'].widget.attrs['value'] = today
+                self.fields['inspection_date'].initial = timezone.now().date()
+        
+        # Ensure correct formatting for HTML5 date input on edit
+        if self.instance.pk and self.instance.inspection_date:
+            self.fields['inspection_date'].widget.attrs['value'] = self.instance.inspection_date.strftime('%Y-%m-%d')
+        
+        # 2. Inspector Role Logic: Match with user profile
+        if self.user:
+            user_role_name = self.user.get_role_name()
+            role_choices = [c[0] for c in self.fields['inspector_role'].choices]
+            
+            if user_role_name in role_choices:
+                self.fields['inspector_role'].initial = user_role_name
+                self.fields['inspector_role'].widget.attrs.update({
+                    'readonly': 'readonly',
+                    'style': 'pointer-events: none; background-color: #f8f9fa; border-color: #e2e8f0;'
+                })
             
         self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
         self.fields['area'].empty_label = "Seleccione un área"
@@ -101,10 +111,27 @@ class ExtinguisherItemForm(forms.ModelForm):
         model = ExtinguisherItem
         exclude = ['inspection']
         widgets = {
-            'last_recharge_date': forms.DateInput(attrs={'type': 'date'}),
-            'next_recharge_date': forms.DateInput(attrs={'type': 'date'}),
-            'observations': forms.Textarea(attrs={'rows': 2}),
+            'extinguisher_number': forms.NumberInput(attrs={'placeholder': 'Número'}),
+            'location': forms.TextInput(attrs={'placeholder': 'Ubicación'}),
+            'capacity': forms.TextInput(attrs={'placeholder': 'Capacidad'}),
+            'last_recharge_date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date'}
+            ),
+            'next_recharge_date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date'}
+            ),
+            'observations': forms.Textarea(attrs={'rows': 1, 'placeholder': 'Observaciones'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            if self.instance.last_recharge_date:
+                self.fields['last_recharge_date'].widget.attrs['value'] = self.instance.last_recharge_date.strftime('%Y-%m-%d')
+            if self.instance.next_recharge_date:
+                self.fields['next_recharge_date'].widget.attrs['value'] = self.instance.next_recharge_date.strftime('%Y-%m-%d')
 
     def clean(self):
         cleaned_data = super().clean()
@@ -118,19 +145,9 @@ class ExtinguisherItemForm(forms.ModelForm):
 
 ExtinguisherItemFormSet = inlineformset_factory(
     ExtinguisherInspection, ExtinguisherItem,
-    fields=['extinguisher_number', 'location', 'extinguisher_type', 'capacity', 'last_recharge_date', 'next_recharge_date', 
-            'pressure_gauge_ok', 'safety_pin_ok', 'hose_nozzle_ok', 'signage_ok', 'access_ok', 'label_ok', 
-            'status', 'observations'],
+    form=ExtinguisherItemForm,
     extra=1, # Start with 1 row for dynamic addition
-    can_delete=True,
-    widgets={
-        'extinguisher_number': forms.TextInput(attrs={'placeholder': 'Número'}),
-        'location': forms.TextInput(attrs={'placeholder': 'Ubicación'}),
-        'capacity': forms.TextInput(attrs={'placeholder': 'Capacidad'}),
-        'last_recharge_date': forms.DateInput(attrs={'type': 'date'}),
-        'next_recharge_date': forms.DateInput(attrs={'type': 'date'}),
-        'observations': forms.Textarea(attrs={'rows': 1, 'placeholder': 'Observaciones'}),
-    }
+    can_delete=True
 )
 
 # 2. First Aid Forms
@@ -139,19 +156,36 @@ class FirstAidInspectionForm(forms.ModelForm):
         model = FirstAidInspection
         fields = ['inspection_date', 'area', 'inspector_role']
         widgets = {
-            'inspection_date': forms.DateInput(attrs={'type': 'date'}),
+            'inspection_date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date'}
+            ),
         }
     
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         from django.utils import timezone
         
-        # Set default date to today if not provided
+        # 1. Date Logic
         if not self.instance.pk:
             if 'inspection_date' not in self.initial:
-                today = timezone.now().strftime('%Y-%m-%d')
-                self.fields['inspection_date'].initial = today
-                self.fields['inspection_date'].widget.attrs['value'] = today
+                self.fields['inspection_date'].initial = timezone.now().date()
+        
+        if self.instance.pk and self.instance.inspection_date:
+            self.fields['inspection_date'].widget.attrs['value'] = self.instance.inspection_date.strftime('%Y-%m-%d')
+        
+        # 2. Inspector Role Logic
+        if self.user:
+            user_role_name = self.user.get_role_name()
+            role_choices = [c[0] for c in self.fields['inspector_role'].choices]
+            
+            if user_role_name in role_choices:
+                self.fields['inspector_role'].initial = user_role_name
+                self.fields['inspector_role'].widget.attrs.update({
+                    'readonly': 'readonly',
+                    'style': 'pointer-events: none; background-color: #f8f9fa; border-color: #e2e8f0;'
+                })
             
         self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
         self.fields['area'].empty_label = "Seleccione un área"
@@ -168,9 +202,19 @@ class FirstAidItemForm(forms.ModelForm):
         model = FirstAidItem
         exclude = ['inspection']
         widgets = {
-            'expiration_date': forms.DateInput(attrs={'type': 'date'}),
-            'observations': forms.Textarea(attrs={'rows': 2}),
+            'element_name': forms.TextInput(attrs={'placeholder': 'Nombre del elemento'}),
+            'quantity': forms.NumberInput(attrs={'min': 0}),
+            'expiration_date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date'}
+            ),
+            'observations': forms.Textarea(attrs={'rows': 1, 'placeholder': 'Observaciones'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk and self.instance.expiration_date:
+            self.fields['expiration_date'].widget.attrs['value'] = self.instance.expiration_date.strftime('%Y-%m-%d')
 
     def clean(self):
         cleaned_data = super().clean()
@@ -184,15 +228,9 @@ class FirstAidItemForm(forms.ModelForm):
 
 FirstAidItemFormSet = inlineformset_factory(
     FirstAidInspection, FirstAidItem,
-    fields=['element_name', 'quantity', 'expiration_date', 'status', 'observations'],
+    form=FirstAidItemForm,
     extra=1, # Start with 1 row, let user add more dynamically
-    can_delete=True,
-    widgets={
-        'element_name': forms.TextInput(attrs={'placeholder': 'Nombre del elemento'}),
-        'quantity': forms.NumberInput(attrs={'min': 0}),
-        'expiration_date': forms.DateInput(attrs={'type': 'date'}),
-        'observations': forms.Textarea(attrs={'rows': 1, 'placeholder': 'Observaciones'}),
-    }
+    can_delete=True
 )
 
 # 3. Process Forms
@@ -201,19 +239,43 @@ class ProcessInspectionForm(forms.ModelForm):
         model = ProcessInspection
         fields = ['inspection_date', 'area', 'inspector_role', 'inspected_process', 'additional_observations']
         widgets = {
-            'inspection_date': forms.DateInput(attrs={'type': 'date'}),
+            'inspection_date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date'}
+            ),
             'additional_observations': forms.Textarea(attrs={'rows': 3}),
             'area': forms.HiddenInput(), # Hidden as per user request
         }
     
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        from django.utils import timezone
+        
+        # 1. Date Logic
+        if not self.instance.pk:
+            if 'inspection_date' not in self.initial:
+                self.fields['inspection_date'].initial = timezone.now().date()
+        
+        if self.instance.pk and self.instance.inspection_date:
+            self.fields['inspection_date'].widget.attrs['value'] = self.instance.inspection_date.strftime('%Y-%m-%d')
+        
+        # 2. Inspector Role Logic
+        if self.user:
+            user_role_name = self.user.get_role_name()
+            role_choices = [c[0] for c in self.fields['inspector_role'].choices]
+            
+            if user_role_name in role_choices:
+                self.fields['inspector_role'].initial = user_role_name
+                self.fields['inspector_role'].widget.attrs.update({
+                    'readonly': 'readonly',
+                    'style': 'pointer-events: none; background-color: #f8f9fa; border-color: #e2e8f0;'
+                })
+
         # If area is not in initial (manual creation without schedule) and not an existing instance with area, make it visible.
-        # This handles the user request to hide it in the header when coming from schedule, but allows selection if manual.
         if not self.initial.get('area') and not (self.instance and self.instance.pk and getattr(self.instance, 'area_id', None)):
             self.fields['area'].widget = forms.Select()
             self.fields['area'].queryset = self.fields['area'].queryset # Ensure queryset is kept
-
 
 class ProcessCheckItemForm(forms.ModelForm):
     class Meta:
@@ -230,7 +292,6 @@ class ProcessCheckItemForm(forms.ModelForm):
         status = cleaned_data.get('item_status')
         observations = cleaned_data.get('observations')
         
-        # Ensure observations is treated as string and stripped
         if observations is None:
             observations = ''
             
@@ -247,53 +308,147 @@ ProcessItemFormSet = inlineformset_factory(
 )
 
 # 4. Storage Forms
+class StorageCheckItemForm(forms.ModelForm):
+    class Meta:
+        model = StorageCheckItem
+        fields = ['question', 'response', 'item_status', 'observations']
+        widgets = {
+            'question': forms.TextInput(attrs={'readonly': 'readonly', 'style': 'width: 100%; border: none; background: transparent;'}),
+            'item_status': forms.Select(attrs={'class': 'js-status-select form-control', 'style': 'min-width: 100px;'}),
+            'observations': forms.Textarea(attrs={'class': 'js-obs-input form-control', 'rows': 1, 'placeholder': 'Observaciones'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        status = cleaned_data.get('item_status')
+        observations = cleaned_data.get('observations')
+        
+        if observations is None:
+            observations = ''
+            
+        if status == 'Malo' and not observations.strip():
+            self.add_error('observations', 'La observación es obligatoria para ítems en estado Malo.')
+
+        return cleaned_data
+
 class StorageInspectionForm(forms.ModelForm):
     class Meta:
         model = StorageInspection
-        fields = ['inspection_date', 'area', 'inspector_role', 'inspected_process', 'general_status', 'observations']
+        fields = ['inspection_date', 'area', 'inspector_role', 'inspected_process', 'additional_observations']
         widgets = {
-            'inspection_date': forms.DateInput(attrs={'type': 'date'}),
-            'observations': forms.Textarea(attrs={'rows': 3}),
+            'inspection_date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date'}
+            ),
+            'additional_observations': forms.Textarea(attrs={'rows': 3}),
+            'area': forms.HiddenInput(),
         }
     
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
-        self.fields['area'].empty_label = "Seleccione un área"
+        from django.utils import timezone
+        
+        # 1. Date Logic
+        if not self.instance.pk:
+            if 'inspection_date' not in self.initial:
+                self.fields['inspection_date'].initial = timezone.now().date()
+        
+        if self.instance.pk and self.instance.inspection_date:
+            self.fields['inspection_date'].widget.attrs['value'] = self.instance.inspection_date.strftime('%Y-%m-%d')
+
+        # 2. Inspector Role Logic
+        if self.user:
+            user_role_name = self.user.get_role_name()
+            role_choices = [c[0] for c in self.fields['inspector_role'].choices]
+            
+            if user_role_name in role_choices:
+                self.fields['inspector_role'].initial = user_role_name
+                self.fields['inspector_role'].widget.attrs.update({
+                    'readonly': 'readonly',
+                    'style': 'pointer-events: none; background-color: #f8f9fa; border-color: #e2e8f0;'
+                })
+
+        if not self.initial.get('area') and not (self.instance and self.instance.pk and getattr(self.instance, 'area_id', None)):
+            self.fields['area'].widget = forms.Select()
+            self.fields['area'].queryset = self.fields['area'].queryset
 
 StorageItemFormSet = inlineformset_factory(
     StorageInspection, StorageCheckItem,
-    fields=['question', 'response', 'item_status', 'observations'],
+    form=StorageCheckItemForm,
     extra=0, 
     can_delete=False,
-    widgets={
-        'question': forms.TextInput(attrs={'readonly': 'readonly', 'style': 'width: 100%; border: none; background: transparent;'}),
-        'observations': forms.Textarea(attrs={'rows': 1}),
-    }
 )
+
+# 5. Forklift Forms
+# 5. Forklift Forms
+class ForkliftCheckItemForm(forms.ModelForm):
+    class Meta:
+        model = ForkliftCheckItem
+        fields = ['question', 'response', 'item_status', 'observations']
+        widgets = {
+            'question': forms.TextInput(attrs={'readonly': 'readonly', 'style': 'width: 100%; border: none; background: transparent;'}),
+            'item_status': forms.Select(attrs={'class': 'js-status-select form-control', 'style': 'min-width: 100px;'}),
+            'observations': forms.Textarea(attrs={'class': 'js-obs-input form-control', 'rows': 1, 'placeholder': 'Observaciones'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        status = cleaned_data.get('item_status')
+        observations = cleaned_data.get('observations')
+        
+        if observations is None:
+            observations = ''
+            
+        if status == 'Malo' and not observations.strip():
+            self.add_error('observations', 'La observación es obligatoria para ítems en estado Malo.')
+
+        return cleaned_data
 
 # 5. Forklift Forms
 class ForkliftInspectionForm(forms.ModelForm):
     class Meta:
         model = ForkliftInspection
-        fields = ['inspection_date', 'area', 'forklift_type', 'general_status', 'observations']
+        fields = ['inspection_date', 'area', 'inspector_role', 'forklift_type', 'additional_observations']
         widgets = {
-            'inspection_date': forms.DateInput(attrs={'type': 'date'}),
-            'observations': forms.Textarea(attrs={'rows': 3}),
+            'inspection_date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date'}
+            ),
+            'additional_observations': forms.Textarea(attrs={'rows': 3}),
         }
     
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        from django.utils import timezone
+        
+        # 1. Date Logic
+        if not self.instance.pk:
+            if 'inspection_date' not in self.initial:
+                self.fields['inspection_date'].initial = timezone.now().date()
+        
+        if self.instance.pk and self.instance.inspection_date:
+            self.fields['inspection_date'].widget.attrs['value'] = self.instance.inspection_date.strftime('%Y-%m-%d')
+        
+        # 2. Inspector Role Logic
+        if self.user:
+            user_role_name = self.user.get_role_name()
+            role_choices = [c[0] for c in self.fields['inspector_role'].choices]
+            
+            if user_role_name in role_choices:
+                self.fields['inspector_role'].initial = user_role_name
+                self.fields['inspector_role'].widget.attrs.update({
+                    'readonly': 'readonly',
+                    'style': 'pointer-events: none; background-color: #f8f9fa; border-color: #e2e8f0;'
+                })
+
         self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
         self.fields['area'].empty_label = "Seleccione un área"
 
 ForkliftItemFormSet = inlineformset_factory(
     ForkliftInspection, ForkliftCheckItem,
-    fields=['question', 'response', 'observations'],
+    form=ForkliftCheckItemForm,
     extra=0, 
     can_delete=False,
-    widgets={
-        'question': forms.TextInput(attrs={'readonly': 'readonly', 'style': 'width: 100%; border: none; background: transparent;'}),
-        'observations': forms.Textarea(attrs={'rows': 1}),
-    }
 )

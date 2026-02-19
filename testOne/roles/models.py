@@ -16,6 +16,7 @@ class Permission(models.Model):
         ('storage', 'Almacenamiento'),
         ('forklift', 'Montacargas'),
         ('roles', 'Roles'),
+        ('reports', 'Reportes'),
     ]
     
     ACTION_CHOICES = [
@@ -23,6 +24,7 @@ class Permission(models.Model):
         ('create', 'Registrar'),
         ('edit', 'Editar'),
         ('delete', 'Eliminar'),
+        ('reset_password', 'Restablecer Contraseña'),
     ]
     
     module = models.CharField(max_length=50, choices=MODULE_CHOICES, verbose_name='Módulo')

@@ -4,77 +4,376 @@
 {% block title %}SST - {% if object %}Editar{% else %}Nueva{% endif %} Inspección de Montacargas{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+<!-- Reuse existing styles -->
+<style>
+    .inspection-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f2f5;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--text-color);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+        outline: none;
+    }
+
+    .item-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .item-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-light);
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .item-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+        vertical-align: top;
+    }
+
+    .status-select {
+        min-width: 120px;
+    }
+
+    .obs-input {
+        width: 100%;
+        min-height: 60px;
+    }
+</style>
 {% endblock %}
 
 {% block header_title %}Inspecciones de Seguridad - Montacargas{% endblock %}
 
 {% block content %}
-<div class="inspection-form-container">
-    <div class="dashboard-header">
+<div class="container-fluid" style="max-width: 1200px; padding: 20px;">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <div>
-            <h1 style="font-size: 1.5rem; font-weight: 700;">{% if object %}Editar{% else %}Nueva{% endif %} Inspección
-                de Montacargas</h1>
-            <p style="color: var(--text-light); font-size: 0.9rem;">Formato R-RH-SST-022</p>
+            <h1 style="font-size: 1.8rem; font-weight: 700; color: var(--text-color); margin-bottom: 4px;">
+                {% if object %}Editar{% else %}Nueva{% endif %} Inspección de Montacargas
+            </h1>
+            <p style="color: var(--text-light); margin: 0;">Formato R-RH-SST-022</p>
         </div>
-        <a href="{% url 'forklift_list' %}" class="btn-link"><i class="fas fa-arrow-left"></i> Volver</a>
+        <a href="{% url 'forklift_list' %}" class="btn btn-secondary"
+            style="background: white; border: 1px solid #dee2e6; color: var(--text-color);">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
     </div>
 
     <form method="post" novalidate>
         {% csrf_token %}
 
-        <div class="card">
-            <h3 class="inspection-section-title"><i class="fas fa-info-circle"></i> Información del Vehículo</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px;">
-                {% for field in form %}
+        <!-- Render hidden fields (like area) -->
+        {% for field in form.hidden_fields %}
+        {{ field }}
+        {% endfor %}
+
+        <!-- General Data Card -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-info-circle"></i> Datos Generales</h3>
+
+            <div class="form-grid">
+                <!-- Inspection Date -->
                 <div class="form-group">
-                    <label style="font-weight: 600;">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.errors %}
-                    <div style="color: #dc3545; font-size: 0.8rem; margin-top: 5px;">{{ field.errors }}</div>
+                    <label>Fecha de Inspección</label>
+                    {{ form.inspection_date }}
+                    {% if form.inspection_date.errors %}
+                    <div class="text-danger small">{{ form.inspection_date.errors }}</div>
                     {% endif %}
                 </div>
+
+                <!-- Forklift Type -->
+                <div class="form-group">
+                    <label>Tipo de Montacarga</label>
+                    {{ form.forklift_type }}
+                    {% if form.forklift_type.errors %}
+                    <div class="text-danger small">{{ form.forklift_type.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Render other visible fields dynamically -->
+                {% for field in form.visible_fields %}
+                {% if field.name != 'inspection_date' and field.name != 'forklift_type' and field.name != 'additional_observations' %}
+                <div class="form-group">
+                    <label>{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <div class="text-danger small">{{ field.errors }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
                 {% endfor %}
             </div>
         </div>
 
-        <div class="card">
-            <h3 class="inspection-section-title"><i class="fas fa-list-check"></i> Verificación Diaria de Seguridad</h3>
+        <!-- Items Checklist -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-tasks"></i> Lista de Verificación</h3>
             {{ items.management_form }}
 
-            <div class="table-wrapper">
-                <table>
+            {% if items.non_form_errors %}
+            <div class="alert alert-danger">{{ items.non_form_errors }}</div>
+            {% endif %}
+
+            <!-- SECTION 1: MONTACARGAS APAGADO -->
+            <h4 class="subsection-title"
+                style="color: #49BAA0; margin: 20px 0 10px; border-bottom: 2px solid #e9ecef; padding-bottom: 8px;">
+                <i class="fas fa-power-off"></i> MONTACARGAS APAGADO (Pre-operacional)
+            </h4>
+            <div style="overflow-x: auto;">
+                <table class="item-table">
                     <thead>
                         <tr>
-                            <th class="inspection-table-header" style="width: 50%;">ÍTEM A INSPECCIONAR</th>
-                            <th class="inspection-table-header" style="width: 140px; text-align: center;">CUMPLE</th>
-                            <th class="inspection-table-header">OBSERVACIONES</th>
+                            <th style="width: 40%;">Ítem a Evaluar</th>
+                            <th style="width: 15%;">Cumple</th>
+                            <th style="width: 15%;">Estado</th>
+                            <th style="width: 30%;">Observaciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item_form in items %}
-                        <tr class="item-row">
+                        {% if forloop.counter <= 19 %} {{ item_form.id }} <tr>
                             <td>
-                                {{ item_form.id }}
-                                <div style="font-weight: 500;">
-                                    {{ item_form.question }}
-                                </div>
+                                {{ item_form.question }}
                             </td>
-                            <td style="text-align: center;">{{ item_form.response }}</td>
-                            <td>{{ item_form.observations }}</td>
+                            <td>
+                                {{ item_form.response }}
+                                {% if item_form.response.errors %}
+                                <div class="text-danger small">{{ item_form.response.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.item_status }}
+                                {% if item_form.item_status.errors %}
+                                <div class="text-danger small">{{ item_form.item_status.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.observations }}
+                                {% if item_form.observations.errors %}
+                                <div class="text-danger small">{{ item_form.observations.errors }}</div>
+                                {% endif %}
+                            </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- SECTION 2: MONTACARGAS ENCENDIDO -->
+            <h4 class="subsection-title"
+                style="color: #FF7043; margin: 30px 0 10px; border-bottom: 2px solid #e9ecef; padding-bottom: 8px;">
+                <i class="fas fa-bolt"></i> MONTACARGAS ENCENDIDO (Operativo)
+            </h4>
+            <div style="overflow-x: auto;">
+                <table class="item-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Ítem a Evaluar</th>
+                            <th style="width: 15%;">Cumple</th>
+                            <th style="width: 15%;">Estado</th>
+                            <th style="width: 30%;">Observaciones</th>
                         </tr>
+                    </thead>
+                    <tbody>
+                        {% for item_form in items %}
+                        {% if forloop.counter > 19 %}
+                        {{ item_form.id }}
+                        <tr>
+                            <td>
+                                {{ item_form.question }}
+                            </td>
+                            <td>
+                                {{ item_form.response }}
+                                {% if item_form.response.errors %}
+                                <div class="text-danger small">{{ item_form.response.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.item_status }}
+                                {% if item_form.item_status.errors %}
+                                <div class="text-danger small">{{ item_form.item_status.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.observations }}
+                                {% if item_form.observations.errors %}
+                                <div class="text-danger small">{{ item_form.observations.errors }}</div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <div style="margin-top: 32px; display: flex; gap: 12px; justify-content: flex-end;">
-            <a href="{% url 'forklift_list' %}" class="btn" style="background: #e9ecef; color: #495057;">Cancelar</a>
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save" style="margin-right: 8px;"></i> Guardar Inspección diaria
+        <!-- Additional Observations -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-comment-alt"></i> Observaciones Adicionales</h3>
+            <div class="form-group">
+                {{ form.additional_observations }}
+                {% if form.additional_observations.errors %}
+                <div class="text-danger small">{{ form.additional_observations.errors }}</div>
+                {% endif %}
+                <small class="text-muted">Cualquier otra observación relevante que no esté cubierta en los ítems
+                    anteriores.</small>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+            <a href="{% url 'forklift_list' %}" class="btn btn-light"
+                style="background: white; border: 1px solid #dee2e6;">Cancelar</a>
+            <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 500;">
+                <i class="fas fa-save"></i> Guardar Inspección
             </button>
         </div>
     </form>
 </div>
+
+<script>
+    (function () {
+        // Strict validation for "Malo" status
+        function validateForm(event) {
+            let hasError = false;
+            let firstErrorInput = null;
+            let errorCount = 0;
+
+            const rows = document.querySelectorAll('tbody tr');
+
+            rows.forEach(function (row, index) {
+                let statusSelect = row.querySelector('select[name*="item_status"]');
+                let obsInput = row.querySelector('textarea[name*="observations"]');
+
+                if (!statusSelect) statusSelect = row.querySelector('select'); // Fallback
+                if (!obsInput) obsInput = row.querySelector('textarea'); // Fallback
+
+                if (statusSelect && obsInput) {
+                    const status = statusSelect.value;
+                    const obs = obsInput.value.trim();
+
+                    if (status === 'Malo') {
+                        if (obs === '') {
+                            hasError = true;
+                            errorCount++;
+
+                            obsInput.style.border = '2px solid #dc3545';
+                            obsInput.style.backgroundColor = '#fff8f8';
+
+                            let errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                            if (!errorDiv) {
+                                errorDiv = document.createElement('div');
+                                errorDiv.className = 'text-danger small js-strict-error';
+                                errorDiv.style.fontWeight = 'bold';
+                                errorDiv.style.marginTop = '4px';
+                                errorDiv.innerText = 'Debe ingresar una observación en el ítem marcado como "Malo".';
+                                obsInput.parentNode.appendChild(errorDiv);
+                            }
+
+                            if (!firstErrorInput) firstErrorInput = obsInput;
+                        } else {
+                            obsInput.style.border = '';
+                            obsInput.style.backgroundColor = '';
+                            const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                            if (errorDiv) errorDiv.remove();
+                        }
+                    } else {
+                        // Clear error if not Malo
+                        obsInput.style.border = '';
+                        obsInput.style.backgroundColor = '';
+                        const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                        if (errorDiv) errorDiv.remove();
+                    }
+                }
+            });
+
+            if (hasError) {
+                event.preventDefault();
+                event.stopPropagation();
+                alert('Existen ítems en estado "Malo" sin observación. Por favor complete la información antes de continuar.');
+                if (firstErrorInput) {
+                    firstErrorInput.focus();
+                    firstErrorInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return false;
+            }
+            return true;
+        }
+
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            if (form.tagName === 'FORM') {
+                if (!validateForm(e)) {
+                    e.preventDefault();
+                }
+            }
+        }, true);
+
+        // Real-time validation removal
+        document.addEventListener('change', function (e) {
+            const target = e.target;
+            if (target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+                const row = target.closest('tr');
+                if (row) {
+                    const statusSelect = row.querySelector('select[name*="item_status"]');
+                    const obsInput = row.querySelector('textarea[name*="observations"]');
+                    if (statusSelect && obsInput) {
+                        if (statusSelect.value !== 'Malo' || obsInput.value.trim() !== '') {
+                            obsInput.style.border = '';
+                            obsInput.style.backgroundColor = '';
+                            const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                            if (errorDiv) errorDiv.remove();
+                        }
+                    }
+                }
+            }
+        }, true);
+
+    })();
+</script>
 {% endblock %}

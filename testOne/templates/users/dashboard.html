@@ -69,7 +69,7 @@
     <div class="card" style="flex: 1; min-width: 300px; border-left: 5px solid #ffc107; margin-bottom: 0;">
         <div class="card-header" style="border-bottom: 1px solid #eee; padding-bottom: 15px;">
             <h3 class="card-title" style="color: #d39e00; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-clock"></i> Próximas (7 días)
+                <i class="fas fa-clock"></i> Próximas ({{ notification_days }} días)
             </h3>
         </div>
         <div class="table-wrapper">
@@ -122,32 +122,24 @@
             <table style="margin-top: 0;">
                 <tbody>
                     {% for inspection in active_findings|slice:":5" %}
-                    <tr onclick="{% with followup=inspection.follow_ups.last %}{% if followup %}window.location='{% url 'extinguisher_detail' followup.pk %}';{% endif %}{% endwith %}"
+                    <tr onclick="window.location='{{ inspection.get_detail_url }}';"
                         style="cursor: pointer; transition: background-color 0.2s;"
                         onmouseover="this.style.backgroundColor='rgba(0,0,0,0.03)'"
                         onmouseout="this.style.backgroundColor='transparent'">
                         <td style="padding: 12px;">
                             <strong style="display: block; color: var(--text-color); margin-bottom: 4px;">
-                                {{ inspection.area }}</strong>
+                                {{ inspection.inspection_type }}</strong>
                             <small style="display: block; color: var(--text-light); margin-bottom: 4px;">
-                                {{ inspection.inspector.get_full_name|default:inspection.inspector.username }}
-                            </small>
+                                {{ inspection.area }}</small>
                             <small style="display: block; color: #fd7e14; font-weight: 600;">
                                 {{ inspection.inspection_date|date:"d/m/Y" }}
                             </small>
                         </td>
                         <td style="text-align: right; padding: 12px;">
-                            {% with followup=inspection.follow_ups.last %}
-                            {% if followup %}
-                            <a href="{% url 'extinguisher_detail' followup.pk %}" class="btn btn-sm btn-warning"
-                                title="Gestionar"
+                            <a href="{{ inspection.get_detail_url }}" class="btn btn-sm btn-warning" title="Gestionar"
                                 style="display: inline-flex; align-items: center; gap: 5px; background-color: #fd7e14; border-color: #fd7e14; color: white;">
                                 Ir <i class="fas fa-arrow-right"></i>
                             </a>
-                            {% else %}
-                            <span style="color: #dc3545; font-size: 0.85rem;">Error: No generado</span>
-                            {% endif %}
-                            {% endwith %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -199,6 +191,7 @@
 {% endif %}
 
 <div class="dashboard-grid">
+    {% if perm_schedule %}
     <a href="{% url 'inspection_list' %}" class="no-decoration">
         <div class="card stat-card full-height">
             <div class="icon-box icon-blue">
@@ -211,7 +204,9 @@
             </div>
         </div>
     </a>
+    {% endif %}
 
+    {% if perm_extinguisher %}
     <a href="{% url 'extinguisher_list' %}" class="no-decoration">
         <div class="card stat-card full-height">
             <div class="icon-box icon-green">
@@ -224,7 +219,9 @@
             </div>
         </div>
     </a>
+    {% endif %}
 
+    {% if perm_first_aid %}
     <a href="{% url 'first_aid_list' %}" class="no-decoration">
         <div class="card stat-card full-height">
             <div class="icon-box icon-orange">
@@ -237,25 +234,36 @@
             </div>
         </div>
     </a>
+    {% endif %}
 </div>
 
+{% if perm_process or perm_storage or perm_forklift or perm_users %}
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">Accesos Rápidos Adicionales</h3>
     </div>
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+        {% if perm_process %}
         <a href="{% url 'process_list' %}" class="btn btn-card">
             <i class="fas fa-cogs" style="margin-right: 12px; color: var(--primary-color);"></i> Procesos
         </a>
+        {% endif %}
+        {% if perm_storage %}
         <a href="{% url 'storage_list' %}" class="btn btn-card">
             <i class="fas fa-boxes" style="margin-right: 12px; color: var(--primary-color);"></i> Almacenamiento
         </a>
+        {% endif %}
+        {% if perm_forklift %}
         <a href="{% url 'forklift_list' %}" class="btn btn-card">
             <i class="fas fa-truck-loading" style="margin-right: 12px; color: var(--primary-color);"></i> Montacargas
         </a>
+        {% endif %}
+        {% if perm_users %}
         <a href="{% url 'user_list' %}" class="btn btn-card">
             <i class="fas fa-users" style="margin-right: 12px; color: var(--primary-color);"></i> Usuarios
         </a>
+        {% endif %}
     </div>
 </div>
+{% endif %}
 {% endblock %}

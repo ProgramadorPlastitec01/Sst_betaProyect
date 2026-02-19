@@ -20,33 +20,123 @@
             </p>
         </div>
         <div style="display: flex; gap: 12px; align-items: center;">
-            <a href="{% url 'first_aid_report' object.pk %}" target="_blank" class="btn"
-                style="background: #17a2b8; color: white; display: flex; align-items: center; gap: 8px; text-decoration: none;">
-                <i class="fas fa-file-alt"></i> Ver Reporte
-            </a>
-
-            {% if object.status == 'En proceso' or object.status == 'Programada' %}
-            {% if can_sign %}
-            <form method="post" action="{% url 'first_aid_sign' object.pk %}" style="margin: 0;"
-                onsubmit="return confirm('¿Confirma que ha verificado los ítems y desea firmar la inspección? Esta acción cerrará el registro y no podrá editarse posteriormente.');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">
-                    <i class="fas fa-file-signature"></i> Firmar Inspección
-                </button>
-            </form>
-            {% endif %}
-            {% endif %}
 
             <a href="{% url 'first_aid_list' %}" class="btn" style="background: #e9ecef; color: #495057;">
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
 
-            {% if object.status == 'En proceso' or object.status == 'Programada' %}
+            <a href="{% url 'first_aid_report' object.pk %}" target="_blank" class="btn"
+                style="background: #17a2b8; color: white; display: flex; align-items: center; gap: 8px; text-decoration: none;">
+                <i class="fas fa-file-alt"></i> Ver Reporte
+            </a>
+
+            <button onclick="document.getElementById('signaturesModal').style.display='block'" class="btn"
+                style="background: #6c757d; color: white;">
+                <i class="fas fa-file-signature"></i> Firmas
+            </button>
+
+            {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
             <a href="{% url 'first_aid_edit' object.pk %}" class="btn btn-primary"><i class="fas fa-edit"></i>
                 Editar</a>
             {% endif %}
         </div>
     </div>
+
+    <!-- Modal Firmas -->
+    <div id="signaturesModal" class="modal"
+        style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+        <div class="modal-content"
+            style="background-color:#fff; margin:5% auto; padding:24px; border:1px solid #888; width:90%; max-width:600px; border-radius:8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                <h2 style="margin:0; font-size:1.25rem; font-weight:700;">Firmas de Participantes</h2>
+                <span onclick="document.getElementById('signaturesModal').style.display='none'"
+                    style="color:#aaa; font-size:28px; font-weight:bold; cursor:pointer;">&times;</span>
+            </div>
+
+            <div style="margin-bottom:24px;">
+                <table style="width:100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color:#f8f9fa; border-bottom: 2px solid #eee;">
+                            <th style="text-align:left; padding:12px; font-size:0.85rem; color:#6c757d;">PARTICIPANTE
+                            </th>
+                            <th style="text-align:left; padding:12px; font-size:0.85rem; color:#6c757d;">ESTADO</th>
+                            <th style="text-align:left; padding:12px; font-size:0.85rem; color:#6c757d;">FECHA FIRMA
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in participants_data %}
+                        <tr style="border-bottom:1px solid #f1f1f1;">
+                            <td style="padding:12px; font-weight:600;">
+                                {{ p.user.get_full_name|default:p.user.username }}
+                                {% if p.user == object.inspector %}<small class="text-muted">(Inspector)</small>{% endif
+                                %}
+                            </td>
+                            <td style="padding:12px;">
+                                {% if p.has_signed %}
+                                <span class="badge"
+                                    style="background:#28a745; color:white; padding:4px 8px; border-radius:4px; font-size:0.75rem;">FIRMADO</span>
+                                {% else %}
+                                <span class="badge"
+                                    style="background:#ffc107; color:#212529; padding:4px 8px; border-radius:4px; font-size:0.75rem;">PENDIENTE</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding:12px; font-size:0.85rem; color:#6c757d;">
+                                {% if p.signed_at %}
+                                {{ p.signed_at|date:"d/m/Y H:i" }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="text-align:right; border-top:1px solid #eee; padding-top:20px;">
+                {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
+                {% if can_sign %}
+                <form action="{% url 'first_aid_sign' object.pk %}" method="post" style="display:inline;"
+                    onsubmit="return confirm('¿Está seguro de firmar esta inspección? Se utilizará su firma digital registrada en el Perfil.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">
+                        <i class="fas fa-file-signature"></i> Firmar Inspección
+                    </button>
+                </form>
+                {% elif user_has_signed %}
+                <span style="color:#28a745; font-weight:600; margin-right:15px;"><i class="fas fa-check-circle"></i>
+                    Firmado</span>
+                {% elif not is_participant %}
+                <span style="color:#6c757d; font-size:0.85rem; margin-right:15px;">No está en la lista de
+                    participantes.</span>
+                {% elif not has_signature_profile %}
+                <div style="display:inline-block; margin-right:10px; text-align:right;">
+                    <p style="color:#dc3545; font-size:0.8rem; margin:0 0 5px 0;">Debe registrar su firma en el perfil.
+                    </p>
+                    <a href="{% url 'user_profile' %}" class="btn"
+                        style="background-color: #6c757d; color: white; padding: 6px 12px; text-decoration: none; font-size:0.85rem;">Ir
+                        al Perfil</a>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <button class="btn" onclick="document.getElementById('signaturesModal').style.display='none'"
+                    style="background-color: #e9ecef; color: #495057; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-left:10px;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            var modal = document.getElementById('signaturesModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
 
     <!-- General Info Card (MOVIDO ARRIBA) -->
     <div class="card">

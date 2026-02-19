@@ -51,7 +51,8 @@
                         {% endif %}
                     </td>
                     <td>{{ item.area }}</td>
-                    <td>{{ item.responsible.get_full_name|default:item.responsible.username }}</td>
+                    <td>{% if item.responsible %}{{ item.responsible.get_full_name|default:item.responsible.username
+                        }}{% else %}No asignado{% endif %}</td>
                     <td><span class="badge" style="background: #e3f2fd; color: #1976d2;">{{ item.frequency }}</span>
                     </td>
                     <td>{{ item.observations|truncatewords:8|default:"—" }}</td>
@@ -115,13 +116,13 @@
                     </td>
                     <td>
                         <div style="display: flex; gap: 8px;">
-                            <a href="{% url 'extinguisher_detail' inspection.pk %}" class="btn btn-sm"
-                                style="background: #6c757d; color: white; padding: 6px 12px;" title="Ver Detalle">
+                            <a href="{% url 'extinguisher_detail' inspection.pk %}" class="btn btn-sm btn-info"
+                                title="Ver Detalle">
                                 <i class="fas fa-eye"></i>
                             </a>
                             {% if inspection.status != 'Cerrada' and inspection.status != 'Cerrada con Hallazgos' %}
-                            <a href="{% url 'extinguisher_edit' inspection.pk %}" class="btn btn-sm"
-                                style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar">
+                            <a href="{% url 'extinguisher_edit' inspection.pk %}" class="btn btn-sm btn-primary"
+                                title="Editar">
                                 <i class="fas fa-edit"></i>
                             </a>
                             {% else %}

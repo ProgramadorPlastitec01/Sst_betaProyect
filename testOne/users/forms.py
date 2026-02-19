@@ -25,3 +25,23 @@ class UserSignatureForm(forms.ModelForm):
         widgets = {
             'digital_signature': forms.HiddenInput()
         }
+
+class AdminResetPasswordForm(forms.Form):
+    new_password = forms.CharField(
+        label="Nueva Contraseña", 
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        help_text="Ingrese la nueva contraseña para este usuario."
+    )
+    confirm_password = forms.CharField(
+        label="Confirmar Contraseña", 
+        widget=forms.PasswordInput(attrs={'class': 'form-control'})
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        new_password = cleaned_data.get("new_password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if new_password and confirm_password and new_password != confirm_password:
+            raise forms.ValidationError("Las contraseñas no coinciden.")
+        return cleaned_data
