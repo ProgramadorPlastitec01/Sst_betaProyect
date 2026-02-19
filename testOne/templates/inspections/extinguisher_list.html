@@ -101,15 +101,34 @@
                     <td>{{ inspection.inspector }}</td>
                     <td>
                         <div class="d-flex flex-column">
-                            <span
-                                class="compliance-badge {% if inspection.status == 'Cerrada' %}badge-success{% elif inspection.status == 'Cerrada con Hallazgos' %}badge-warning{% elif inspection.status == 'En proceso' %}badge-primary{% elif inspection.status == 'Programada' or inspection.status == 'Programado' %}badge-secondary{% else %}badge-secondary{% endif %}"
-                                style="font-size: 0.75rem; width: fit-content;">
-                                {% if inspection.status == 'Programada' %}Programado{% else %}{{ inspection.status }}
+                            <span class="compliance-badge" style="font-size: 0.75rem; width: fit-content;
+                                {% if inspection.status == 'Cerrada' %}
+                                    background: #d4edda; color: #155724;
+                                {% elif inspection.status == 'Cerrada con Hallazgos' %}
+                                    background: #fff3cd; color: #856404;
+                                {% elif inspection.status == 'Pendiente de Firmas' %}
+                                    background: #fff3e0; color: #e65100;
+                                {% elif inspection.status == 'En proceso' %}
+                                    background: #cce5ff; color: #004085;
+                                {% else %}
+                                    background: #e2e3e5; color: #495057;
+                                {% endif %}">
+                                {% if inspection.status == 'Pendiente de Firmas' %}
+                                <i class="fas fa-pen-nib" style="margin-right:4px;"></i>
+                                {% elif inspection.status == 'Cerrada' %}
+                                <i class="fas fa-check-circle" style="margin-right:4px;"></i>
+                                {% elif inspection.status == 'Cerrada con Hallazgos' %}
+                                <i class="fas fa-exclamation-circle" style="margin-right:4px;"></i>
+                                {% elif inspection.status == 'En proceso' %}
+                                <i class="fas fa-spinner" style="margin-right:4px;"></i>
+                                {% else %}
+                                <i class="fas fa-clock" style="margin-right:4px;"></i>
                                 {% endif %}
-                            </span><br>
+                                {{ inspection.status }}
+                            </span>
                             {% if inspection.get_total_follow_ups_count > 0 %}
                             <small class="text-muted mt-1" style="font-size: 0.7rem;">
-                                Seguimientos: {{ inspection.get_total_follow_ups_count }}
+                                <i class="fas fa-link"></i> Seguimientos: {{ inspection.get_total_follow_ups_count }}
                             </small>
                             {% endif %}
                         </div>

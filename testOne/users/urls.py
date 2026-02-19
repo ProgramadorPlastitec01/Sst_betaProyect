@@ -1,7 +1,7 @@
 from django.urls import path
 from django.contrib.auth.views import LogoutView
 from .views import (
-    CustomLoginView, DashboardView, UserListView, 
+    CustomLoginView, DashboardView, DashboardModalDataView, UserListView, 
     UserCreateView, UserUpdateView, UserDeleteView,
     ProfileView, UserPasswordChangeView, DigitalSignatureUpdateView,
     UserResetPasswordView
@@ -11,6 +11,7 @@ urlpatterns = [
     path('login/', CustomLoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
+    path('dashboard/modal-data/', DashboardModalDataView.as_view(), name='dashboard_modal_data'),
     path('users/', UserListView.as_view(), name='user_list'),
     path('users/create/', UserCreateView.as_view(), name='user_create'),
     path('users/<int:pk>/edit/', UserUpdateView.as_view(), name='user_edit'),

@@ -1,9 +1,12 @@
 from django.shortcuts import render
-from django.urls import reverse_lazy
-from django.views.generic import TemplateView, ListView, CreateView, UpdateView, DeleteView
+from django.urls import reverse_lazy, reverse
+from django.views.generic import TemplateView, ListView, CreateView, UpdateView, DeleteView, View
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
+from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.db.models import Q
 from .models import CustomUser
 from .forms import CustomUserCreationForm, CustomUserChangeForm, UserProfileForm, UserSignatureForm, AdminResetPasswordForm
 from inspections.models import (
@@ -112,11 +115,178 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         ).exclude(status='Realizada').order_by('scheduled_date')
 
         context['active_findings'] = active_findings
-        
-        # 4. User Notifications
+
+        # 5. Counters for stat cards
+        # Total Programadas = all InspectionSchedule items user can see
+        total_scheduled_qs = InspectionSchedule.objects.filter(schedule_filter)
+        context['total_scheduled'] = total_scheduled_qs.count()
+
+        # Total Ejecutadas = consolidated count of actual inspection records
+        inspection_models_map = [
+            ('extinguisher', ExtinguisherInspection),
+            ('first_aid', FirstAidInspection),
+            ('process', ProcessInspection),
+            ('storage', StorageInspection),
+            ('forklift', ForkliftInspection),
+        ]
+        total_executed = 0
+        for key, model_cls in inspection_models_map:
+            if user.has_perm_custom(key, 'view'):
+                qs_exec = model_cls.objects.all()
+                if hasattr(model_cls, 'parent_inspection'):
+                    qs_exec = qs_exec.filter(parent_inspection__isnull=True)
+                total_executed += qs_exec.count()
+        context['total_executed'] = total_executed
+
+        # 6. User Notifications
         context['notifications'] = user.notifications.filter(is_read=False).order_by('-created_at')[:5]
-        
+
         return context
+
+
+class DashboardModalDataView(LoginRequiredMixin, View):
+    """
+    AJAX view that returns paginated + filtered data for Dashboard modals.
+    table param: 'schedule' | 'executed'
+    """
+
+    INSPECTION_MODULES = [
+        {'key': 'extinguisher', 'patterns': ['extintor'], 'model': ExtinguisherInspection,
+         'label': 'Extintores', 'url': 'extinguisher_detail'},
+        {'key': 'first_aid', 'patterns': ['botiquin'], 'model': FirstAidInspection,
+         'label': 'Botiquines', 'url': 'first_aid_detail'},
+        {'key': 'process', 'patterns': ['proceso', 'instalacion'], 'model': ProcessInspection,
+         'label': 'Instalaciones de Proceso', 'url': 'process_detail'},
+        {'key': 'storage', 'patterns': ['almacen', 'storage'], 'model': StorageInspection,
+         'label': 'Almacenamiento', 'url': 'storage_detail'},
+        {'key': 'forklift', 'patterns': ['montacarga'], 'model': ForkliftInspection,
+         'label': 'Montacargas', 'url': 'forklift_detail'},
+    ]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        table = request.GET.get('table', 'schedule')  # 'schedule' | 'executed'
+        page = int(request.GET.get('page', 1))
+        per_page = 10
+
+        # Shared filters
+        q_search = request.GET.get('q', '').strip()
+        f_date = request.GET.get('date', '').strip()
+        f_type = request.GET.get('type', '').strip()
+        f_status = request.GET.get('status', '').strip()
+
+        # Build permission filter for schedule
+        schedule_filter = Q(pk__in=[])
+        allowed_mods = []
+        for mod in self.INSPECTION_MODULES:
+            if user.has_perm_custom(mod['key'], 'view'):
+                allowed_mods.append(mod)
+                t_q = Q()
+                for p in mod['patterns']:
+                    t_q |= Q(inspection_type__icontains=p)
+                schedule_filter |= t_q
+
+        if table == 'schedule':
+            rows, total_count = self._get_schedule_data(
+                schedule_filter, q_search, f_date, f_type, f_status, page, per_page
+            )
+        else:
+            rows, total_count = self._get_executed_data(
+                allowed_mods, q_search, f_date, f_type, f_status, page, per_page
+            )
+
+        total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
+        return JsonResponse({
+            'rows': rows,
+            'page': page,
+            'total_pages': total_pages,
+            'total_count': total_count,
+        })
+
+    def _get_schedule_data(self, schedule_filter, q, f_date, f_type, f_status, page, per_page):
+        qs = InspectionSchedule.objects.filter(schedule_filter).select_related('area', 'responsible')
+
+        if q:
+            qs = qs.filter(
+                Q(inspection_type__icontains=q) |
+                Q(area__name__icontains=q) |
+                Q(observations__icontains=q)
+            )
+        if f_date:
+            qs = qs.filter(scheduled_date=f_date)
+        if f_type:
+            qs = qs.filter(inspection_type__icontains=f_type)
+        if f_status:
+            qs = qs.filter(status=f_status)
+
+        qs = qs.order_by('-scheduled_date')
+        total = qs.count()
+        paginator = Paginator(qs, per_page)
+        page_obj = paginator.get_page(page)
+
+        rows = []
+        for item in page_obj:
+            rows.append({
+                'id': item.pk,
+                'date': item.scheduled_date.strftime('%d/%m/%Y') if item.scheduled_date else '',
+                'type': item.inspection_type,
+                'area': str(item.area) if item.area else '',
+                'frequency': item.frequency,
+                'responsible': item.responsible.get_full_name() if item.responsible else 'Equipo SST',
+                'status': item.status,
+                'observations': item.observations or '',
+            })
+        return rows, total
+
+    def _get_executed_data(self, allowed_mods, q, f_date, f_type, f_status, page, per_page):
+        all_items = []
+        for mod in allowed_mods:
+            model_cls = mod['model']
+            label = mod['label']
+            url_name = mod['url']
+
+            # Type filter: skip module if not matching
+            if f_type and f_type != label:
+                continue
+
+            qs = model_cls.objects.select_related('area', 'inspector').all()
+            if hasattr(model_cls, 'parent_inspection'):
+                qs = qs.filter(parent_inspection__isnull=True)
+
+            if q:
+                qs = qs.filter(
+                    Q(area__name__icontains=q) |
+                    Q(inspector__first_name__icontains=q) |
+                    Q(inspector__last_name__icontains=q)
+                )
+            if f_date:
+                qs = qs.filter(inspection_date=f_date)
+            if f_status:
+                qs = qs.filter(status=f_status)
+
+            for insp in qs:
+                status_val = getattr(insp, 'status', None) or getattr(insp, 'general_status', '')
+                all_items.append({
+                    'date_raw': insp.inspection_date,
+                    'id': insp.pk,
+                    'date': insp.inspection_date.strftime('%d/%m/%Y') if insp.inspection_date else '',
+                    'type': label,
+                    'area': str(insp.area) if insp.area else '',
+                    'inspector': insp.inspector.get_full_name() if insp.inspector else 'N/A',
+                    'status': status_val,
+                    'detail_url': reverse(url_name, args=[insp.pk]),
+                })
+
+        # Sort by date descending
+        all_items.sort(key=lambda x: x.get('date_raw') or date.min, reverse=True)
+        # Remove sort key before pagination
+        for item in all_items:
+            item.pop('date_raw', None)
+
+        total = len(all_items)
+        start = (page - 1) * per_page
+        end = start + per_page
+        return all_items[start:end], total
 
 class UserListView(LoginRequiredMixin, ListView):
     model = CustomUser

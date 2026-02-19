@@ -23,7 +23,9 @@
 
 <!-- Key Metrics -->
 <div class="stats-container">
-    <div class="stat-card">
+    <!-- Card: Total Programadas → abre modal Cronograma Programado -->
+    <div class="stat-card" onclick="openModal('cronogramaModal')" style="cursor: pointer;"
+        title="Ver Cronograma Programado">
         <div class="stat-icon icon-blue">
             <i class="fas fa-tasks"></i>
         </div>
@@ -32,7 +34,9 @@
             <p>{{ total_p_global }}</p>
         </div>
     </div>
-    <div class="stat-card">
+    <!-- Card: Total Ejecutadas → abre modal Gestión de Registros -->
+    <div class="stat-card" onclick="openModal('registrosModal')" style="cursor: pointer;"
+        title="Ver Gestión de Registros">
         <div class="stat-icon icon-green">
             <i class="fas fa-check-circle"></i>
         </div>
@@ -220,186 +224,9 @@
 
 </div>
 
-<!-- TABLA 1: Gestión de Registros de Programación -->
-<div class="card">
-    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 class="card-title">Gestión de Registros de Programación</h3>
-        <button onclick="openModal('registrosModal')" class="btn btn-sm btn-primary">
-            Ver más
-        </button>
-    </div>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Año</th>
-                    <th>Área</th>
-                    <th>Tipo de Inspección</th>
-                    <th>Inspector</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if latest_inspections %}
-                <!-- Limit to 10 records for default view -->
-                {% for insp in latest_inspections %}
-                <tr>
-                    <td style="font-weight: 600;">{{ insp.date|date:"d/m/Y" }}</td>
-                    <td>{{ insp.year }}</td>
-                    <td>{{ insp.area }}</td>
-                    <td>{{ insp.type }}</td>
-                    <td>{{ insp.inspector }}</td>
-                    <td>
-                        <div class="d-flex flex-column">
-                            <span
-                                class="compliance-badge {% if insp.status == 'Cumple' or insp.status == 'Realizada' or insp.status == 'Cerrada' %}badge-success{% elif insp.status == 'No Cumple' or insp.status == 'Vencida' %}badge-danger{% elif insp.status == 'Cerrada con Hallazgos' %}badge-warning{% elif insp.status == 'En proceso' %}badge-primary{% elif insp.status == 'Programada' or insp.status == 'Programado' %}badge-secondary{% else %}badge-secondary{% endif %}"
-                                style="font-size: 0.75rem; width: fit-content;">
-                                {% if insp.status == 'Programada' %}Programado{% else %}{{ insp.status }}{% endif %}
-                            </span>
-                            {% if insp.follow_ups_count > 0 %}
-                            <small class="text-muted mt-1" style="font-size: 0.7rem;">
-                                Seguimientos: {{ insp.follow_ups_count }}
-                            </small>
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td>
-                        <div style="display: flex; gap: 8px;">
-                            <a href="{{ insp.detail_url }}" class="btn btn-sm btn-info" title="Ver Detalle">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-                {% else %}
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-light);">
-                        <i class="fas fa-inbox"
-                            style="font-size: 3rem; opacity: 0.3; display: block; margin-bottom: 16px;"></i>
-                        <p style="margin: 0;">No hay inspecciones registradas
-                            {% if request.GET.year or request.GET.area %}
-                            con los filtros seleccionados
-                            {% endif %}.</p>
-                    </td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
-</div>
+<!-- Las tablas se acceden únicamente desde las tarjetas superiores (modales) -->
 
-<!-- TABLA 2: Cronograma Programado -->
-{% if schedule %}
-<div class="card">
-    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 class="card-title">Cronograma Programado</h3>
-        <button onclick="openModal('cronogramaModal')" class="btn btn-sm btn-primary">
-            Ver más
-        </button>
-    </div>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Área</th>
-                    <th>Tipo de Inspección</th>
-                    <th>Fecha Programada</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Limit to 10 records -->
-                {% for i in latest_schedule %}
-                <tr>
-                    <td style="font-weight: 600;">{{ i.area }}</td>
-                    <td>{{ i.inspection_type }}</td>
-                    <td>{{ i.scheduled_date|date:"d/m/Y" }}</td>
-                    <td>
-                        <span class="compliance-badge {{ i.status_css_class }}" style="font-size: 0.75rem;">
-                            {{ i.status_label }}
-                        </span>
-                    </td>
-                    <td>
-                        <div style="position: relative;">
-                            <button type="button" class="btn btn-sm"
-                                onclick="toggleActionMenu(event, 'menu-{{ i.pk }}')"
-                                style="background: rgba(73, 186, 160, 0.1); border: 1px solid rgba(73, 186, 160, 0.2); color: var(--primary-color); width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
-                                <i class="fas fa-cog"></i>
-                            </button>
 
-                            <!-- Dropdown Menu -->
-                            <div id="menu-{{ i.pk }}" class="action-dropdown-menu"
-                                style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; width: 160px; 
-                                       background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; overflow: hidden;">
-
-                                {% with linked_url=i.get_absolute_url_result %}
-
-                                {% if linked_url %}
-                                <a href="{{ linked_url }}" class="dropdown-item">
-                                    <i class="fas fa-eye" style="color: #17a2b8; width: 16px;"></i> Ver
-                                </a>
-                                {% endif %}
-
-                                {% if not linked_url %}
-                                <a href="{% url 'inspection_edit' i.pk %}" class="dropdown-item">
-                                    <i class="fas fa-edit" style="color: #49BAA0; width: 16px;"></i> Editar
-                                </a>
-                                {% endif %}
-
-                                {% if not linked_url and i.is_executable %}
-                                {% with t=i.inspection_type|lower %}
-                                {% if "extintor" in t %}
-                                <a href="{% url 'extinguisher_create' %}?schedule_item={{ i.pk }}"
-                                    class="dropdown-item">
-                                    <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i> Ejecutar
-                                </a>
-                                {% elif "botiquin" in t %}
-                                <a href="{% url 'first_aid_create' %}?schedule_item={{ i.pk }}" class="dropdown-item">
-                                    <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i> Ejecutar
-                                </a>
-                                {% elif "proceso" in t %}
-                                <a href="{% url 'process_create' %}?schedule_item={{ i.pk }}" class="dropdown-item">
-                                    <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i> Ejecutar
-                                </a>
-                                {% elif "almacen" in t %}
-                                <a href="{% url 'storage_create' %}?schedule_item={{ i.pk }}" class="dropdown-item">
-                                    <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i> Ejecutar
-                                </a>
-                                {% elif "montacarga" in t %}
-                                <a href="{% url 'forklift_create' %}?schedule_item={{ i.pk }}" class="dropdown-item">
-                                    <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i> Ejecutar
-                                </a>
-                                {% endif %}
-                                {% endwith %}
-                                {% endif %}
-
-                                {% if not linked_url %}
-                                <a href="{% url 'inspection_delete' i.pk %}" class="dropdown-item"
-                                    onclick="return confirm('¿Está seguro de eliminar esta programación?')">
-                                    <i class="fas fa-trash" style="color: #dc3545; width: 16px;"></i> Eliminar
-                                </a>
-                                {% endif %}
-
-                                {% endwith %}
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 32px; color: var(--text-light);">No hay
-                        registros encontrados para los filtros seleccionados.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endif %}
 
 <!-- MODAL: Nueva Programación -->
 <div id="newRecordModal" class="modal-overlay">
@@ -433,56 +260,83 @@
     </div>
 </div>
 
-<!-- MODAL: Todos los Registros de Programación -->
+<!-- MODAL: Gestión de Registros de Programación (Total Ejecutadas) -->
 <div id="registrosModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 900px; width: 95%;">
+    <div class="modal-content" style="max-width: 1050px; width: 97%;">
         <div class="modal-header">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; color: var(--primary-color);">Todos los Registros de Programación</h3>
+                <h3 style="margin: 0; color: var(--primary-color);"><i class="fas fa-clipboard-list"
+                        style="margin-right:8px;"></i>Gestión de Registros de Programación</h3>
                 <button onclick="closeModal('registrosModal')"
                     style="background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer;">&times;</button>
             </div>
         </div>
         <div class="modal-body">
-            <input type="text" id="registrosSearch" onkeyup="filterTable('registrosTable', 'registrosSearch')"
-                placeholder="Buscar en la tabla..." class="form-control" style="margin-bottom: 15px;">
-            <div class="table-wrapper">
-                <table id="registrosTable">
+            <!-- Filtros -->
+            <div
+                style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; padding:14px; background:#f8f9fa; border-radius:8px; align-items:flex-end;">
+                <div style="flex:1; min-width:150px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-search"></i> Búsqueda</label>
+                    <input type="text" id="reg-q" placeholder="Área, inspector…" class="form-control"
+                        style="height:36px; font-size:.875rem;" oninput="regDebounce()">
+                </div>
+                <div style="flex:1; min-width:130px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-calendar"></i> Fecha</label>
+                    <input type="date" id="reg-date" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadRegModal(1)">
+                </div>
+                <div style="flex:1; min-width:160px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-tag"></i> Tipo</label>
+                    <select id="reg-type" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadRegModal(1)">
+                        <option value="">Todos los tipos</option>
+                        {% for t in types_data %}<option value="{{ t.val }}">{{ t.val }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div style="flex:1; min-width:140px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-flag"></i> Estado</label>
+                    <select id="reg-status" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadRegModal(1)">
+                        <option value="">Todos</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="En proceso">En proceso</option>
+                        <option value="Pendiente de Firmas">Pendiente de Firmas</option>
+                        <option value="Cerrada">Cerrada</option>
+                        <option value="Cerrada con Hallazgos">Cerrada con Hallazgos</option>
+                    </select>
+                </div>
+                <button class="btn btn-sm btn-secondary" onclick="clearRegFilters()" style="height:36px;"><i
+                        class="fas fa-times"></i> Limpiar</button>
+            </div>
+            <!-- Tabla -->
+            <div class="table-wrapper" style="margin:0;">
+                <table style="width:100%; margin:0;">
                     <thead>
                         <tr>
                             <th>Fecha</th>
-                            <th>Año</th>
                             <th>Área</th>
                             <th>Tipo</th>
                             <th>Inspector</th>
                             <th>Estado</th>
-                            <th>Acciones</th>
+                            <th style="text-align:center;">Detalle</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for insp in all_inspections %}
+                    <tbody id="reg-tbody">
                         <tr>
-                            <td style="font-weight: 600; white-space: nowrap;">{{ insp.date|date:"d/m/Y" }}</td>
-                            <td>{{ insp.year }}</td>
-                            <td>{{ insp.area }}</td>
-                            <td>{{ insp.type }}</td>
-                            <td>{{ insp.inspector }}</td>
-                            <td>
-                                <span
-                                    class="compliance-badge {% if insp.status == 'Cumple' or insp.status == 'Realizada' or insp.status == 'Cerrada' %}badge-success{% elif insp.status == 'No Cumple' or insp.status == 'Vencida' %}badge-danger{% elif insp.status == 'Cerrada con Hallazgos' %}badge-warning{% elif insp.status == 'En proceso' %}badge-primary{% elif insp.status == 'Programada' or insp.status == 'Programado' %}badge-secondary{% else %}badge-secondary{% endif %}"
-                                    style="font-size: 0.75rem;">
-                                    {% if insp.status == 'Programada' %}Programado{% else %}{{ insp.status }}{% endif %}
-                                </span>
-                            </td>
-                            <td>
-                                <a href="{{ insp.detail_url }}" class="btn btn-sm btn-info" title="Ver Detalle">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </td>
+                            <td colspan="6" style="padding:40px; text-align:center; color:#6c757d;"><i
+                                    class="fas fa-spinner fa-spin"></i> Cargando…</td>
                         </tr>
-                        {% endfor %}
                     </tbody>
                 </table>
+            </div>
+            <!-- Paginación -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                <span id="reg-info" style="color:#6c757d; font-size:.875rem;"></span>
+                <div id="reg-pages" style="display:flex; gap:6px;"></div>
             </div>
         </div>
         <div class="modal-footer">
@@ -493,119 +347,81 @@
     </div>
 </div>
 
-<!-- MODAL: Cronograma Programado Completo -->
+<!-- MODAL: Cronograma Programado (Total Programadas) -->
 <div id="cronogramaModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 900px; width: 95%;">
+    <div class="modal-content" style="max-width: 1050px; width: 97%;">
         <div class="modal-header">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; color: var(--primary-color);">Cronograma Programado Completo</h3>
+                <h3 style="margin: 0; color: var(--primary-color);"><i class="fas fa-calendar-check"
+                        style="margin-right:8px;"></i>Cronograma Programado</h3>
                 <button onclick="closeModal('cronogramaModal')"
                     style="background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer;">&times;</button>
             </div>
         </div>
         <div class="modal-body">
-            <input type="text" id="cronogramaSearch" onkeyup="filterTable('cronogramaTable', 'cronogramaSearch')"
-                placeholder="Buscar en el cronograma..." class="form-control" style="margin-bottom: 15px;">
-            <div class="table-wrapper">
-                <table id="cronogramaTable">
+            <!-- Filtros -->
+            <div
+                style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; padding:14px; background:#f8f9fa; border-radius:8px; align-items:flex-end;">
+                <div style="flex:1; min-width:150px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-search"></i> Búsqueda</label>
+                    <input type="text" id="crn-q" placeholder="Tipo, área…" class="form-control"
+                        style="height:36px; font-size:.875rem;" oninput="crnDebounce()">
+                </div>
+                <div style="flex:1; min-width:130px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-calendar"></i> Fecha</label>
+                    <input type="date" id="crn-date" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadCrnModal(1)">
+                </div>
+                <div style="flex:1; min-width:160px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-tag"></i> Tipo</label>
+                    <select id="crn-type" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadCrnModal(1)">
+                        <option value="">Todos los tipos</option>
+                        {% for t in types_data %}<option value="{{ t.val }}">{{ t.val }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div style="flex:1; min-width:140px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-flag"></i> Estado</label>
+                    <select id="crn-status" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadCrnModal(1)">
+                        <option value="">Todos</option>
+                        <option value="Programada">Programada</option>
+                        <option value="Realizada">Realizada</option>
+                        <option value="Pendiente por ejecutar">Pendiente por ejecutar</option>
+                    </select>
+                </div>
+                <button class="btn btn-sm btn-secondary" onclick="clearCrnFilters()" style="height:36px;"><i
+                        class="fas fa-times"></i> Limpiar</button>
+            </div>
+            <!-- Tabla -->
+            <div class="table-wrapper" style="margin:0;">
+                <table style="width:100%; margin:0;">
                     <thead>
                         <tr>
-                            <th>Área</th>
-                            <th>Tipo</th>
                             <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Área</th>
+                            <th>Frecuencia</th>
+                            <th>Responsable</th>
                             <th>Estado</th>
-                            <th>Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for i in schedule %}
+                    <tbody id="crn-tbody">
                         <tr>
-                            <td style="font-weight: 600;">{{ i.area }}</td>
-                            <td>{{ i.inspection_type }}</td>
-                            <td style="white-space: nowrap;">{{ i.scheduled_date|date:"d/m/Y" }}</td>
-                            <td>
-                                <span class="compliance-badge {{ i.status_css_class }}" style="font-size: 0.75rem;">
-                                    {{ i.status_label }}
-                                </span>
-                            </td>
-                            <td>
-                                <div style="position: relative;">
-                                    <button type="button" class="btn btn-sm"
-                                        onclick="toggleActionMenu(event, 'menu-modal-{{ i.pk }}')"
-                                        style="background: rgba(73, 186, 160, 0.1); border: 1px solid rgba(73, 186, 160, 0.2); color: var(--primary-color); width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
-                                        <i class="fas fa-cog"></i>
-                                    </button>
-
-                                    <!-- Dropdown Menu (Modal Unique ID) -->
-                                    <div id="menu-modal-{{ i.pk }}" class="action-dropdown-menu"
-                                        style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; width: 160px; 
-                                       background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; overflow: hidden;">
-
-                                        {% with linked_url=i.get_absolute_url_result %}
-
-                                        {% if linked_url %}
-                                        <a href="{{ linked_url }}" class="dropdown-item">
-                                            <i class="fas fa-eye" style="color: #17a2b8; width: 16px;"></i> Ver
-                                        </a>
-                                        {% endif %}
-
-                                        {% if not linked_url %}
-                                        <a href="{% url 'inspection_edit' i.pk %}" class="dropdown-item">
-                                            <i class="fas fa-edit" style="color: #49BAA0; width: 16px;"></i> Editar
-                                        </a>
-                                        {% endif %}
-
-                                        {% if not linked_url and i.is_executable %}
-                                        {% with t=i.inspection_type|lower %}
-                                        {% if "extintor" in t %}
-                                        <a href="{% url 'extinguisher_create' %}?schedule_item={{ i.pk }}"
-                                            class="dropdown-item">
-                                            <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i>
-                                            Ejecutar
-                                        </a>
-                                        {% elif "botiquin" in t %}
-                                        <a href="{% url 'first_aid_create' %}?schedule_item={{ i.pk }}"
-                                            class="dropdown-item">
-                                            <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i>
-                                            Ejecutar
-                                        </a>
-                                        {% elif "proceso" in t %}
-                                        <a href="{% url 'process_create' %}?schedule_item={{ i.pk }}"
-                                            class="dropdown-item">
-                                            <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i>
-                                            Ejecutar
-                                        </a>
-                                        {% elif "almacen" in t %}
-                                        <a href="{% url 'storage_create' %}?schedule_item={{ i.pk }}"
-                                            class="dropdown-item">
-                                            <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i>
-                                            Ejecutar
-                                        </a>
-                                        {% elif "montacarga" in t %}
-                                        <a href="{% url 'forklift_create' %}?schedule_item={{ i.pk }}"
-                                            class="dropdown-item">
-                                            <i class="fas fa-play-circle" style="color: #28a745; width: 16px;"></i>
-                                            Ejecutar
-                                        </a>
-                                        {% endif %}
-                                        {% endwith %}
-                                        {% endif %}
-
-                                        {% if not linked_url %}
-                                        <a href="{% url 'inspection_delete' i.pk %}" class="dropdown-item"
-                                            onclick="return confirm('¿Está seguro de eliminar esta programación?')">
-                                            <i class="fas fa-trash" style="color: #dc3545; width: 16px;"></i> Eliminar
-                                        </a>
-                                        {% endif %}
-
-                                        {% endwith %}
-                                    </div>
-                                </div>
-                            </td>
+                            <td colspan="6" style="padding:40px; text-align:center; color:#6c757d;"><i
+                                    class="fas fa-spinner fa-spin"></i> Cargando…</td>
                         </tr>
-                        {% endfor %}
                     </tbody>
                 </table>
+            </div>
+            <!-- Paginación -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                <span id="crn-info" style="color:#6c757d; font-size:.875rem;"></span>
+                <div id="crn-pages" style="display:flex; gap:6px;"></div>
             </div>
         </div>
         <div class="modal-footer">
@@ -617,9 +433,16 @@
 </div>
 
 <script>
+    const MODAL_AJAX_URL = "{% url 'dashboard_modal_data' %}";
+    let _regTimer = null;
+    let _crnTimer = null;
+
     function openModal(modalId) {
         document.getElementById(modalId).style.display = 'flex';
         document.body.classList.add('modal-open');
+        // Auto-load modal data on open
+        if (modalId === 'registrosModal') loadRegModal(1);
+        if (modalId === 'cronogramaModal') loadCrnModal(1);
     }
 
     function closeModal(modalId) {
@@ -636,54 +459,124 @@
 
     // Action Menu Toggle for Table
     function toggleActionMenu(event, menuId) {
-        event.stopPropagation(); // Prevent document click closing immediately
-
-        // Close all other menus first
+        event.stopPropagation();
         document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
-            if (menu.id !== menuId) {
-                menu.style.display = 'none';
-            }
+            if (menu.id !== menuId) menu.style.display = 'none';
         });
-
         const menu = document.getElementById(menuId);
-        if (menu.style.display === 'none' || menu.style.display === '') {
-            menu.style.display = 'block';
-        } else {
-            menu.style.display = 'none';
-        }
+        menu.style.display = (menu.style.display === 'none' || menu.style.display === '') ? 'block' : 'none';
     }
 
-    // Table Filtering
-    function filterTable(tableId, inputId) {
-        var input, filter, table, tr, td, i, j, txtValue;
-        input = document.getElementById(inputId);
-        filter = input.value.toUpperCase();
-        table = document.getElementById(tableId);
-        tr = table.getElementsByTagName("tr");
-
-        for (i = 1; i < tr.length; i++) {
-            tr[i].style.display = "none";
-            td = tr[i].getElementsByTagName("td");
-            for (j = 0; j < td.length; j++) {
-                if (td[j]) {
-                    txtValue = td[j].textContent || td[j].innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        tr[i].style.display = "";
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    // Close action menus when clicking outside
     document.addEventListener('click', function (event) {
         if (!event.target.closest('.action-menu-container') && !event.target.closest('.btn-light')) {
-            document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
-                menu.style.display = 'none';
-            });
+            document.querySelectorAll('.action-dropdown-menu').forEach(menu => { menu.style.display = 'none'; });
         }
     });
+
+    // ── Status badge helper ──────────────────────────────────
+    function statusBadge(s) {
+        const map = {
+            'Cerrada': 'background:#d4edda;color:#155724;',
+            'Cerrada con Hallazgos': 'background:#fff3cd;color:#856404;',
+            'Pendiente de Firmas': 'background:#fff3e0;color:#e65100;',
+            'En proceso': 'background:#cce5ff;color:#004085;',
+            'Realizada': 'background:#d4edda;color:#155724;',
+            'Programada': 'background:#e2e3e5;color:#495057;',
+        };
+        const st = map[s] || 'background:#e2e3e5;color:#495057;';
+        return `<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:600;${st}">${s || '—'}</span>`;
+    }
+
+    // ── Pagination renderer ──────────────────────────────────
+    function renderPagination(prefix, data, loaderFn) {
+        document.getElementById(prefix + '-info').textContent = data.total_count + ' registro(s) encontrado(s)';
+        const pEl = document.getElementById(prefix + '-pages');
+        let html = '';
+        const c = data.page, t = data.total_pages;
+        if (c > 1) html += `<button class="btn btn-sm btn-secondary" onclick="${loaderFn}(${c - 1})" style="padding:4px 10px;">&#8249;</button>`;
+        for (let i = Math.max(1, c - 2); i <= Math.min(t, c + 2); i++) {
+            const cls = i === c ? 'btn-primary' : 'btn-outline-secondary';
+            html += `<button class="btn btn-sm ${cls}" onclick="${loaderFn}(${i})" style="padding:4px 10px;min-width:34px;">${i}</button>`;
+        }
+        if (c < t) html += `<button class="btn btn-sm btn-secondary" onclick="${loaderFn}(${c + 1})" style="padding:4px 10px;">&#8250;</button>`;
+        pEl.innerHTML = html;
+    }
+
+    // ── MODAL: Gestión de Registros (ejecutadas) ─────────────
+    function regDebounce() { clearTimeout(_regTimer); _regTimer = setTimeout(() => loadRegModal(1), 350); }
+    function clearRegFilters() {
+        ['reg-q', 'reg-date', 'reg-type', 'reg-status'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        loadRegModal(1);
+    }
+    function loadRegModal(page) {
+        const params = new URLSearchParams({
+            table: 'executed', page: page || 1,
+            q: document.getElementById('reg-q').value,
+            date: document.getElementById('reg-date').value,
+            type: document.getElementById('reg-type').value,
+            status: document.getElementById('reg-status').value,
+        });
+        const tbody = document.getElementById('reg-tbody');
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#6c757d;"><i class="fas fa-spinner fa-spin"></i> Cargando…</td></tr>';
+        fetch(MODAL_AJAX_URL + '?' + params, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.rows || data.rows.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#6c757d;">Sin resultados para los filtros aplicados.</td></tr>';
+                } else {
+                    tbody.innerHTML = data.rows.map(r =>
+                        `<tr style="border-bottom:1px solid #f0f0f0;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.date || '—'}</td>` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.area || '—'}</td>` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.type || '—'}</td>` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.inspector || '—'}</td>` +
+                        `<td style="padding:10px;">${statusBadge(r.status)}</td>` +
+                        `<td style="padding:10px;text-align:center;"><a href="${r.detail_url}" class="btn btn-sm btn-info" title="Ver Detalle"><i class="fas fa-eye"></i></a></td>` +
+                        `</tr>`
+                    ).join('');
+                }
+                renderPagination('reg', data, 'loadRegModal');
+            })
+            .catch(() => { tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#dc3545;">Error al cargar los datos.</td></tr>'; });
+    }
+
+    // ── MODAL: Cronograma Programado ─────────────────────────
+    function crnDebounce() { clearTimeout(_crnTimer); _crnTimer = setTimeout(() => loadCrnModal(1), 350); }
+    function clearCrnFilters() {
+        ['crn-q', 'crn-date', 'crn-type', 'crn-status'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        loadCrnModal(1);
+    }
+    function loadCrnModal(page) {
+        const params = new URLSearchParams({
+            table: 'schedule', page: page || 1,
+            q: document.getElementById('crn-q').value,
+            date: document.getElementById('crn-date').value,
+            type: document.getElementById('crn-type').value,
+            status: document.getElementById('crn-status').value,
+        });
+        const tbody = document.getElementById('crn-tbody');
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#6c757d;"><i class="fas fa-spinner fa-spin"></i> Cargando…</td></tr>';
+        fetch(MODAL_AJAX_URL + '?' + params, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.rows || data.rows.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#6c757d;">Sin resultados para los filtros aplicados.</td></tr>';
+                } else {
+                    tbody.innerHTML = data.rows.map(r =>
+                        `<tr style="border-bottom:1px solid #f0f0f0;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.date || '—'}</td>` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.type || '—'}</td>` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.area || '—'}</td>` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.frequency || '—'}</td>` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.responsible || '—'}</td>` +
+                        `<td style="padding:10px;">${statusBadge(r.status)}</td>` +
+                        `</tr>`
+                    ).join('');
+                }
+                renderPagination('crn', data, 'loadCrnModal');
+            })
+            .catch(() => { tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#dc3545;">Error al cargar los datos.</td></tr>'; });
+    }
 </script>
 
 <style>

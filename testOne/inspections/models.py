@@ -6,96 +6,6 @@ from dateutil.relativedelta import relativedelta
 
 # Area Model - Standardized areas for inspections
 class Area(models.Model):
-    # ... existing content ...
-
-# ...
-
-    class Meta:
-        verbose_name = "Cronograma de Inspección"
-        verbose_name_plural = "Cronogramas de Inspección"
-        ordering = ['scheduled_date']
-
-    @property
-    def is_executable(self):
-        """
-        Determines if the inspection can be executed today.
-        Rule: Can only be executed on or after the scheduled date.
-        """
-        if self.status == 'Realizada':
-            return False
-        return date.today() >= self.scheduled_date
-
-    @property
-    def is_overdue(self):
-        """
-        Determines if the inspection is overdue.
-        Rule: Overdue if today is past the scheduled date and status is not 'Realizada'.
-        """
-        return date.today() > self.scheduled_date and self.status != 'Realizada'
-
-    @property
-    def is_upcoming(self):
-        """
-        Determines if the inspection is upcoming (within the next 7 days).
-        """
-        today = date.today()
-        return today <= self.scheduled_date <= today + timedelta(days=7) and self.status != 'Realizada'
-    
-    @property
-    def status_label(self):
-        """Returns a dynamic status label for display."""
-        if self.status == 'Realizada':
-            return 'Realizada'
-        if self.is_overdue:
-            return 'Vencida'
-        if self.is_executable:
-            return 'Disponible'
-        return 'Programada'
-
-    def generate_next_schedule(self):
-        """
-        Generates the next inspection schedule based on frequency.
-        Should be called when this inspection is completed.
-        """
-        if not self.frequency or self.frequency == 'Única':
-            return None
-            
-        next_date = self.scheduled_date
-        
-        if self.frequency == 'Mensual':
-            next_date += relativedelta(months=1)
-        elif self.frequency == 'Bimestral':
-            next_date += relativedelta(months=2)
-        elif self.frequency == 'Trimestral':
-            next_date += relativedelta(months=3)
-        elif self.frequency == 'Cuatrimestral':
-            next_date += relativedelta(months=4)
-        elif self.frequency == 'Semestral':
-            next_date += relativedelta(months=6)
-        elif self.frequency == 'Anual':
-            next_date += relativedelta(years=1)
-            
-        # Create new schedule
-        # Check if already exists to avoid duplicates
-        existing = InspectionSchedule.objects.filter(
-            area=self.area,
-            inspection_type=self.inspection_type,
-            scheduled_date=next_date
-        ).exists()
-        
-        if not existing:
-            new_schedule = InspectionSchedule.objects.create(
-                year=next_date.year,
-                area=self.area,
-                inspection_type=self.inspection_type,
-                frequency=self.frequency,
-                scheduled_date=next_date,
-                responsible=self.responsible,
-                status='Programada',
-                observations=f"Generada automáticamente tras realizar la inspección del {self.scheduled_date.strftime('%d/%m/%Y')}"
-            )
-            return new_schedule
-        return None
     """
     Standardized areas for the organization.
     Used across all inspection modules to ensure consistency.
@@ -104,12 +14,12 @@ class Area(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="Activa")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = "Área"
         verbose_name_plural = "Áreas"
         ordering = ['name']
-    
+
     def __str__(self):
         return self.name
 
@@ -202,6 +112,68 @@ class InspectionSchedule(models.Model):
                 if 'Process' in cls_name: return reverse('process_detail', args=[insp.pk])
                 if 'Storage' in cls_name: return reverse('storage_detail', args=[insp.pk])
                 if 'Forklift' in cls_name: return reverse('forklift_detail', args=[insp.pk])
+        return None
+
+    @property
+    def is_executable(self):
+        """Determines if the inspection can be executed today (on or after the scheduled date)."""
+        if self.status == 'Realizada':
+            return False
+        return date.today() >= self.scheduled_date
+
+    @property
+    def is_overdue(self):
+        """Determines if the inspection is overdue (past scheduled date, not completed)."""
+        return date.today() > self.scheduled_date and self.status != 'Realizada'
+
+    @property
+    def is_upcoming(self):
+        """Determines if the inspection is upcoming (within the next 7 days)."""
+        today = date.today()
+        return today <= self.scheduled_date <= today + timedelta(days=7) and self.status != 'Realizada'
+
+    def generate_next_schedule(self):
+        """
+        Generates the next inspection schedule based on frequency.
+        Should be called when this inspection is completed.
+        """
+        if not self.frequency or self.frequency == 'Única':
+            return None
+
+        next_date = self.scheduled_date
+
+        if self.frequency == 'Mensual':
+            next_date += relativedelta(months=1)
+        elif self.frequency == 'Bimestral':
+            next_date += relativedelta(months=2)
+        elif self.frequency == 'Trimestral':
+            next_date += relativedelta(months=3)
+        elif self.frequency == 'Cuatrimestral':
+            next_date += relativedelta(months=4)
+        elif self.frequency == 'Semestral':
+            next_date += relativedelta(months=6)
+        elif self.frequency == 'Anual':
+            next_date += relativedelta(years=1)
+
+        # Create new schedule only if it doesn't already exist
+        existing = InspectionSchedule.objects.filter(
+            area=self.area,
+            inspection_type=self.inspection_type,
+            scheduled_date=next_date
+        ).exists()
+
+        if not existing:
+            new_schedule = InspectionSchedule.objects.create(
+                year=next_date.year,
+                area=self.area,
+                inspection_type=self.inspection_type,
+                frequency=self.frequency,
+                scheduled_date=next_date,
+                responsible=self.responsible,
+                status='Programada',
+                observations=f"Generada automáticamente tras realizar la inspección del {self.scheduled_date.strftime('%d/%m/%Y')}"
+            )
+            return new_schedule
         return None
 
     @property
