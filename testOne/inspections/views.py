@@ -2012,7 +2012,6 @@ class InspectionReportView(RolePermissionRequiredMixin, TemplateView):
         
         context['stats'] = {
             'programmed': prog_count,
-            'executed': ejec_count,
             'closed': closed_count,
             'pending': pendientes_count,
             'overdue': vencidas_count,
@@ -2046,30 +2045,29 @@ class InspectionReportView(RolePermissionRequiredMixin, TemplateView):
         current_year = date.today().year
         year_to_graph = int(f_year) if f_year else current_year
         
-        ejec_series = []  # Bar dataset 1
-        cerr_series = [] # Column 2
-        pend_series = [] # Line
+        cerr_series = []
+        pend_series = []
+        venc_series = []
         
         for i in range(1, 13):
-            # Ejecutadas: Todo lo que ya tiene un registro real creado
-            count_ejec = sum(1 for x in consolidated if x['is_record'] and x['date_exec'] and x['date_exec'].month == i and x['date_exec'].year == year_to_graph)
-            
             # Cerradas: Tienen registro y el estado contiene 'Cerrada'
             cerr_count = sum(1 for x in consolidated if x['is_record'] and x['date_exec'] and x['date_exec'].month == i and x['date_exec'].year == year_to_graph and 'Cerrada' in x['status'])
             
             # Pendientes: Lo que está programado pero aún NO tiene registro real
-            # Cubrimos 'Programada', 'Disponible' y 'Vencida'
             count_pend = sum(1 for x in consolidated if not x['is_record'] and x['date_prog'] and x['date_prog'].month == i and x['date_prog'].year == year_to_graph)
             
-            ejec_series.append(count_ejec)
+            # Vencidas: Programadas SIN registro cuya fecha ya pasó (mismo criterio que el contador del card)
+            count_venc = sum(1 for x in consolidated if not x['is_record'] and x['date_prog'] and x['date_prog'].month == i and x['date_prog'].year == year_to_graph and x['date_prog'] < today)
+            
             cerr_series.append(cerr_count)
             pend_series.append(count_pend)
+            venc_series.append(count_venc)
             
         context['trend_data'] = {
             'labels': trend_labels,
-            'ejecutadas': ejec_series,
             'cerradas': cerr_series,
-            'pendientes': pend_series
+            'pendientes': pend_series,
+            'vencidas': venc_series
         }
         context['consolidated'] = sorted(consolidated, key=lambda x: (x['date_exec'] or x['date_prog']), reverse=True)
         

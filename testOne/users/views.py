@@ -169,11 +169,16 @@ class DashboardModalDataView(LoginRequiredMixin, View):
         page = int(request.GET.get('page', 1))
         per_page = 10
 
-        # Shared filters
+        # Shared modal-level filters (refinamiento dentro del modal)
         q_search = request.GET.get('q', '').strip()
-        f_date = request.GET.get('date', '').strip()
-        f_type = request.GET.get('type', '').strip()
+        f_date   = request.GET.get('date', '').strip()
+        f_type   = request.GET.get('type', '').strip()
         f_status = request.GET.get('status', '').strip()
+
+        # Filtro general (fuente de verdad de la vista principal)
+        main_year = request.GET.get('main_year', '').strip()
+        main_type = request.GET.get('main_type', '').strip()
+        main_area = request.GET.get('main_area', '').strip()
 
         # Build permission filter for schedule
         schedule_filter = Q(pk__in=[])
@@ -188,11 +193,13 @@ class DashboardModalDataView(LoginRequiredMixin, View):
 
         if table == 'schedule':
             rows, total_count = self._get_schedule_data(
-                schedule_filter, q_search, f_date, f_type, f_status, page, per_page
+                schedule_filter, q_search, f_date, f_type, f_status,
+                main_year, main_type, main_area, page, per_page
             )
         else:
             rows, total_count = self._get_executed_data(
-                allowed_mods, q_search, f_date, f_type, f_status, page, per_page
+                allowed_mods, q_search, f_date, f_type, f_status,
+                main_year, main_type, main_area, page, per_page
             )
 
         total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
@@ -203,9 +210,19 @@ class DashboardModalDataView(LoginRequiredMixin, View):
             'total_count': total_count,
         })
 
-    def _get_schedule_data(self, schedule_filter, q, f_date, f_type, f_status, page, per_page):
+    def _get_schedule_data(self, schedule_filter, q, f_date, f_type, f_status,
+                           main_year, main_type, main_area, page, per_page):
         qs = InspectionSchedule.objects.filter(schedule_filter).select_related('area', 'responsible')
 
+        # ── Filtro general (fuente de verdad) ──
+        if main_year:
+            qs = qs.filter(year=main_year)
+        if main_type:
+            qs = qs.filter(inspection_type__icontains=main_type)
+        if main_area:
+            qs = qs.filter(area_id=main_area)
+
+        # ── Filtros del modal (refinamiento adicional) ──
         if q:
             qs = qs.filter(
                 Q(inspection_type__icontains=q) |
@@ -238,14 +255,20 @@ class DashboardModalDataView(LoginRequiredMixin, View):
             })
         return rows, total
 
-    def _get_executed_data(self, allowed_mods, q, f_date, f_type, f_status, page, per_page):
+    def _get_executed_data(self, allowed_mods, q, f_date, f_type, f_status,
+                           main_year, main_type, main_area, page, per_page):
         all_items = []
         for mod in allowed_mods:
             model_cls = mod['model']
             label = mod['label']
             url_name = mod['url']
 
-            # Type filter: skip module if not matching
+            # ── Filtro general: tipo de inspección ──
+            # Si main_type está activo y no coincide con este módulo, se omite
+            if main_type and main_type.lower() not in label.lower():
+                continue
+
+            # Type filter del modal: skip module if not matching
             if f_type and f_type != label:
                 continue
 
@@ -253,6 +276,13 @@ class DashboardModalDataView(LoginRequiredMixin, View):
             if hasattr(model_cls, 'parent_inspection'):
                 qs = qs.filter(parent_inspection__isnull=True)
 
+            # ── Filtro general (fuente de verdad) ──
+            if main_year:
+                qs = qs.filter(inspection_date__year=main_year)
+            if main_area:
+                qs = qs.filter(area_id=main_area)
+
+            # ── Filtros del modal ──
             if q:
                 qs = qs.filter(
                     Q(area__name__icontains=q) |

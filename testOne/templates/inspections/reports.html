@@ -288,10 +288,9 @@
                     <select name="area" class="form-control">
                         <option value="">Todas las Áreas</option>
                         {% for area in areas %}
-                        <option value="{{ area.id }}" 
-						{% if request.GET.area == area.id|stringformat:"s" %}selected{%endif %}>
-						{{ area.name }}
-						</option>
+                        <option value="{{ area.id }}" {% if request.GET.area == area.id|stringformat:"s"%}selected{%endif%}>
+                            {{ area.name }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -318,10 +317,9 @@
                     <select name="responsible" class="form-control">
                         <option value="">Todos</option>
                         {% for user in users %}
-                        <option value="{{ user.id }}" 
-						{% if request.GET.responsible == user.id|stringformat:"s" %}selected{% endif %}>
-						{{ user.get_full_name|default:user.username }}
-						</option>
+                        <option value="{{ user.id }}" {% if request.GET.responsible == user.id|stringformat:"s"%}selected{% endif %}>
+                            {{ user.get_full_name|default:user.username }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -330,10 +328,9 @@
                     <select name="participant" class="form-control">
                         <option value="">Todos</option>
                         {% for user in users %}
-                        <option value="{{ user.id }}" 
-						{% if request.GET.participant == user.id|stringformat:"s" %}selected{% endif %}>
-						{{ user.get_full_name|default:user.username }}
-						</option>
+                        <option value="{{ user.id }}" {% if request.GET.participant == user.id|stringformat:"s"%}selected{% endif %}>
+                            {{ user.get_full_name|default:user.username }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -354,13 +351,6 @@
             <div>
                 <p class="stat-val">{{ stats.programmed }}</p>
                 <p class="stat-label">Programadas</p>
-            </div>
-        </div>
-        <div class="report-stat-card">
-            <div class="stat-icon icon-purple"><i class="fas fa-play-circle"></i></div>
-            <div>
-                <p class="stat-val">{{ stats.executed }}</p>
-                <p class="stat-label">Ejecutadas</p>
             </div>
         </div>
         <div class="report-stat-card">
@@ -390,6 +380,19 @@
         <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 20px; color: #374151;">Comparativa Mensual de
             Inspecciones ({% firstof request.GET.year "2026" %})</h3>
         <div style="height: 350px; width: 100%; position: relative;"><canvas id="trendChart"></canvas></div>
+
+        <!-- Indicador de filtro activo desde el gráfico -->
+        <div id="chart-filter-bar" style="display:none; margin-top:16px; padding:10px 16px; background:#eff6ff;
+                    border:1px solid #bfdbfe; border-radius:8px;
+                    display:none; align-items:center; gap:12px; font-size:.875rem; color:#1d4ed8;">
+            <i class="fas fa-filter"></i>
+            <span id="chart-filter-label">Filtrando por…</span>
+            <button onclick="clearChartFilter()" style="margin-left:auto; background:#dbeafe; border:none; color:#1d4ed8;
+                           padding:4px 12px; border-radius:6px; cursor:pointer; font-size:.8rem;
+                           font-weight:600; display:flex; align-items:center; gap:6px;">
+                <i class="fas fa-times"></i> Quitar filtro
+            </button>
+        </div>
     </div>
 
     <div class="data-card">
@@ -417,9 +420,9 @@
                         <td style="font-weight: 600; color: #374151;">{{ item.date_exec|date:"d/m/Y"|default:"-" }}</td>
                         <td><span
                                 class="badge {% if 'Cerrada' in item.status %}badge-success{% elif 'Pendiente' in item.status or 'Programada' in item.status %}badge-warning{% elif 'proceso' in item.status %}badge-info{% else %}badge-secondary{% endif %}">
-								{{ item.status }}</span>
-								
-						</td>
+                                {{ item.status }}</span>
+
+                        </td>
                         <td>
                             <div style="font-weight: 600; font-size: 0.85rem; color: #111827;">{{ item.responsible }}
                             </div>
@@ -449,27 +452,155 @@
         window.location.href = "{% url 'inspection_reports_export' %}?" + params;
     }
 
+    // ── Meses del gráfico → nombres para comparar con texto de celdas ───
+    const MONTH_NAMES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+    // ── Estado activo del filtro de gráfico ─────────────────────────────
+    let chartFilter = { active: false, monthIdx: null, dataset: null };
+
+    // ── Todas las filas de la tabla (capturadas al cargar) ───────────────
+    let _allRows = null;
+    function getAllRows() {
+        if (!_allRows) _allRows = Array.from(document.querySelectorAll('.report-table tbody tr'));
+        return _allRows;
+    }
+
+    // Mapeo: etiqueta del dataset → palabras clave en la columna Estado (índice 5)
+    const DATASET_STATUS_MAP = {
+        'Cerradas': ['cerrada'],                   // cerrada / cerrada con hallazgos
+        'Pendientes': ['programada', 'pendiente por ejecutar'],  // sin registro, fecha futura
+        'Vencidas': ['vencida']                    // sin registro, fecha pasada
+    };
+
+    function applyChartFilter() {
+        if (!chartFilter.active) { clearChartFilter(); return; }
+
+        const monthIdx = chartFilter.monthIdx;   // 0-11
+        const dataset = chartFilter.dataset;    // 'Ejecutadas' | 'Cerradas' | 'Pendientes'
+        const keywords = DATASET_STATUS_MAP[dataset] || [];
+
+        // Columna 3 = Fecha Prog., columna 4 = Fecha Exec.
+        // Usamos el mes/año de cualquiera de las dos fechas
+        const yearFilter = document.querySelector('select[name="year"]')?.value || '';
+
+        let visibleCount = 0;
+        getAllRows().forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 6) { row.style.display = ''; return; } // fila vacía / colspan
+
+            const dateProg = cells[3]?.textContent?.trim() || '';
+            const dateExec = cells[4]?.textContent?.trim() || '';
+            const statusTxt = cells[5]?.textContent?.trim().toLowerCase() || '';
+
+            // Detectar mes a partir de cualquiera de las dos fechas (formato d/m/Y o -)
+            function extractMonth(dateStr) {
+                const parts = dateStr.split('/');
+                return parts.length  ==  3 ? parseInt(parts[1], 10) - 1 : null; // 0-indexed
+            }
+            const mProg = extractMonth(dateProg);
+            const mExec = extractMonth(dateExec);
+            const rowMonth = mExec != null ? mExec : mProg;
+
+            // También considerar el año si hay filtro de año activo en el form
+            let yearOk = true;
+            if (yearFilter) {
+                function extractYear(dateStr) {
+                    const parts = dateStr.split('/');
+                    return parts.length  ==  3 ? parts[2] : null;
+                }
+                const yProg = extractYear(dateProg);
+                const yExec = extractYear(dateExec);
+                yearOk = yExec  ==  yearFilter || yProg  ==  yearFilter;
+            }
+
+            const monthOk = rowMonth  ==  monthIdx;
+            const statusOk = keywords.some(k => statusTxt.includes(k));
+
+            if (monthOk && statusOk && yearOk) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Mostrar mensaje si 0 resultados
+        const noResultRow = document.getElementById('chart-no-result-row');
+        if (noResultRow) noResultRow.style.display = visibleCount  ==  0 ? '' : 'none';
+    }
+
+    function clearChartFilter() {
+        chartFilter = { active: false, monthIdx: null, dataset: null };
+        getAllRows().forEach(r => r.style.display = '');
+        const bar = document.getElementById('chart-filter-bar');
+        bar.style.display = 'none';
+        const noResultRow = document.getElementById('chart-no-result-row');
+        if (noResultRow) noResultRow.style.display = 'none';
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        // Agregar fila de "Sin resultados tras filtro de gráfico"
+        const tbody = document.querySelector('.report-table tbody');
+        if (tbody) {
+            const nr = document.createElement('tr');
+            nr.id = 'chart-no-result-row';
+            nr.style.display = 'none';
+            nr.innerHTML = '<td colspan="8" style="text-align:center;padding:32px;color:#6b7280;">'
+                + '<i class="fas fa-chart-bar" style="margin-right:8px;"></i>'
+                + 'No hay registros que coincidan con el segmento seleccionado en el gráfico.</td>';
+            tbody.appendChild(nr);
+        }
+
         const chartEl = document.getElementById('trendChart');
         if (!chartEl) return;
         const ctx = chartEl.getContext('2d');
-        const reportLabels = {{ trend_data.labels|safe }};
-    const reportEjec = {{ trend_data.ejecutadas|safe }};
-    const reportCerr = {{ trend_data.cerradas|safe }};
-    const reportPend = {{ trend_data.pendientes|safe }};
+        const reportLabels = {{ trend_data.labels| safe }};
+    const reportCerr = {{ trend_data.cerradas| safe }};
+    const reportPend = {{ trend_data.pendientes| safe }};
+    const reportVenc = {{ trend_data.vencidas| safe }};
 
     new Chart(ctx, {
         type: 'bar',
         data: {
             labels: reportLabels,
             datasets: [
-                { label: 'Ejecutadas', backgroundColor: 'rgba(59, 130, 246, 0.7)', borderColor: 'rgb(59, 130, 246)', borderWidth: 1, data: reportEjec, borderRadius: 4 },
                 { label: 'Cerradas', backgroundColor: 'rgba(16, 185, 129, 0.7)', borderColor: 'rgb(16, 185, 129)', borderWidth: 1, data: reportCerr, borderRadius: 4 },
-                { label: 'Pendientes', type: 'line', borderColor: 'rgb(245, 158, 11)', backgroundColor: 'rgb(245, 158, 11)', borderWidth: 3, fill: false, data: reportPend, tension: 0.3, pointRadius: 4, pointHoverRadius: 6 }
+                { label: 'Pendientes', type: 'line', borderColor: 'rgb(245, 158, 11)', backgroundColor: 'rgb(245, 158, 11)', borderWidth: 3, fill: false, data: reportPend, tension: 0.3, pointRadius: 4, pointHoverRadius: 6 },
+                { label: 'Vencidas', backgroundColor: 'rgba(239, 68, 68, 0.7)', borderColor: 'rgb(239, 68, 68)', borderWidth: 1, data: reportVenc, borderRadius: 4 }
             ]
         },
         options: {
             responsive: true, maintainAspectRatio: false,
+            // ── Cursor pointer sobre las barras ──
+            onHover: (event, elements) => {
+                chartEl.style.cursor = elements.length ? 'pointer' : 'default';
+            },
+            // ── Click handler: filtrar tabla ──
+            onClick: (event, elements) => {
+                if (!elements || elements.length  ==  0) return;
+                const el = elements[0];
+                const monthIdx = el.index;           // 0-11
+                const datasetIdx = el.datasetIndex;    // 0=Cerr, 1=Pend(line), 2=Venc
+                const datasetNames = ['Cerradas', 'Pendientes', 'Vencidas'];
+                const datasetName = datasetNames[datasetIdx];
+                const monthName = MONTH_NAMES_ES[monthIdx];
+
+                // Actualizar estado del filtro
+                chartFilter = { active: true, monthIdx: monthIdx, dataset: datasetName };
+
+                // Mostrar barra de indicador
+                const bar = document.getElementById('chart-filter-bar');
+                document.getElementById('chart-filter-label').textContent =
+                    `${datasetName} · ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`;
+                bar.style.display = 'flex';
+
+                // Aplicar filtro a la tabla
+                applyChartFilter();
+
+                // Scroll suave hacia la tabla
+                document.querySelector('.data-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            },
             plugins: {
                 legend: { position: 'top', labels: { usePointStyle: true, padding: 20, font: { family: "'Inter', sans-serif", size: 12 } } },
                 tooltip: { mode: 'index', intersect: false, padding: 12, backgroundColor: 'rgba(255, 255, 255, 0.9)', titleColor: '#111827', bodyColor: '#4b5563', borderColor: '#e5e7eb', borderWidth: 1, usePointStyle: true }

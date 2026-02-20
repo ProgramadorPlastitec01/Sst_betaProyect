@@ -437,6 +437,17 @@
     let _regTimer = null;
     let _crnTimer = null;
 
+    // ── Filtro general: única fuente de verdad ────────────────
+    // Lee los valores activos del formulario principal de filtros
+    function getMainFilters() {
+        const form = document.querySelector('form.filters-bar');
+        if (!form) return {};
+        const year = form.querySelector('[name="year"]')?.value || '';
+        const itype = form.querySelector('[name="inspection_type"]')?.value || '';
+        const area = form.querySelector('[name="area"]')?.value || '';
+        return { main_year: year, main_type: itype, main_area: area };
+    }
+
     function openModal(modalId) {
         document.getElementById(modalId).style.display = 'flex';
         document.body.classList.add('modal-open');
@@ -509,12 +520,17 @@
         loadRegModal(1);
     }
     function loadRegModal(page) {
+        const mf = getMainFilters();
         const params = new URLSearchParams({
             table: 'executed', page: page || 1,
             q: document.getElementById('reg-q').value,
             date: document.getElementById('reg-date').value,
             type: document.getElementById('reg-type').value,
             status: document.getElementById('reg-status').value,
+            // Filtro general (única fuente de verdad)
+            main_year: mf.main_year,
+            main_type: mf.main_type,
+            main_area: mf.main_area,
         });
         const tbody = document.getElementById('reg-tbody');
         tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#6c757d;"><i class="fas fa-spinner fa-spin"></i> Cargando…</td></tr>';
@@ -547,12 +563,17 @@
         loadCrnModal(1);
     }
     function loadCrnModal(page) {
+        const mf = getMainFilters();
         const params = new URLSearchParams({
             table: 'schedule', page: page || 1,
             q: document.getElementById('crn-q').value,
             date: document.getElementById('crn-date').value,
             type: document.getElementById('crn-type').value,
             status: document.getElementById('crn-status').value,
+            // Filtro general (única fuente de verdad)
+            main_year: mf.main_year,
+            main_type: mf.main_type,
+            main_area: mf.main_area,
         });
         const tbody = document.getElementById('crn-tbody');
         tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#6c757d;"><i class="fas fa-spinner fa-spin"></i> Cargando…</td></tr>';
