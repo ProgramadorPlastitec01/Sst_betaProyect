@@ -408,11 +408,12 @@
                             <th>Frecuencia</th>
                             <th>Responsable</th>
                             <th>Estado</th>
+                            <th id="crn-actions-th" style="text-align:center; display:none;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="crn-tbody">
                         <tr>
-                            <td colspan="6" style="padding:40px; text-align:center; color:#6c757d;"><i
+                            <td colspan="7" style="padding:40px; text-align:center; color:#6c757d;"><i
                                     class="fas fa-spinner fa-spin"></i> Cargando…</td>
                         </tr>
                     </tbody>
@@ -576,27 +577,60 @@
             main_area: mf.main_area,
         });
         const tbody = document.getElementById('crn-tbody');
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#6c757d;"><i class="fas fa-spinner fa-spin"></i> Cargando…</td></tr>';
+        const actionsTh = document.getElementById('crn-actions-th');
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:#6c757d;"><i class="fas fa-spinner fa-spin"></i> Cargando…</td></tr>';
         fetch(MODAL_AJAX_URL + '?' + params, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.json())
+            .then(res => res.json())
             .then(data => {
+                // Mostrar/ocultar columna de acciones según los flags del primer row
+                const firstRow = data.rows && data.rows.length > 0 ? data.rows[0] : null;
+                const showActions = firstRow && (firstRow.can_edit || firstRow.can_delete);
+                if (actionsTh) actionsTh.style.display = showActions ? '' : 'none';
+
                 if (!data.rows || data.rows.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#6c757d;">Sin resultados para los filtros aplicados.</td></tr>';
+                    const cols = showActions ? 7 : 6;
+                    tbody.innerHTML = `<tr><td colspan="${cols}" style="padding:40px;text-align:center;color:#6c757d;">Sin resultados para los filtros aplicados.</td></tr>`;
                 } else {
-                    tbody.innerHTML = data.rows.map(r =>
-                        `<tr style="border-bottom:1px solid #f0f0f0;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">` +
-                        `<td style="padding:10px;font-size:.875rem;">${r.date || '—'}</td>` +
-                        `<td style="padding:10px;font-size:.875rem;">${r.type || '—'}</td>` +
-                        `<td style="padding:10px;font-size:.875rem;">${r.area || '—'}</td>` +
-                        `<td style="padding:10px;font-size:.875rem;">${r.frequency || '—'}</td>` +
-                        `<td style="padding:10px;font-size:.875rem;">${r.responsible || '—'}</td>` +
-                        `<td style="padding:10px;">${statusBadge(r.status)}</td>` +
-                        `</tr>`
-                    ).join('');
+                    tbody.innerHTML = data.rows.map(r => {
+                        // ── Botones de acción condicionales ──────────────────
+                        let actionCell = '';
+                        if (r.can_edit || r.can_delete) {
+                            let btns = '';
+                            if (r.can_edit) {
+                                btns += `<a href="${r.edit_url}"
+                                    class="btn btn-sm"
+                                    title="Editar programación"
+                                    style="background:#49BAA0;color:white;padding:6px 12px;">
+                                    <i class="fas fa-edit"></i></a>`;
+                            }
+                            if (r.can_delete) {
+                                btns += `<a href="${r.delete_url}"
+                                    class="btn btn-sm"
+                                    title="Eliminar programación"
+                                    style="background:#dc3545;color:white;padding:6px 12px;margin-left:6px;"
+                                    onclick="return confirm('¿Está seguro de eliminar esta programación?')"
+                                    ><i class="fas fa-trash-alt"></i></a>`;
+                            }
+                            actionCell = `<td style="padding:8px;text-align:center;white-space:nowrap;"><div style="display:flex;gap:4px;justify-content:center;">${btns}</div></td>`;
+                        } else if (showActions) {
+                            actionCell = `<td></td>`;
+                        }
+                        return (
+                            `<tr style="border-bottom:1px solid #f0f0f0;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">` +
+                            `<td style="padding:10px;font-size:.875rem;">${r.date || '—'}</td>` +
+                            `<td style="padding:10px;font-size:.875rem;">${r.type || '—'}</td>` +
+                            `<td style="padding:10px;font-size:.875rem;">${r.area || '—'}</td>` +
+                            `<td style="padding:10px;font-size:.875rem;">${r.frequency || '—'}</td>` +
+                            `<td style="padding:10px;font-size:.875rem;">${r.responsible || '—'}</td>` +
+                            `<td style="padding:10px;">${statusBadge(r.status)}</td>` +
+                            actionCell +
+                            `</tr>`
+                        );
+                    }).join('');
                 }
                 renderPagination('crn', data, 'loadCrnModal');
             })
-            .catch(() => { tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#dc3545;">Error al cargar los datos.</td></tr>'; });
+            .catch(() => { tbody.innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:#dc3545;">Error al cargar los datos.</td></tr>'; });
     }
 </script>
 

@@ -193,7 +193,7 @@ class DashboardModalDataView(LoginRequiredMixin, View):
 
         if table == 'schedule':
             rows, total_count = self._get_schedule_data(
-                schedule_filter, q_search, f_date, f_type, f_status,
+                user, schedule_filter, q_search, f_date, f_type, f_status,
                 main_year, main_type, main_area, page, per_page
             )
         else:
@@ -210,7 +210,7 @@ class DashboardModalDataView(LoginRequiredMixin, View):
             'total_count': total_count,
         })
 
-    def _get_schedule_data(self, schedule_filter, q, f_date, f_type, f_status,
+    def _get_schedule_data(self, user, schedule_filter, q, f_date, f_type, f_status,
                            main_year, main_type, main_area, page, per_page):
         qs = InspectionSchedule.objects.filter(schedule_filter).select_related('area', 'responsible')
 
@@ -241,6 +241,12 @@ class DashboardModalDataView(LoginRequiredMixin, View):
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(page)
 
+        # ── Determinar permisos de acción del usuario actual ──
+        role_name = user.role.name if user.role else ''
+        is_admin = user.is_superuser or role_name == 'Administrador'
+        can_edit = is_admin or role_name == 'Equipo SST'
+        can_delete = is_admin  # Solo Administrador puede eliminar
+
         rows = []
         for item in page_obj:
             rows.append({
@@ -252,6 +258,11 @@ class DashboardModalDataView(LoginRequiredMixin, View):
                 'responsible': item.responsible.get_full_name() if item.responsible else 'Equipo SST',
                 'status': item.status,
                 'observations': item.observations or '',
+                # URLs y permisos para los botones de acción
+                'edit_url': reverse('inspection_edit', args=[item.pk]),
+                'delete_url': reverse('inspection_delete', args=[item.pk]),
+                'can_edit': can_edit,
+                'can_delete': can_delete,
             })
         return rows, total
 
