@@ -658,6 +658,18 @@ class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
     form_class = ExtinguisherInspectionForm
     formset_class = ExtinguisherItemFormSet
     template_name = 'inspections/extinguisher_form.html'
+
+    def _count_valid_extinguisher_items(self):
+        """Cuenta ítems del formset que tienen datos y NO están marcados para eliminar."""
+        total = int(self.request.POST.get('items-TOTAL_FORMS', 0))
+        count = 0
+        for i in range(total):
+            is_deleted = self.request.POST.get(f'items-{i}-DELETE')
+            num = self.request.POST.get(f'items-{i}-extinguisher_number', '').strip()
+            loc = self.request.POST.get(f'items-{i}-location', '').strip()
+            if not is_deleted and (num or loc):
+                count += 1
+        return count
     
     def get_initial(self):
         initial = super().get_initial()
@@ -672,6 +684,12 @@ class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
         return initial
 
     def form_valid(self, form):
+        # --- VALIDACIÓN OBLIGATORIA: Al menos un ítem de detalle ---
+        if self._count_valid_extinguisher_items() == 0:
+            messages.error(self.request, 'Debe agregar al menos un ítem para guardar la inspección.')
+            return self.form_invalid(form)
+        # --- FIN VALIDACIÓN ---
+
         form.instance.inspector = self.request.user
         
         schedule_item_id = self.request.GET.get('schedule_item')
@@ -703,8 +721,28 @@ class ExtinguisherUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
     form_class = ExtinguisherInspectionForm
     formset_class = ExtinguisherItemFormSet
     template_name = 'inspections/extinguisher_form.html'
+
+    def _count_surviving_extinguisher_items(self):
+        """Cuenta ítems existentes que NO están marcados para eliminar, más nuevos con datos."""
+        total = int(self.request.POST.get('items-TOTAL_FORMS', 0))
+        count = 0
+        for i in range(total):
+            is_deleted = self.request.POST.get(f'items-{i}-DELETE')
+            item_id = self.request.POST.get(f'items-{i}-id', '').strip()
+            num = self.request.POST.get(f'items-{i}-extinguisher_number', '').strip()
+            loc = self.request.POST.get(f'items-{i}-location', '').strip()
+            # Existing item not deleted, OR new item with data
+            if not is_deleted and (item_id or num or loc):
+                count += 1
+        return count
     
     def form_valid(self, form):
+        # --- VALIDACIÓN OBLIGATORIA: Al menos un ítem de detalle ---
+        if self._count_surviving_extinguisher_items() == 0:
+            messages.error(self.request, 'Debe agregar al menos un ítem para guardar la inspección.')
+            return self.form_invalid(form)
+        # --- FIN VALIDACIÓN ---
+
         # Enforce inspector role on edit too
         user_role_name = self.request.user.get_role_name()
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
@@ -917,8 +955,25 @@ class FirstAidCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspec
     form_class = FirstAidInspectionForm
     formset_class = FirstAidItemFormSet
     template_name = 'inspections/first_aid_form.html'
+
+    def _count_valid_firstaid_items(self):
+        """Cuenta ítems del formset que tienen datos y NO están marcados para eliminar."""
+        total = int(self.request.POST.get('items-TOTAL_FORMS', 0))
+        count = 0
+        for i in range(total):
+            is_deleted = self.request.POST.get(f'items-{i}-DELETE')
+            name = self.request.POST.get(f'items-{i}-element_name', '').strip()
+            if not is_deleted and name:
+                count += 1
+        return count
     
     def form_valid(self, form):
+        # --- VALIDACIÓN OBLIGATORIA: Al menos un ítem de detalle ---
+        if self._count_valid_firstaid_items() == 0:
+            messages.error(self.request, 'Debe agregar al menos un ítem para guardar la inspección.')
+            return self.form_invalid(form)
+        # --- FIN VALIDACIÓN ---
+
         form.instance.inspector = self.request.user
         # Enforce inspector role
         user_role_name = self.request.user.get_role_name()
@@ -938,8 +993,27 @@ class FirstAidUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspec
     form_class = FirstAidInspectionForm
     formset_class = FirstAidItemFormSet
     template_name = 'inspections/first_aid_form.html'
+
+    def _count_surviving_firstaid_items(self):
+        """Cuenta ítems existentes que NO están marcados para eliminar, más nuevos con datos."""
+        total = int(self.request.POST.get('items-TOTAL_FORMS', 0))
+        count = 0
+        for i in range(total):
+            is_deleted = self.request.POST.get(f'items-{i}-DELETE')
+            item_id = self.request.POST.get(f'items-{i}-id', '').strip()
+            name = self.request.POST.get(f'items-{i}-element_name', '').strip()
+            # Existing item not deleted, OR new item with a name
+            if not is_deleted and (item_id or name):
+                count += 1
+        return count
     
     def form_valid(self, form):
+        # --- VALIDACIÓN OBLIGATORIA: Al menos un ítem de detalle ---
+        if self._count_surviving_firstaid_items() == 0:
+            messages.error(self.request, 'Debe agregar al menos un ítem para guardar la inspección.')
+            return self.form_invalid(form)
+        # --- FIN VALIDACIÓN ---
+
         # Enforce inspector role
         user_role_name = self.request.user.get_role_name()
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:

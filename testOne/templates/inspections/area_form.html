@@ -58,8 +58,8 @@
         <div class="form-group">
             <div
                 style="display: flex; align-items: center; gap: 12px; padding: 16px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
-                <input type="checkbox" id="{{ form.is_active.id_for_label }}" name="{{ form.is_active.name }}" {% if
-                    form.is_active.value %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
+                <input type="checkbox" id="{{ form.is_active.id_for_label }}" name="{{ form.is_active.name }}" 
+						{% if form.is_active.value %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
                 <label for="{{ form.is_active.id_for_label }}" style="margin: 0; cursor: pointer; font-weight: 500;">
                     {{ form.is_active.label }}
                 </label>

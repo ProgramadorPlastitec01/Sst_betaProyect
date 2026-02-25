@@ -70,16 +70,15 @@
                         <tr style="border-bottom:1px solid #f1f1f1;">
                             <td style="padding:12px; font-weight:600;">
                                 {{ p.user.get_full_name|default:p.user.username }}
-                                {% if p.user == object.inspector %}<small class="text-muted">(Inspector)</small>{% endif
-                                %}
+                                {% if p.user == object.inspector %}<small class="text-muted">(Inspector)</small>
+								{% endif %}
                             </td>
                             <td style="padding:12px;">
                                 {% if p.has_signed %}
                                 <span class="badge"
                                     style="background:#28a745; color:white; padding:4px 8px; border-radius:4px; font-size:0.75rem;">FIRMADO</span>
                                 {% else %}
-                                <span class="badge"
-                                    style="background:#ffc107; color:#212529; padding:4px 8px; border-radius:4px; font-size:0.75rem;">PENDIENTE</span>
+                                <span class="badge" style="background:#ffc107; color:#212529; padding:4px 8px; border-radius:4px; font-size:0.75rem;">PENDIENTE</span>
                                 {% endif %}
                             </td>
                             <td style="padding:12px; font-size:0.85rem; color:#6c757d;">

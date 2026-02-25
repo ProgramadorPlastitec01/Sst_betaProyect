@@ -277,6 +277,12 @@ class ProcessInspectionForm(forms.ModelForm):
             self.fields['area'].widget = forms.Select()
             self.fields['area'].queryset = self.fields['area'].queryset # Ensure queryset is kept
 
+        # 3. Hacer obligatorio el campo Proceso Inspeccionado
+        self.fields['inspected_process'].required = True
+        self.fields['inspected_process'].widget.attrs.update({
+            'placeholder': 'Ej: Línea de producción, Área de envasado, etc.'
+        })
+
 class ProcessCheckItemForm(forms.ModelForm):
     class Meta:
         model = ProcessCheckItem
@@ -372,6 +378,12 @@ class StorageInspectionForm(forms.ModelForm):
         if not self.initial.get('area') and not (self.instance and self.instance.pk and getattr(self.instance, 'area_id', None)):
             self.fields['area'].widget = forms.Select()
             self.fields['area'].queryset = self.fields['area'].queryset
+
+        # 3. Hacer obligatorio el campo Proceso/Área Inspeccionada
+        self.fields['inspected_process'].required = True
+        self.fields['inspected_process'].widget.attrs.update({
+            'placeholder': 'Ej: Almacén de materia prima, Bodega 1, etc.'
+        })
 
 StorageItemFormSet = inlineformset_factory(
     StorageInspection, StorageCheckItem,

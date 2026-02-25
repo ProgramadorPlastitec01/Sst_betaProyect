@@ -234,53 +234,92 @@
 
 <script>
     (function () {
-        console.log("Inicializando validación estricta de inspección...");
+
+        // --- Banner de error inline (reemplaza alert()) ---
+        function showValidationBanner(messages) {
+            let banner = document.getElementById('js-validation-banner');
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'js-validation-banner';
+                banner.style.cssText = [
+                    'position:fixed', 'top:20px', 'right:20px', 'z-index:9999',
+                    'max-width:380px', 'background:#fff',
+                    'border-left:4px solid #dc3545', 'border-radius:8px',
+                    'box-shadow:0 4px 16px rgba(0,0,0,0.12)',
+                    'padding:14px 16px', 'font-size:0.9rem', 'color:#333'
+                ].join(';');
+                document.body.appendChild(banner);
+            }
+            const listItems = messages.map(m => `<li style="margin-bottom:4px;">${m}</li>`).join('');
+            banner.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+                    <div>
+                        <div style="font-weight:600;color:#dc3545;margin-bottom:6px;">
+                            <i class="fas fa-exclamation-circle"></i> Por favor corrija los siguientes errores:
+                        </div>
+                        <ul style="margin:0;padding-left:18px;color:#555;">${listItems}</ul>
+                    </div>
+                    <button onclick="this.closest('#js-validation-banner').remove()"
+                        style="background:none;border:none;cursor:pointer;color:#aaa;font-size:1.2rem;padding:0;line-height:1;">&times;</button>
+                </div>`;
+            clearTimeout(banner._timer);
+            banner._timer = setTimeout(() => { if (banner.parentNode) banner.remove(); }, 8000);
+        }
 
         function validateForm(event) {
-            console.log("Validando formulario...");
             let hasError = false;
             let firstErrorInput = null;
-            let errorCount = 0;
+            const errorMessages = [];
 
+            // --- Validar campo Proceso/Área Inspeccionada ---
+            const processInput = document.querySelector('input[name="inspected_process"], textarea[name="inspected_process"]');
+            if (processInput) {
+                const processErrorId = 'js-process-error';
+                if (processInput.value.trim() === '') {
+                    hasError = true;
+                    errorMessages.push('El campo <strong>Proceso/Área Inspeccionada</strong> es obligatorio.');
+                    processInput.style.border = '2px solid #dc3545';
+                    processInput.style.backgroundColor = '#fff8f8';
+                    if (!document.getElementById(processErrorId)) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.id = processErrorId;
+                        errorDiv.className = 'text-danger small';
+                        errorDiv.style.cssText = 'font-weight:600;margin-top:4px;';
+                        errorDiv.innerText = 'Este campo es obligatorio.';
+                        processInput.parentNode.appendChild(errorDiv);
+                    }
+                    if (!firstErrorInput) firstErrorInput = processInput;
+                } else {
+                    processInput.style.border = '';
+                    processInput.style.backgroundColor = '';
+                    const existingError = document.getElementById(processErrorId);
+                    if (existingError) existingError.remove();
+                }
+            }
+
+            // --- Validar ítems con estado Malo sin observación ---
+            let maloSinObs = 0;
             const rows = document.querySelectorAll('tbody tr');
-
-            rows.forEach(function (row, index) {
-                let statusSelect = row.querySelector('select[name*="item_status"]');
-                let obsInput = row.querySelector('textarea[name*="observations"]');
-
-                if (!statusSelect) statusSelect = row.querySelector('select'); // Fallback
-                if (!obsInput) obsInput = row.querySelector('textarea'); // Fallback
-
+            rows.forEach(function (row) {
+                let statusSelect = row.querySelector('select[name*="item_status"]') || row.querySelector('select');
+                let obsInput = row.querySelector('textarea[name*="observations"]') || row.querySelector('textarea');
                 if (statusSelect && obsInput) {
                     const status = statusSelect.value;
                     const obs = obsInput.value.trim();
-
-                    if (status === 'Malo') {
-                        if (obs === '') {
-                            console.error(`ERROR en Fila ${index}: Malo sin observación.`);
-                            hasError = true;
-                            errorCount++;
-
-                            obsInput.style.border = '2px solid #dc3545';
-                            obsInput.style.backgroundColor = '#fff8f8';
-
-                            let errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
-                            if (!errorDiv) {
-                                errorDiv = document.createElement('div');
-                                errorDiv.className = 'text-danger small js-strict-error';
-                                errorDiv.style.fontWeight = 'bold';
-                                errorDiv.style.marginTop = '4px';
-                                errorDiv.innerText = 'Debe ingresar una observación en el ítem marcado como "Malo".';
-                                obsInput.parentNode.appendChild(errorDiv);
-                            }
-
-                            if (!firstErrorInput) firstErrorInput = obsInput;
-                        } else {
-                            obsInput.style.border = '';
-                            obsInput.style.backgroundColor = '';
-                            const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
-                            if (errorDiv) errorDiv.remove();
+                    if (status === 'Malo' && obs === '') {
+                        hasError = true;
+                        maloSinObs++;
+                        obsInput.style.border = '2px solid #dc3545';
+                        obsInput.style.backgroundColor = '#fff8f8';
+                        let errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                        if (!errorDiv) {
+                            errorDiv = document.createElement('div');
+                            errorDiv.className = 'text-danger small js-strict-error';
+                            errorDiv.style.cssText = 'font-weight:600;margin-top:4px;';
+                            errorDiv.innerText = 'Debe ingresar una observación para ítems en estado "Malo".';
+                            obsInput.parentNode.appendChild(errorDiv);
                         }
+                        if (!firstErrorInput) firstErrorInput = obsInput;
                     } else {
                         obsInput.style.border = '';
                         obsInput.style.backgroundColor = '';
@@ -290,32 +329,27 @@
                 }
             });
 
+            if (maloSinObs > 0) {
+                errorMessages.push(`${maloSinObs} ítem(s) marcado(s) como <strong>"Malo"</strong> sin observación registrada.`);
+            }
+
             if (hasError) {
-                console.error(`Validación fallida: ${errorCount} errores encontrados.`);
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
-
-                alert('Existen ítems en estado "Malo" sin observación. Por favor complete la información antes de continuar.');
-
+                showValidationBanner(errorMessages);
                 if (firstErrorInput) {
-                    firstErrorInput.focus();
                     firstErrorInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstErrorInput.focus();
                 }
-
                 return false;
             }
-
-            console.log("Validación exitosa, enviando formulario.");
             return true;
         }
 
         document.addEventListener('submit', function (e) {
-            const form = e.target;
-            if (form.tagName === 'FORM') {
-                if (!validateForm(e)) {
-                    e.preventDefault();
-                }
+            if (e.target.tagName === 'FORM') {
+                if (!validateForm(e)) e.preventDefault();
             }
         }, true);
 
@@ -326,7 +360,6 @@
                 if (row) {
                     const statusSelect = row.querySelector('select[name*="item_status"]') || row.querySelector('select');
                     const obsInput = row.querySelector('textarea[name*="observations"]') || row.querySelector('textarea');
-
                     if (statusSelect && obsInput) {
                         if (statusSelect.value !== 'Malo' || obsInput.value.trim() !== '') {
                             obsInput.style.border = '';
@@ -339,7 +372,15 @@
             }
         }, true);
 
-        console.log("Sistema de validación estricta activado (Modo Captura).");
+        // Limpiar error del campo proceso al escribir
+        document.addEventListener('input', function (e) {
+            if (e.target.name === 'inspected_process' && e.target.value.trim() !== '') {
+                e.target.style.border = '';
+                e.target.style.backgroundColor = '';
+                const err = document.getElementById('js-process-error');
+                if (err) err.remove();
+            }
+        }, true);
 
     })();
 </script>
