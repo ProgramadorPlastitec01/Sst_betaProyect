@@ -15,6 +15,7 @@ class Permission(models.Model):
         ('process', 'Procesos'),
         ('storage', 'Almacenamiento'),
         ('forklift', 'Montacargas'),
+        ('assets', 'Gestión de Activos'),
         ('roles', 'Roles'),
         ('reports', 'Reportes'),
     ]

@@ -358,6 +358,15 @@ class ExtinguisherInspection(BaseInspection):
         related_name='follow_ups',
         verbose_name="Inspección de Origen"
     )
+    asset = models.ForeignKey(
+        'gestion_activos.Asset',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Activo Relacionado",
+        help_text="Activo del inventario asociado a esta inspección",
+        related_name='extinguisher_inspections'
+    )
 
     def get_total_follow_ups_count(self):
         """
@@ -392,13 +401,6 @@ class InspectionSignature(models.Model):
         unique_together = ('inspection', 'user')
 
 class ExtinguisherItem(models.Model):
-    TYPE_CHOICES = [
-        ('PQS', 'Polvo Químico Seco (PQS)'),
-        ('AGUA', 'H2O Agua Presión'),
-        ('SOLKAFLAM', 'Solkaflam'),
-        ('CO2', 'CO2 Gas Carbónico'),
-        ('MULTIPROPOSITO', 'Multipropósito ABC'),
-    ]
     STATUS_CHOICES = [
         ('Bueno', 'Bueno'),
         ('Malo', 'Malo'),
@@ -406,12 +408,8 @@ class ExtinguisherItem(models.Model):
     ]
 
     inspection = models.ForeignKey(ExtinguisherInspection, related_name='items', on_delete=models.CASCADE)
-    extinguisher_number = models.PositiveIntegerField(verbose_name="Número", blank=True, null=True)
-    location = models.CharField(max_length=100, verbose_name="Ubicación Específica")
-    extinguisher_type = models.CharField(max_length=20, choices=TYPE_CHOICES, verbose_name="Tipo")
-    capacity = models.CharField(max_length=50, verbose_name="Capacidad (lbs/kg)")
-    last_recharge_date = models.DateField(verbose_name="Última Recarga", blank=True, null=True)
-    next_recharge_date = models.DateField(verbose_name="Próxima Recarga", blank=True, null=True)
+    
+
     
     # Checklist items specific to extinguishers
     pressure_gauge_ok = models.BooleanField(default=True, verbose_name="Manómetro")
@@ -756,6 +754,15 @@ class ForkliftInspection(BaseInspection):
         blank=True, 
         related_name='follow_ups',
         verbose_name="Inspección Padre"
+    )
+    asset = models.ForeignKey(
+        'gestion_activos.Asset',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Activo Relacionado",
+        help_text="Activo del inventario asociado a esta inspección",
+        related_name='forklift_inspections'
     )
 
     def get_total_follow_ups_count(self):

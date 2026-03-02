@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}SST - Detalle Activo: {{ asset.code }}{% endblock %}
+{% block header_title %}Detalle de Activo{% endblock %}
+
+{% block content %}
+<div style="max-width: 100%;">
+
+    {# Header #}
+    <div class="dashboard-header">
+        <div>
+            <h1 style="font-size: 1.5rem; font-weight: 700;">{{ asset.code }}</h1>
+            <p style="color: var(--text-light); font-size: 0.9rem;">
+                Código: <b>{{ asset.code }}</b> &nbsp;|&nbsp;
+                Tipo: <b>{{ asset.asset_type.name }}</b>
+                <span class="compliance-badge {{ asset.estado_css }}" style="margin-left: 10px; font-size: 0.8rem;">
+                    {{ asset.estado_label }}
+                </span>
+            </p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <a href="{% url 'asset_list' %}" class="btn" style="background: #e9ecef; color: #495057;">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+            <a href="{% url 'asset_update' asset.pk %}" class="btn btn-primary">
+                <i class="fas fa-edit"></i> Editar
+            </a>
+        </div>
+    </div>
+
+    {# General Info Card #}
+    <div class="card">
+        <h3 class="inspection-section-title"><i class="fas fa-info-circle"></i> Información General</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px;">
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Nombre</label>
+                <div style="font-weight: 600; font-family: monospace; color: #49BAA0;">{{ asset.code }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Código</label>
+                <div style="font-weight: 600; font-family: monospace; color: #49BAA0;">{{ asset.code }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Tipo</label>
+                <div style="font-weight: 600;">{{ asset.asset_type.name }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Área</label>
+                <div style="font-weight: 600;">{{ asset.area }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Estado</label>
+                <span class="compliance-badge {{ asset.estado_css }}">
+                    {% if asset.estado_actual == 'VENCIDO' or asset.estado_actual == 'MANTENIMIENTO_VENCIDO' %}
+                    <i class="fas fa-times-circle" style="margin-right: 4px;"></i>
+                    {% elif asset.estado_actual == 'PROXIMO_A_VENCER' or asset.estado_actual == 'PROXIMO_MANTENIMIENTO'
+                    %}
+                    <i class="fas fa-exclamation-triangle" style="margin-right: 4px;"></i>
+                    {% else %}
+                    <i class="fas fa-check-circle" style="margin-right: 4px;"></i>
+                    {% endif %}
+                    {{ asset.estado_label }}
+                </span>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Situación</label>
+                {% if asset.activo %}
+                <span class="badge" style="background: #d1e7dd; color: #0f5132; padding: 4px 10px; border-radius: 4px;">
+                    <i class="fas fa-check-circle"></i> Activo
+                </span>
+                {% else %}
+                <span class="badge" style="background: #f8d7da; color: #842029; padding: 4px 10px; border-radius: 4px;">
+                    <i class="fas fa-ban"></i> Inactivo
+                </span>
+                {% endif %}
+            </div>
+            {% if asset.fecha_adquisicion %}
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Fecha
+                    Adquisición</label>
+                <div style="font-weight: 600;">{{ asset.fecha_adquisicion|date:"d/m/Y" }}</div>
+            </div>
+            {% endif %}
+        </div>
+        {% if asset.observaciones %}
+        <div style="margin-top: 24px;">
+            <label
+                style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Observaciones</label>
+            <div
+                style="background: #f8faf9; padding: 16px; border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                {{ asset.observaciones|linebreaks }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {# Specific Detail Card #}
+    {% if asset.extintor_detail %}
+    {% with ext=asset.extintor_detail %}
+    <div class="card">
+        <h3 class="inspection-section-title">
+            <i class="fas fa-fire-extinguisher"></i> Ficha de Extintor
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px;">
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Tipo
+                    de Agente</label>
+                <div style="font-weight: 600;">{{ ext.tipo_agente }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Capacidad</label>
+                <div style="font-weight: 600;">{{ ext.capacidad_kg }} kg</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Última
+                    Recarga</label>
+                <div style="font-weight: 600;">{{ ext.fecha_recarga|date:"d/m/Y" }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Vencimiento</label>
+                <div style="font-weight: 600;
+                    {% if asset.estado_actual == 'VENCIDO' %}color: #dc3545;
+                    {% elif asset.estado_actual == 'PROXIMO_A_VENCER' %}color: #e65100;
+                    {% endif %}">
+                    {{ ext.fecha_vencimiento|date:"d/m/Y" }}
+                    {% if asset.estado_actual == 'VENCIDO' %}
+                    <i class="fas fa-exclamation-circle" style="color:#dc3545;"></i>
+                    {% elif asset.estado_actual == 'PROXIMO_A_VENCER' %}
+                    <i class="fas fa-exclamation-triangle" style="color:#e65100;"></i>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% endif %}
+
+    {% if asset.montacargas_detail %}
+    {% with mnt=asset.montacargas_detail %}
+    <div class="card">
+        <h3 class="inspection-section-title">
+            <i class="fas fa-truck-loading"></i> Ficha de Montacargas
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px;">
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Marca</label>
+                <div style="font-weight: 600;">{{ mnt.marca }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Modelo</label>
+                <div style="font-weight: 600;">{{ mnt.modelo }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">N.°
+                    de Serie</label>
+                <div style="font-weight: 600; font-family: monospace;">{{ mnt.numero_serie }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Capacidad
+                    de Carga</label>
+                <div style="font-weight: 600;">{{ mnt.capacidad_carga_kg }} kg</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Último
+                    Mantenimiento</label>
+                <div style="font-weight: 600;">{{ mnt.fecha_ultimo_mantenimiento|date:"d/m/Y" }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Próximo
+                    Mantenimiento</label>
+                <div style="font-weight: 600;
+                    {% if asset.estado_actual == 'MANTENIMIENTO_VENCIDO' %}color: #dc3545;
+                    {% elif asset.estado_actual == 'PROXIMO_MANTENIMIENTO' %}color: #e65100;
+                    {% endif %}">
+                    {{ mnt.fecha_proximo_mantenimiento|date:"d/m/Y" }}
+                    {% if asset.estado_actual == 'MANTENIMIENTO_VENCIDO' %}
+                    <i class="fas fa-exclamation-circle" style="color:#dc3545;"></i>
+                    {% elif asset.estado_actual == 'PROXIMO_MANTENIMIENTO' %}
+                    <i class="fas fa-exclamation-triangle" style="color:#e65100;"></i>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% endif %}
+
+</div>
+{% endblock %}

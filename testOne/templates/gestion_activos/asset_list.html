@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load permission_tags %}
+
+{% block title %}SST - Gestión de Activos{% endblock %}
+{% block header_title %}Gestión de Activos{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 style="font-size: 1.5rem; font-weight: 700;">
+            <i class="fas fa-boxes" style="color: #49BAA0; margin-right: 8px;"></i>
+            Gestión de Activos
+        </h1>
+        <p style="color: var(--text-light); font-size: 0.9rem;">Inventario y control de activos organizacionales</p>
+    </div>
+    {% has_permission 'assets' 'create' as can_create_asset %}
+    {% if can_create_asset %}
+    <a href="{% url 'asset_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus" style="margin-right: 8px;"></i> Nuevo Activo
+    </a>
+    {% endif %}
+</div>
+
+{# Stats Cards #}
+<div class="stats-container" style="margin-bottom: 24px;">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #49BAA0 0%, #3da891 100%);">
+            <i class="fas fa-boxes"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ total_assets }}</div>
+            <div class="stat-label">Total Activos</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #28a745 0%, #20883a 100%);">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ activos_count }}</div>
+            <div class="stat-label">En Estado Óptimo</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #ffc107 0%, #d39e00 100%);">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ alertas_count }}</div>
+            <div class="stat-label">Requieren Atención</div>
+        </div>
+    </div>
+</div>
+
+{# Filters #}
+<div class="card" style="margin-bottom: 24px;">
+    <form method="get" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 180px; margin-bottom: 0;">
+            <label for="search">Buscar</label>
+            <input type="text" id="search" name="search" value="{{ f_search }}" placeholder="Código del activo..."
+                style="width: 100%;">
+        </div>
+        <div class="form-group" style="width: 180px; margin-bottom: 0;">
+            <label for="tipo">Tipo de Activo</label>
+            <select id="tipo" name="tipo" style="width: 100%;">
+                <option value="">Todos los tipos</option>
+                {% for at in asset_types %}
+                <option value="{{ at.pk }}" {% if f_tipo == at.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ at.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="width: 180px; margin-bottom: 0;">
+            <label for="area">Área</label>
+            <select id="area" name="area" style="width: 100%;">
+                <option value="">Todas las áreas</option>
+                {% for area in areas %}
+                <option value="{{ area.pk }}" {% if f_area == area.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ area.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="width: 200px; margin-bottom: 0;">
+            <label for="estado">Estado</label>
+            <select id="estado" name="estado" style="width: 100%;">
+                <option value="">Todos los estados</option>
+                <option value="ACTIVO" {% if f_estado == 'ACTIVO' %}selected{% endif %}>Activo</option>
+                <option value="OPERATIVO" {% if f_estado == 'OPERATIVO' %}selected{% endif %}>Operativo</option>
+                <option value="VENCIDO" {% if f_estado == 'VENCIDO' %}selected{% endif %}>Vencido</option>
+                <option value="PROXIMO_A_VENCER" {% if f_estado == 'PROXIMO_A_VENCER' %}selected{% endif %}>Próximo a
+                    Vencer</option>
+                <option value="MANTENIMIENTO_VENCIDO" {% if f_estado == 'MANTENIMIENTO_VENCIDO' %}selected{% endif %}>
+                    Mantenimiento Vencido</option>
+                <option value="PROXIMO_MANTENIMIENTO" {% if f_estado == 'PROXIMO_MANTENIMIENTO' %}selected{% endif %}>
+                    Próximo Mantenimiento</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-bottom: 0;">
+            <i class="fas fa-search"></i> Buscar
+        </button>
+        {% if f_search or f_tipo or f_area or f_estado %}
+        <a href="{% url 'asset_list' %}" class="btn" style="background: #6c757d; color: white; margin-bottom: 0;">
+            <i class="fas fa-times"></i> Limpiar
+        </a>
+        {% endif %}
+    </form>
+</div>
+
+{# Assets Table #}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Listado de Activos</h3>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Código</th>
+                    <th>Área</th>
+                    <th>Estado</th>
+                    <th style="width: 130px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for asset in assets %}
+                <tr>
+                    <td>
+                        <span class="badge"
+                            style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 4px; font-size: 0.78rem;">
+                            {{ asset.asset_type.name }}
+                        </span>
+                    </td>
+                    <td style="font-family: monospace; font-weight: 600; color: #49BAA0;">{{ asset.code }}</td>
+                    <td>{{ asset.area }}</td>
+                    <td>
+                        <span class="compliance-badge {{ asset.estado_css }}" style="font-size: 0.78rem;">
+                            {% if asset.estado_actual == 'VENCIDO' or asset.estado_actual == 'MANTENIMIENTO_VENCIDO' %}
+                            <i class="fas fa-times-circle" style="margin-right: 4px;"></i>
+                            {% elif asset.estado_actual == 'PROXIMO_A_VENCER' or asset.estado_actual == 'PROXIMO_MANTENIMIENTO' %}
+                            <i class="fas fa-exclamation-triangle" style="margin-right: 4px;"></i>
+                            {% else %}
+                            <i class="fas fa-check-circle" style="margin-right: 4px;"></i>
+                            {% endif %}
+                            {{ asset.estado_label }}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="{% url 'asset_detail' asset.pk %}" class="btn btn-sm btn-info" title="Ver Detalle">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'asset_update' asset.pk %}" class="btn btn-sm btn-primary" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'asset_delete' asset.pk %}" class="btn btn-sm"
+                                style="background: #dc3545; color: white;" title="Eliminar"
+                                onclick="return confirm('¿Eliminar el activo {{ asset.code }}?');">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 48px 20px; color: var(--text-light);">
+                        <i class="fas fa-boxes"
+                            style="font-size: 2.5rem; margin-bottom: 12px; opacity: 0.3; display: block;"></i>
+                        No se encontraron activos.
+                        {% if f_search or f_tipo or f_area or f_estado %}
+                        <br><small>Intenta cambiar los filtros de búsqueda.</small>
+                        {% else %}
+                        <br><a href="{% url 'asset_create' %}" style="color: #49BAA0;">Crear el primer activo</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -184,21 +184,13 @@
     <table class="table-report">
         <thead>
             <tr>
-                <th>N°</th>
-                <th>Ubicación</th>
-                <th>Tipo / Cap.</th>
-                <th>Vencimiento</th>
-                <th>Estado</th>
+                <th>Estado General</th>
                 <th>Observaciones</th>
             </tr>
         </thead>
         <tbody>
             {% for item in object.items.all %}
             <tr>
-                <td style="font-weight: bold;">{{ item.extinguisher_number }}</td>
-                <td>{{ item.location }}</td>
-                <td>{{ item.get_extinguisher_type_display }} / {{ item.capacity }}</td>
-                <td>{{ item.next_recharge_date|date:"d/m/Y"|default:"N/A" }}</td>
                 <td
                     style="font-weight: bold; color: {% if item.status == 'Bueno' %}#28a745{% else %}#dc3545{% endif %};">
                     {{ item.status }}

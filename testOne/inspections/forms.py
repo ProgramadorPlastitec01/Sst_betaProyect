@@ -1,5 +1,33 @@
 from django import forms
 from .models import InspectionSchedule, Area
+import json
+
+
+class AssetSelect(forms.Select):
+    """
+    Select widget que inyecta data-* attributes en cada <option>
+    para mostrar preview del activo sin necesitar AJAX.
+    """
+    def create_option(self, name, value, label, selected, index, subgroup=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subgroup=subgroup, attrs=attrs)
+        if value and hasattr(value, 'instance'):
+            asset = value.instance
+            detail = getattr(asset, 'extintor_detail', None)
+            option['attrs']['data-code'] = asset.code
+            option['attrs']['data-area'] = str(asset.area) if asset.area else '-'
+            option['attrs']['data-cap'] = f"{detail.capacidad_kg} lbs" if detail else '-'
+            option['attrs']['data-tipo'] = str(detail.tipo_agente) if detail and detail.tipo_agente else '-'
+            option['attrs']['data-recarga'] = str(detail.fecha_vencimiento) if detail else '-'
+            option['attrs']['data-estado'] = asset.estado_label
+
+            # Build searchable text for filtering
+            option['attrs']['data-search'] = ' '.join([
+                asset.code,
+                str(asset.area) if asset.area else '',
+                str(detail.tipo_agente) if detail and detail.tipo_agente else '',
+            ]).lower()
+        return option
+
 
 class InspectionScheduleForm(forms.ModelForm):
     TYPE_CHOICES = [
@@ -62,43 +90,48 @@ from .models import (
 class ExtinguisherInspectionForm(forms.ModelForm):
     class Meta:
         model = ExtinguisherInspection
-        fields = ['inspection_date', 'area', 'inspector_role']
+        fields = ['inspection_date', 'area', 'inspector_role', 'asset']
         widgets = {
             'inspection_date': forms.DateInput(
                 format='%Y-%m-%d',
                 attrs={'type': 'date'}
             ),
+            'asset': AssetSelect(attrs={
+                'id': 'id_asset',
+                'class': 'form-control',
+                'style': 'width: 100%;',
+            }),
         }
-    
+
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         from django.utils import timezone
-        
+        from gestion_activos.models import Asset, AssetType
+
         # 1. Date Logic
         if not self.instance.pk:
             if 'inspection_date' not in self.initial:
                 self.fields['inspection_date'].initial = timezone.now().date()
-        
-        # Ensure correct formatting for HTML5 date input on edit
+
         if self.instance.pk and self.instance.inspection_date:
             self.fields['inspection_date'].widget.attrs['value'] = self.instance.inspection_date.strftime('%Y-%m-%d')
-        
+
         # 2. Inspector Role Logic: Match with user profile
         if self.user:
             user_role_name = self.user.get_role_name()
             role_choices = [c[0] for c in self.fields['inspector_role'].choices]
-            
+
             if user_role_name in role_choices:
                 self.fields['inspector_role'].initial = user_role_name
                 self.fields['inspector_role'].widget.attrs.update({
                     'readonly': 'readonly',
                     'style': 'pointer-events: none; background-color: #f8f9fa; border-color: #e2e8f0;'
                 })
-            
+
         self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
         self.fields['area'].empty_label = "Seleccione un área"
-        
+
         # Lock area if provided (e.g. from schedule)
         if self.initial.get('area'):
             self.fields['area'].widget.attrs.update({
@@ -106,32 +139,38 @@ class ExtinguisherInspectionForm(forms.ModelForm):
                 'readonly': 'readonly'
             })
 
+        # 3. Asset: only Extintor-type assets
+        try:
+            tipo_extintor = AssetType.objects.get(name='Extintor')
+            qs = Asset.objects.filter(
+                asset_type=tipo_extintor, activo=True
+            ).select_related('area', 'extintor_detail__tipo_agente').order_by('code')
+            self.fields['asset'].queryset = qs
+            self.fields['asset'].required = True
+            self.fields['asset'].empty_label = '--- Seleccione un extintor ---'
+            if not qs.exists():
+                self.fields['asset'].help_text = (
+                    'No existen extintores registrados en Gestión de Activos.'
+                )
+        except AssetType.DoesNotExist:
+            self.fields['asset'].queryset = Asset.objects.none()
+            self.fields['asset'].help_text = (
+                'No existe el tipo de activo "Extintor". Verifique la configuración.'
+            )
+            self.fields['asset'].required = True
+
+
+
 class ExtinguisherItemForm(forms.ModelForm):
     class Meta:
         model = ExtinguisherItem
         exclude = ['inspection']
         widgets = {
-            'extinguisher_number': forms.NumberInput(attrs={'placeholder': 'Número'}),
-            'location': forms.TextInput(attrs={'placeholder': 'Ubicación'}),
-            'capacity': forms.TextInput(attrs={'placeholder': 'Capacidad'}),
-            'last_recharge_date': forms.DateInput(
-                format='%Y-%m-%d',
-                attrs={'type': 'date'}
-            ),
-            'next_recharge_date': forms.DateInput(
-                format='%Y-%m-%d',
-                attrs={'type': 'date'}
-            ),
             'observations': forms.Textarea(attrs={'rows': 1, 'placeholder': 'Observaciones'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.instance.pk:
-            if self.instance.last_recharge_date:
-                self.fields['last_recharge_date'].widget.attrs['value'] = self.instance.last_recharge_date.strftime('%Y-%m-%d')
-            if self.instance.next_recharge_date:
-                self.fields['next_recharge_date'].widget.attrs['value'] = self.instance.next_recharge_date.strftime('%Y-%m-%d')
 
     def clean(self):
         cleaned_data = super().clean()

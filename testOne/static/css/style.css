@@ -90,6 +90,80 @@ body {
     font-size: 1.1rem;
 }
 
+/* Collapsible group (Inspecciones) */
+.sidebar-menu .nav-group-trigger {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    text-decoration: none;
+    color: var(--text-color);
+    border-radius: 8px;
+    transition: var(--transition);
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    width: 100%;
+    background: none;
+    border: none;
+    font-size: 0.95rem;
+    font-family: inherit;
+}
+
+.sidebar-menu .nav-group-trigger:hover,
+.sidebar-menu .nav-group-trigger.open {
+    background-color: rgba(73, 186, 160, 0.1);
+    color: var(--primary-color);
+}
+
+.sidebar-menu .nav-group-trigger i.nav-icon {
+    margin-right: 12px;
+    font-size: 1.1rem;
+}
+
+.sidebar-menu .nav-group-trigger .chevron {
+    margin-left: auto;
+    font-size: 0.75rem;
+    transition: transform 0.25s ease;
+}
+
+.sidebar-menu .nav-group-trigger.open .chevron {
+    transform: rotate(180deg);
+}
+
+.sidebar-submenu {
+    list-style: none;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease;
+}
+
+.sidebar-submenu.open {
+    max-height: 400px;
+}
+
+.sidebar-submenu li {
+    padding: 2px 16px 2px 24px;
+}
+
+.sidebar-submenu a {
+    padding: 9px 12px;
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
+@media (max-width: 1024px) {
+
+    .sidebar-menu .nav-group-trigger .chevron,
+    .sidebar-menu .nav-group-trigger span,
+    .sidebar-submenu a::before {
+        display: none;
+    }
+
+    .sidebar-submenu li {
+        padding: 2px 16px;
+    }
+}
+
 /* Top Navbar */
 .topbar {
     position: fixed;

@@ -97,7 +97,57 @@
             </div>
         </div>
         {% endif %}
+
+        {% if object.asset %}
+        <!-- Información del Activo Relacionado -->
+        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #eee;">
+            <h4
+                style="margin: 0 0 12px 0; font-size: 1rem; color: var(--text-color); display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-fire-extinguisher" style="color: #fd7e14;"></i> Activo Inspeccionado
+            </h4>
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; background: #fff3cd; border: 1px solid #ffdf7e; border-radius: 8px; padding: 16px;">
+                <div>
+                    <label
+                        style="display: block; font-size: 0.72rem; color: #856404; text-transform: uppercase; font-weight: 700;">Código</label>
+                    <div style="font-weight: 600; color: #405057;">{{ object.asset.code }}</div>
+                </div>
+                <div>
+                    <label
+                        style="display: block; font-size: 0.72rem; color: #856404; text-transform: uppercase; font-weight: 700;">Área</label>
+                    <div style="font-weight: 600; color: #405057;">{{ object.asset.area|default:"-" }}</div>
+                </div>
+                <div>
+                    <label
+                        style="display: block; font-size: 0.72rem; color: #856404; text-transform: uppercase; font-weight: 700;">Capacidad</label>
+                    <div style="font-weight: 600; color: #405057;">{{
+                        object.asset.extintor_detail.capacidad_kg|default:"-" }} lbs</div>
+                </div>
+                <div>
+                    <label
+                        style="display: block; font-size: 0.72rem; color: #856404; text-transform: uppercase; font-weight: 700;">Tipo/Clase</label>
+                    <div style="font-weight: 600; color: #405057;">{{
+                        object.asset.extintor_detail.tipo_agente|default:"-" }}</div>
+                </div>
+                <div>
+                    <label
+                        style="display: block; font-size: 0.72rem; color: #856404; text-transform: uppercase; font-weight: 700;">Próx.
+                        Recarga</label>
+                    <div style="font-weight: 600; color: #405057;">{{
+                        object.asset.extintor_detail.fecha_vencimiento|date:"d/m/Y"|default:"-" }}</div>
+                </div>
+                <div>
+                    <label
+                        style="display: block; font-size: 0.72rem; color: #856404; text-transform: uppercase; font-weight: 700;">Estado
+                        Activo</label>
+                    <div><span class="compliance-badge {{ object.asset.estado_css }}">{{ object.asset.estado_label
+                            }}</span></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
+
 
     {% if timeline_inspections %}
     <!-- Historial de Inspecciones (Timeline) -->
@@ -161,11 +211,7 @@
             <table style="font-size: 0.85rem;">
                 <thead>
                     <tr>
-                        <th style="width: 50px;">Número</th>
-                        <th>Ubicación</th>
-                        <th>Tipo / Capacidad</th>
-                        <th>Próxima Recarga</th>
-                        <th>Estado</th>
+                        <th>Estado General</th>
                         <th>Revisión Puntos Clave</th>
                         <th style="width: 80px;">Acciones</th>
                     </tr>
@@ -173,10 +219,6 @@
                 <tbody>
                     {% for item in object.items.all %}
                     <tr>
-                        <td style="font-weight: 600;">{{ item.extinguisher_number }}</td>
-                        <td>{{ item.location }}</td>
-                        <td>{{ item.get_extinguisher_type_display }} / {{ item.capacity }}</td>
-                        <td>{{ item.next_recharge_date|date:"d/m/Y"|default:"N/A" }}</td>
                         <td>
                             <span
                                 class="compliance-badge {% if item.status == 'Bueno' %}badge-success{% elif item.status == 'Malo' %}badge-danger{% else %}badge-warning{% endif %}">

@@ -1,0 +1,84 @@
+{% comment %}
+Partial: formulario de detalle según tipo de activo.
+Se usa tanto en carga inicial como en respuesta AJAX.
+{% endcomment %}
+
+{% if detail_type == 'extintor' %}
+<div class="inspection-card">
+    <h3 class="section-title">
+        <i class="fas fa-fire-extinguisher"></i> Datos del Extintor
+    </h3>
+    <div class="form-grid">
+        <div class="form-group">
+            <label>{{ detail_form.tipo_agente.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.tipo_agente }}
+            {% if detail_form.tipo_agente.errors %}<div class="text-danger small">{{ detail_form.tipo_agente.errors }}
+            </div>{% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ detail_form.capacidad_kg.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.capacidad_kg }}
+            {% if detail_form.capacidad_kg.errors %}<div class="text-danger small">{{ detail_form.capacidad_kg.errors }}
+            </div>{% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ detail_form.fecha_recarga.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.fecha_recarga }}
+            {% if detail_form.fecha_recarga.errors %}<div class="text-danger small">{{ detail_form.fecha_recarga.errors}}
+			</div>{% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ detail_form.fecha_vencimiento.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.fecha_vencimiento }}
+            {% if detail_form.fecha_vencimiento.errors %}<div class="text-danger small">
+			{{ detail_form.fecha_vencimiento.errors }}</div>{% endif %}
+        </div>
+    </div>
+</div>
+
+{% elif detail_type == 'montacargas' %}
+<div class="inspection-card">
+    <h3 class="section-title">
+        <i class="fas fa-truck-loading"></i> Datos del Montacargas
+    </h3>
+    <div class="form-grid">
+        <div class="form-group">
+            <label>{{ detail_form.marca.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.marca }}
+            {% if detail_form.marca.errors %}<div class="text-danger small">{{ detail_form.marca.errors }}</div>
+			{% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ detail_form.modelo.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.modelo }}
+            {% if detail_form.modelo.errors %}<div class="text-danger small">{{ detail_form.modelo.errors }}</div>
+			{% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ detail_form.numero_serie.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.numero_serie }}
+            {% if detail_form.numero_serie.errors %}<div class="text-danger small">{{ detail_form.numero_serie.errors }}
+            </div>{% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ detail_form.capacidad_carga_kg.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.capacidad_carga_kg }}
+            {% if detail_form.capacidad_carga_kg.errors %}<div class="text-danger small">
+			{{detail_form.capacidad_carga_kg.errors }}
+			</div>{% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ detail_form.fecha_ultimo_mantenimiento.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.fecha_ultimo_mantenimiento }}
+            {% if detail_form.fecha_ultimo_mantenimiento.errors %}<div class="text-danger small">
+			{{ detail_form.fecha_ultimo_mantenimiento.errors }}</div>{% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ detail_form.fecha_proximo_mantenimiento.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.fecha_proximo_mantenimiento }}
+            {% if detail_form.fecha_proximo_mantenimiento.errors %}<div class="text-danger small">
+			{{ detail_form.fecha_proximo_mantenimiento.errors }}</div>{% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}

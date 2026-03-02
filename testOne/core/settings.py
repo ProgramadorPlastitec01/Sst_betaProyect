@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'roles',
     'notifications',
     'system_config',
+    'gestion_activos',
 ]
 
 MIDDLEWARE = [

@@ -665,9 +665,8 @@ class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
         count = 0
         for i in range(total):
             is_deleted = self.request.POST.get(f'items-{i}-DELETE')
-            num = self.request.POST.get(f'items-{i}-extinguisher_number', '').strip()
-            loc = self.request.POST.get(f'items-{i}-location', '').strip()
-            if not is_deleted and (num or loc):
+            status_val = self.request.POST.get(f'items-{i}-status', '').strip()
+            if not is_deleted and status_val:
                 count += 1
         return count
     
@@ -729,10 +728,9 @@ class ExtinguisherUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
         for i in range(total):
             is_deleted = self.request.POST.get(f'items-{i}-DELETE')
             item_id = self.request.POST.get(f'items-{i}-id', '').strip()
-            num = self.request.POST.get(f'items-{i}-extinguisher_number', '').strip()
-            loc = self.request.POST.get(f'items-{i}-location', '').strip()
+            status_val = self.request.POST.get(f'items-{i}-status', '').strip()
             # Existing item not deleted, OR new item with data
-            if not is_deleted and (item_id or num or loc):
+            if not is_deleted and (item_id or status_val):
                 count += 1
         return count
     

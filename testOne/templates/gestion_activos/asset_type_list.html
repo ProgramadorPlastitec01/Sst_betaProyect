@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}SST - Tipos de Activo{% endblock %}
+{% block header_title %}Configuración del Sistema{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 style="font-size: 1.5rem; font-weight: 700;">
+            <i class="fas fa-tags" style="color: #49BAA0; margin-right: 8px;"></i>
+            Tipos de Activo
+        </h1>
+        <p style="color: var(--text-light); font-size: 0.9rem;">
+            Administra los tipos de activos disponibles para el inventario
+        </p>
+    </div>
+    <div style="display: flex; gap: 12px;">
+        <a href="{% url 'configuration' %}" class="btn" style="background: #e9ecef; color: #495057;">
+            <i class="fas fa-arrow-left"></i> Configuración
+        </a>
+        <a href="{% url 'asset_type_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nuevo Tipo
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <h3 class="card-title">Tipos Registrados ({{ total }})</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Activos</th>
+                    <th style="width: 150px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for at in asset_types %}
+                <tr>
+                    <td style="font-weight: 600; color: #666;">{{ forloop.counter }}</td>
+                    <td style="font-weight: 600;">{{ at.name }}</td>
+                    <td style="color: var(--text-light);">{{ at.description|default:"—" }}</td>
+                    <td>
+                        <span class="badge"
+                            style="background: #e3f2fd; color: #1976d2; padding: 4px 10px; border-radius: 4px;">
+                            {{ at.assets.count }}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="{% url 'asset_type_update' at.pk %}" class="btn btn-sm"
+                                style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'asset_type_delete' at.pk %}" class="btn btn-sm"
+                                style="background: #dc3545; color: white; padding: 6px 12px;" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-light);">
+                        No hay tipos de activo registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

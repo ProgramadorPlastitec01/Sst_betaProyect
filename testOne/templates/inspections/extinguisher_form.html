@@ -45,12 +45,92 @@
                 }
             </style>
             <div class="inspection-grid">
-                {% for field in form %}
                 <div class="form-group">
-                    <label style="font-weight: 600;">{{ field.label }}</label>
-                    {{ field }}
+                    <label style="font-weight: 600;">{{ form.inspection_date.label }}</label>
+                    {{ form.inspection_date }}
+                    {{ form.inspection_date.errors }}
                 </div>
-                {% endfor %}
+                <div class="form-group">
+                    <label style="font-weight: 600;">{{ form.area.label }}</label>
+                    {{ form.area }}
+                    {{ form.area.errors }}
+                </div>
+                <div class="form-group">
+                    <label style="font-weight: 600;">{{ form.inspector_role.label }}</label>
+                    {{ form.inspector_role }}
+                    {{ form.inspector_role.errors }}
+                </div>
+            </div>
+
+            <!-- Campo Extintor con Buscador -->
+            <div style="margin-top: 20px;">
+                <label style="font-weight: 600; margin-bottom: 8px; display: block;">
+                    <i class="fas fa-fire-extinguisher" style="color: #fd7e14; margin-right: 6px;"></i>
+                    Extintor (Activo del Inventario)
+                </label>
+                {% if form.asset.help_text %}
+                <div
+                    style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 16px; color: #856404;">
+                    <i class="fas fa-exclamation-triangle" style="margin-right: 6px;"></i>
+                    {{ form.asset.help_text }}
+                </div>
+                {% else %}
+                <div style="position: relative;">
+                    <input type="text" id="asset-search" placeholder="Buscar por código, área o tipo..." style="width: 100%; padding: 8px 12px 8px 36px; border: 1px solid #dee2e6; border-radius: 6px;
+                               font-size: 0.9rem; margin-bottom: 6px; box-sizing: border-box;" autocomplete="off">
+                    <i class="fas fa-search"
+                        style="position: absolute; left: 12px; top: 10px; color: #aaa; font-size: 0.85rem;"></i>
+                </div>
+                {{ form.asset }}
+                {{ form.asset.errors }}
+                {% endif %}
+
+                <!-- Preview del activo seleccionado -->
+                <div id="asset-preview" style="display: none; margin-top: 12px; background: #f8faf9; border: 1px solid #d0ece4;
+                           border-radius: 8px; padding: 16px; border-left: 4px solid #49BAA0;">
+                    <div style="font-size: 0.75rem; color: var(--text-light); font-weight: 700;
+                                text-transform: uppercase; margin-bottom: 12px;">
+                        <i class="fas fa-info-circle" style="margin-right: 4px;"></i> Datos del extintor seleccionado
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                        <div>
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
+                                Código</div>
+                            <div id="pv-code" style="font-weight: 600;">—</div>
+                        </div>
+                        <div>
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
+                                Área</div>
+                            <div id="pv-area" style="font-weight: 600;">—</div>
+                        </div>
+                        <div>
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
+                                Capacidad</div>
+                            <div id="pv-cap" style="font-weight: 600;">—</div>
+                        </div>
+                        <div>
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
+                                Tipo/Clase</div>
+                            <div id="pv-tipo" style="font-weight: 600;">—</div>
+                        </div>
+                        <div>
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
+                                Próx. Recarga</div>
+                            <div id="pv-recarga" style="font-weight: 600;">—</div>
+                        </div>
+                        <div>
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
+                                Estado</div>
+                            <div id="pv-estado" style="font-weight: 600;">—</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -139,42 +219,14 @@
                 <table class="mass-table" id="items-table" style="width: 100%; min-width: 1000px;">
                     <thead>
                         <tr style="border-bottom: 2px solid #eee;">
-                            <th style="width: 120px;">NÚMERO</th>
-                            <th style="width: 20%;">UBICACIÓN</th>
-                            <th style="width: 15%;">TIPO / CLASE</th>
-                            <th style="width: 20%;">DATOS TÉCNICOS</th>
-                            <th style="width: 25%;">PUNTOS DE REVISIÓN</th>
-                            <th style="width: 150px;">ESTADO / OBS.</th>
-                            <th style="width: 40px;"></th>
+                            <th style="width: 45%;">PUNTOS DE REVISIÓN</th>
+                            <th style="width: 35%;">ESTADO / OBS.</th>
+                            <th style="width: 20%;">ACCIÓN</th>
                         </tr>
                     </thead>
                     <tbody id="items-tbody">
                         {% for item_form in items %}
                         <tr class="item-row">
-                            <td>
-                                {{ item_form.id }}
-                                {{ item_form.extinguisher_number }}
-                            </td>
-                            <td>
-                                {{ item_form.location }}
-                            </td>
-                            <td>{{ item_form.extinguisher_type }}</td>
-                            <td>
-                                <div class="tech-data-stack">
-                                    <div class="tech-field">
-                                        <span class="tech-label">Capacidad</span>
-                                        {{ item_form.capacity }}
-                                    </div>
-                                    <div class="tech-field">
-                                        <span class="tech-label">Última Recarga</span>
-                                        {{ item_form.last_recharge_date }}
-                                    </div>
-                                    <div class="tech-field">
-                                        <span class="tech-label">Próxima Recarga</span>
-                                        {{ item_form.next_recharge_date }}
-                                    </div>
-                                </div>
-                            </td>
                             <td>
                                 <div class="check-grid">
                                     <label class="check-item">{{ item_form.pressure_gauge_ok }} Manómetro</label>
@@ -228,25 +280,6 @@
 <!-- Template for new rows -->
 <script type="text/template" id="row-template">
     <tr class="item-row">
-        <td>{{ items.empty_form.extinguisher_number }}</td>
-        <td>{{ items.empty_form.location }}</td>
-        <td>{{ items.empty_form.extinguisher_type }}</td>
-        <td>
-            <div class="tech-data-stack">
-                <div class="tech-field">
-                    <span class="tech-label">Capacidad</span>
-                    {{ items.empty_form.capacity }}
-                </div>
-                <div class="tech-field">
-                    <span class="tech-label">Última Recarga</span>
-                    {{ items.empty_form.last_recharge_date }}
-                </div>
-                <div class="tech-field">
-                    <span class="tech-label">Próxima Recarga</span>
-                    {{ items.empty_form.next_recharge_date }}
-                </div>
-            </div>
-        </td>
         <td>
             <div class="check-grid">
                 <label class="check-item">{{ items.empty_form.pressure_gauge_ok }} Manómetro</label>
@@ -307,5 +340,73 @@
             row.remove();
         }
     }
+
+    // Lógica para el buscador de extintores
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('asset-search');
+        const selectAsset = document.getElementById('id_asset');
+        const previewBox = document.getElementById('asset-preview');
+
+        if (!selectAsset) return;
+
+        // Preview handler
+        function updatePreview() {
+            const selectedOpt = selectAsset.options[selectAsset.selectedIndex];
+            if (!selectedOpt || !selectedOpt.value) {
+                previewBox.style.display = 'none';
+                return;
+            }
+
+            document.getElementById('pv-code').textContent = selectedOpt.getAttribute('data-code') || '—';
+            document.getElementById('pv-area').textContent = selectedOpt.getAttribute('data-area') || '—';
+            document.getElementById('pv-cap').textContent = selectedOpt.getAttribute('data-cap') || '—';
+            document.getElementById('pv-tipo').textContent = selectedOpt.getAttribute('data-tipo') || '—';
+            document.getElementById('pv-recarga').textContent = selectedOpt.getAttribute('data-recarga') || '—';
+
+            const estado = selectedOpt.getAttribute('data-estado') || '—';
+            document.getElementById('pv-estado').innerHTML = `<span class="badge badge-secondary" style="font-size:0.75rem;">${estado}</span>`;
+
+            previewBox.style.display = 'block';
+        }
+
+        // Run preview on load
+        updatePreview();
+
+        // Run preview on change
+        selectAsset.addEventListener('change', updatePreview);
+
+        // Search handler
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                const term = this.value.toLowerCase().trim();
+                let hasMatch = false;
+
+                for (let i = 1; i < selectAsset.options.length; i++) {
+                    const opt = selectAsset.options[i];
+                    const searchData = opt.getAttribute('data-search') || '';
+                    if (searchData.includes(term)) {
+                        opt.style.display = '';
+                        // Select first matching option if current is hidden
+                        if (!hasMatch && term !== '') {
+                            selectAsset.selectedIndex = i;
+                            updatePreview();
+                        }
+                        hasMatch = true;
+                    } else {
+                        opt.style.display = 'none';
+                    }
+                }
+
+                // Reset selection if cleared
+                if (term === '') {
+                    // keep current if it exists, otherwise back to defaults
+                    updatePreview();
+                } else if (!hasMatch) {
+                    selectAsset.selectedIndex = 0;
+                    updatePreview();
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}

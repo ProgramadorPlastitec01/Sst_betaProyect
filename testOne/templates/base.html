@@ -33,7 +33,7 @@
                 {% has_permission 'users' 'view' as can_view_dashboard %}
                 <li>
                     <a href="{% url 'dashboard' %}"
-                        class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                        class="{% if request.resolver_match.url_name  ==  'dashboard' %}active{% endif %}">
                         <i class="fas fa-th-large"></i> <span>Dashboard</span>
                     </a>
                 </li>
@@ -42,54 +42,75 @@
                 {% if can_view_schedule %}
                 <li>
                     <a href="{% url 'inspection_list' %}"
-                        class="{% if request.resolver_match.url_name == 'inspection_list' %}active{% endif %}">
+                        class="{% if request.resolver_match.url_name  ==  'inspection_list' %}active{% endif %}">
                         <i class="fas fa-calendar-alt"></i> <span>Cronograma Anual</span>
                     </a>
                 </li>
                 {% endif %}
 
                 {% has_permission 'extinguisher' 'view' as can_view_extinguisher %}
-                {% if can_view_extinguisher %}
-                <li>
-                    <a href="{% url 'extinguisher_list' %}"
-                        class="{% if 'extinguisher' in request.path %}active{% endif %}">
-                        <i class="fas fa-fire-extinguisher"></i> <span>Extintores</span>
-                    </a>
-                </li>
-                {% endif %}
-
                 {% has_permission 'first_aid' 'view' as can_view_first_aid %}
-                {% if can_view_first_aid %}
-                <li>
-                    <a href="{% url 'first_aid_list' %}" class="{% if 'first-aid' in request.path %}active{% endif %}">
-                        <i class="fas fa-medkit"></i> <span>Botiquines</span>
-                    </a>
-                </li>
-                {% endif %}
-
                 {% has_permission 'process' 'view' as can_view_process %}
-                {% if can_view_process %}
-                <li>
-                    <a href="{% url 'process_list' %}" class="{% if 'process' in request.path %}active{% endif %}">
-                        <i class="fas fa-cogs"></i> <span>Procesos</span>
-                    </a>
-                </li>
-                {% endif %}
-
                 {% has_permission 'storage' 'view' as can_view_storage %}
-                {% if can_view_storage %}
+                {% has_permission 'forklift' 'view' as can_view_forklift %}
+
+                {% if can_view_extinguisher or can_view_first_aid or can_view_process or can_view_storage or can_view_forklift %}
                 <li>
-                    <a href="{% url 'storage_list' %}" class="{% if 'storage' in request.path %}active{% endif %}">
-                        <i class="fas fa-boxes"></i> <span>Almacenamiento</span>
-                    </a>
+                    <button class="nav-group-trigger" id="inspecciones-trigger" type="button">
+                        <i class="fas fa-clipboard-check nav-icon"></i>
+                        <span>Inspecciones</span>
+                        <i class="fas fa-chevron-down chevron"></i>
+                    </button>
+                    <ul class="sidebar-submenu" id="inspecciones-submenu">
+                        {% if can_view_extinguisher %}
+                        <li>
+                            <a href="{% url 'extinguisher_list' %}"
+                                class="{% if 'extinguisher' in request.path %}active{% endif %}">
+                                <i class="fas fa-fire-extinguisher"></i> <span>Extintores</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_view_first_aid %}
+                        <li>
+                            <a href="{% url 'first_aid_list' %}"
+                                class="{% if 'first-aid' in request.path %}active{% endif %}">
+                                <i class="fas fa-medkit"></i> <span>Botiquines</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_view_process %}
+                        <li>
+                            <a href="{% url 'process_list' %}"
+                                class="{% if 'process' in request.path %}active{% endif %}">
+                                <i class="fas fa-cogs"></i> <span>Procesos</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_view_storage %}
+                        <li>
+                            <a href="{% url 'storage_list' %}"
+                                class="{% if 'storage' in request.path %}active{% endif %}">
+                                <i class="fas fa-warehouse"></i> <span>Almacenamiento</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_view_forklift %}
+                        <li>
+                            <a href="{% url 'forklift_list' %}"
+                                class="{% if 'forklift' in request.path %}active{% endif %}">
+                                <i class="fas fa-truck-loading"></i> <span>Montacargas</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
                 </li>
                 {% endif %}
 
-                {% has_permission 'forklift' 'view' as can_view_forklift %}
-                {% if can_view_forklift %}
+                {% has_permission 'assets' 'view' as can_view_assets %}
+                {% if can_view_assets %}
                 <li>
-                    <a href="{% url 'forklift_list' %}" class="{% if 'forklift' in request.path %}active{% endif %}">
-                        <i class="fas fa-truck-loading"></i> <span>Montacargas</span>
+                    <a href="{% url 'asset_list' %}" class="{% if 'activos' in request.path %}active{% endif %}">
+                        <i class="fas fa-boxes"></i> <span>Gestión de Activos</span>
                     </a>
                 </li>
                 {% endif %}
@@ -98,7 +119,7 @@
                 {% if can_view_reports %}
                 <li>
                     <a href="{% url 'inspection_reports' %}"
-                        class="{% if request.resolver_match.url_name == 'inspection_reports' %}active{% endif %}">
+                        class="{% if request.resolver_match.url_name  ==  'inspection_reports' %}active{% endif %}">
                         <i class="fas fa-chart-line"></i> <span>Reportes</span>
                     </a>
                 </li>
@@ -267,6 +288,36 @@
             background: #f8f9fa;
         }
     </style>
+
+    <script>
+        (function () {
+            var trigger = document.getElementById('inspecciones-trigger');
+            var submenu = document.getElementById('inspecciones-submenu');
+            if (trigger && submenu) {
+                // Auto-open if current path is an inspection route
+                var inspectionPaths = ['extinguisher', 'first-aid', 'process', 'storage', 'forklift'];
+                var currentPath = window.location.pathname;
+                var isInspectionActive = inspectionPaths.some(function (p) {
+                    return currentPath.indexOf(p) !== -1;
+                });
+                if (isInspectionActive) {
+                    submenu.classList.add('open');
+                    trigger.classList.add('open');
+                }
+                // Toggle on click
+                trigger.addEventListener('click', function () {
+                    var isOpen = submenu.classList.contains('open');
+                    if (isOpen) {
+                        submenu.classList.remove('open');
+                        trigger.classList.remove('open');
+                    } else {
+                        submenu.classList.add('open');
+                        trigger.classList.add('open');
+                    }
+                });
+            }
+        })();
+    </script>
 
     {% block extra_scripts %}{% endblock %}
 </body>
