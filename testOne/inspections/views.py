@@ -440,6 +440,35 @@ class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
         context['all_inspections'] = all_inspections
         context['latest_inspections'] = all_inspections[:10]
         
+        # ── Lógica de Alertas de Activos (Dashboard) ─────────────────
+        from gestion_activos.models import Asset
+        # Pre-fetching de detalles para optimizar el cálculo del property 'estado_actual'
+        assets_qs = Asset.objects.select_related('asset_type').prefetch_related('extintor_detail', 'montacargas_detail').all()
+        
+        vencidos_count = 0
+        proximos_count = 0
+        criticos_count = 0
+        
+        for asset in assets_qs:
+            st = asset.estado_actual
+            if st in ('VENCIDO', 'MANTENIMIENTO_VENCIDO'):
+                vencidos_count += 1
+            elif st in ('PROXIMO_A_VENCER', 'PROXIMO_MANTENIMIENTO'):
+                proximos_count += 1
+            
+            # Se consideran críticos aquellos fuera de servicio (activo=False)
+            if not asset.activo:
+                criticos_count += 1
+        
+        context['asset_alerts'] = {
+            'vencidos': vencidos_count,
+            'proximos': proximos_count,
+            'criticos': criticos_count,
+            'total': vencidos_count + proximos_count + criticos_count,
+            'has_alerts': (vencidos_count + proximos_count + criticos_count) > 0
+        }
+        # ─────────────────────────────────────────────────────────────
+
         # Determine full and latest schedule
         # context['schedule'] is already set by ListView
         # Assuming get_queryset returns the full list filtered by year/area
@@ -682,6 +711,24 @@ class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
                 pass
         return initial
 
+    def _sync_extintor_recargas(self):
+        """Actualiza ExtintorDetail en inventario si se registró una nueva recarga."""
+        from dateutil.relativedelta import relativedelta
+        from gestion_activos.models import ExtintorDetail
+        actualizados = 0
+        for item in self.object.items.filter(fecha_recarga_realizada__isnull=False).select_related('asset__extintor_detail'):
+            if not item.asset_id:
+                continue
+            try:
+                detail = item.asset.extintor_detail
+                detail.fecha_recarga = item.fecha_recarga_realizada
+                detail.fecha_vencimiento = item.fecha_recarga_realizada + relativedelta(years=1)
+                detail.save(update_fields=['fecha_recarga', 'fecha_vencimiento'])
+                actualizados += 1
+            except ExtintorDetail.DoesNotExist:
+                pass
+        return actualizados
+
     def form_valid(self, form):
         # --- VALIDACIÓN OBLIGATORIA: Al menos un ítem de detalle ---
         if self._count_valid_extinguisher_items() == 0:
@@ -690,7 +737,7 @@ class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
         # --- FIN VALIDACIÓN ---
 
         form.instance.inspector = self.request.user
-        
+
         schedule_item_id = self.request.GET.get('schedule_item')
         if schedule_item_id:
             try:
@@ -706,8 +753,14 @@ class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
         user_role_name = self.request.user.get_role_name()
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
-            
+
         response = super().form_valid(form)
+
+        # Sync recharge dates to inventory
+        n = self._sync_extintor_recargas()
+        if n > 0:
+            messages.info(self.request, f'✅ {n} extintor(es) actualizado(s) en inventario con nueva fecha de recarga.')
+
         messages.success(self.request, f'Inspección de extintores guardada exitosamente para {form.instance.area}')
         return response
     
@@ -734,6 +787,24 @@ class ExtinguisherUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
                 count += 1
         return count
     
+    def _sync_extintor_recargas(self):
+        """Actualiza ExtintorDetail en inventario si se registró una nueva recarga."""
+        from dateutil.relativedelta import relativedelta
+        from gestion_activos.models import ExtintorDetail
+        actualizados = 0
+        for item in self.object.items.filter(fecha_recarga_realizada__isnull=False).select_related('asset__extintor_detail'):
+            if not item.asset_id:
+                continue
+            try:
+                detail = item.asset.extintor_detail
+                detail.fecha_recarga = item.fecha_recarga_realizada
+                detail.fecha_vencimiento = item.fecha_recarga_realizada + relativedelta(years=1)
+                detail.save(update_fields=['fecha_recarga', 'fecha_vencimiento'])
+                actualizados += 1
+            except ExtintorDetail.DoesNotExist:
+                pass
+        return actualizados
+
     def form_valid(self, form):
         # --- VALIDACIÓN OBLIGATORIA: Al menos un ítem de detalle ---
         if self._count_surviving_extinguisher_items() == 0:
@@ -745,8 +816,14 @@ class ExtinguisherUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
         user_role_name = self.request.user.get_role_name()
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
-            
+
         response = super().form_valid(form)
+
+        # Sync recharge dates to inventory
+        n = self._sync_extintor_recargas()
+        if n > 0:
+            messages.info(self.request, f'✅ {n} extintor(es) actualizado(s) en inventario con nueva fecha de recarga.')
+
         messages.success(self.request, 'Inspección de extintores actualizada correctamente')
         return response
     
@@ -869,18 +946,14 @@ class SignExtinguisherInspectionView(LoginRequiredMixin, View):
                 for item in failed_items:
                     new_items.append(ExtinguisherItem(
                         inspection=follow_up,
-                        extinguisher_number=item.extinguisher_number,
-                        location=item.location,
-                        extinguisher_type=item.extinguisher_type,
-                        capacity=item.capacity,
-                        last_recharge_date=item.last_recharge_date,
-                        next_recharge_date=item.next_recharge_date,
-                        status=item.status,
                         pressure_gauge_ok=item.pressure_gauge_ok,
                         safety_pin_ok=item.safety_pin_ok,
                         hose_nozzle_ok=item.hose_nozzle_ok,
                         signage_ok=item.signage_ok,
-                        observations=f"Seguimiento: {item.observations}"[:200] if item.observations else "Seguimiento"
+                        access_ok=item.access_ok,
+                        label_ok=item.label_ok,
+                        status=item.status,
+                        observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento pendiente",
                     ))
                 ExtinguisherItem.objects.bulk_create(new_items)
                 

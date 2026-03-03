@@ -408,9 +408,14 @@ class ExtinguisherItem(models.Model):
     ]
 
     inspection = models.ForeignKey(ExtinguisherInspection, related_name='items', on_delete=models.CASCADE)
-    
+    asset = models.ForeignKey(
+        'gestion_activos.Asset',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name="Extintor (Inventario)",
+        related_name='extinguisher_items'
+    )
 
-    
     # Checklist items specific to extinguishers
     pressure_gauge_ok = models.BooleanField(default=True, verbose_name="Manómetro")
     safety_pin_ok = models.BooleanField(default=True, verbose_name="Seguro/Pasador")
@@ -421,6 +426,11 @@ class ExtinguisherItem(models.Model):
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Bueno', verbose_name="Estado")
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observaciones")
+    fecha_recarga_realizada = models.DateField(
+        null=True, blank=True,
+        verbose_name="Fecha de Recarga Realizada",
+        help_text="Completar solo si se realizó una recarga durante esta inspección"
+    )
     registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
 
 # 2. First Aid Inspection (R-RH-SST-020)

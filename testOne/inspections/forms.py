@@ -8,8 +8,8 @@ class AssetSelect(forms.Select):
     Select widget que inyecta data-* attributes en cada <option>
     para mostrar preview del activo sin necesitar AJAX.
     """
-    def create_option(self, name, value, label, selected, index, subgroup=None, attrs=None):
-        option = super().create_option(name, value, label, selected, index, subgroup=subgroup, attrs=attrs)
+    def create_option(self, name, value, label, selected, index, **kwargs):
+        option = super().create_option(name, value, label, selected, index, **kwargs)
         if value and hasattr(value, 'instance'):
             asset = value.instance
             detail = getattr(asset, 'extintor_detail', None)
@@ -17,7 +17,8 @@ class AssetSelect(forms.Select):
             option['attrs']['data-area'] = str(asset.area) if asset.area else '-'
             option['attrs']['data-cap'] = f"{detail.capacidad_kg} lbs" if detail else '-'
             option['attrs']['data-tipo'] = str(detail.tipo_agente) if detail and detail.tipo_agente else '-'
-            option['attrs']['data-recarga'] = str(detail.fecha_vencimiento) if detail else '-'
+            option['attrs']['data-ultima-recarga'] = str(detail.fecha_recarga) if detail and detail.fecha_recarga else '-'
+            option['attrs']['data-recarga'] = str(detail.fecha_vencimiento) if detail and detail.fecha_vencimiento else '-'
             option['attrs']['data-estado'] = asset.estado_label
 
             # Build searchable text for filtering
@@ -90,24 +91,18 @@ from .models import (
 class ExtinguisherInspectionForm(forms.ModelForm):
     class Meta:
         model = ExtinguisherInspection
-        fields = ['inspection_date', 'area', 'inspector_role', 'asset']
+        fields = ['inspection_date', 'area', 'inspector_role']
         widgets = {
             'inspection_date': forms.DateInput(
                 format='%Y-%m-%d',
                 attrs={'type': 'date'}
             ),
-            'asset': AssetSelect(attrs={
-                'id': 'id_asset',
-                'class': 'form-control',
-                'style': 'width: 100%;',
-            }),
         }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         from django.utils import timezone
-        from gestion_activos.models import Asset, AssetType
 
         # 1. Date Logic
         if not self.instance.pk:
@@ -138,54 +133,61 @@ class ExtinguisherInspectionForm(forms.ModelForm):
                 'style': 'pointer-events: none; background-color: #e9ecef;',
                 'readonly': 'readonly'
             })
+class ExtinguisherItemForm(forms.ModelForm):
 
-        # 3. Asset: only Extintor-type assets
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from gestion_activos.models import Asset, AssetType
         try:
             tipo_extintor = AssetType.objects.get(name='Extintor')
             qs = Asset.objects.filter(
                 asset_type=tipo_extintor, activo=True
             ).select_related('area', 'extintor_detail__tipo_agente').order_by('code')
-            self.fields['asset'].queryset = qs
-            self.fields['asset'].required = True
-            self.fields['asset'].empty_label = '--- Seleccione un extintor ---'
-            if not qs.exists():
-                self.fields['asset'].help_text = (
-                    'No existen extintores registrados en Gestión de Activos.'
-                )
         except AssetType.DoesNotExist:
-            self.fields['asset'].queryset = Asset.objects.none()
-            self.fields['asset'].help_text = (
-                'No existe el tipo de activo "Extintor". Verifique la configuración.'
+            qs = Asset.objects.none()
+        self.fields['asset'].queryset = qs
+        self.fields['asset'].required = True
+        self.fields['asset'].empty_label = '--- Seleccione extintor ---'
+        self.fields['asset'].label = 'Extintor'
+
+        # Pre-fill fecha_recarga if editing and instance has a value
+        if self.instance.pk and self.instance.fecha_recarga_realizada:
+            self.fields['fecha_recarga_realizada'].widget.attrs['value'] = (
+                self.instance.fecha_recarga_realizada.strftime('%Y-%m-%d')
             )
-            self.fields['asset'].required = True
 
-
-
-class ExtinguisherItemForm(forms.ModelForm):
     class Meta:
         model = ExtinguisherItem
-        exclude = ['inspection']
+        exclude = ['inspection', 'registered_by']
         widgets = {
-            'observations': forms.Textarea(attrs={'rows': 1, 'placeholder': 'Observaciones'}),
+            'asset': AssetSelect(attrs={
+                'class': 'form-control asset-item-select',
+                'style': 'width: 100%;',
+            }),
+            'observations': forms.Textarea(attrs={'rows': 1, 'placeholder': 'Observaciones...', 'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-control'}),
+            'fecha_recarga_realizada': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={
+                    'type': 'date',
+                    'class': 'form-control',
+                    'placeholder': 'DD/MM/AAAA',
+                }
+            ),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
     def clean(self):
         cleaned_data = super().clean()
         status = cleaned_data.get('status')
         observations = cleaned_data.get('observations')
-
         if status == 'Malo' and not observations:
             self.add_error('observations', 'La observación es obligatoria para ítems en estado Malo.')
-
         return cleaned_data
 
 ExtinguisherItemFormSet = inlineformset_factory(
     ExtinguisherInspection, ExtinguisherItem,
     form=ExtinguisherItemForm,
-    extra=1, # Start with 1 row for dynamic addition
+    extra=1,
     can_delete=True
 )
 

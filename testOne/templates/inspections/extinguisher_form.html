@@ -5,6 +5,348 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+<!-- Tom Select (searchable dropdown) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<style>
+    .inspection-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+
+    @media (max-width: 992px) {
+        .inspection-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 576px) {
+        .inspection-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Item rows - compact design */
+    .ext-item-row {
+        background: #fff;
+        border: 1px solid #e2ece8;
+        border-left: 4px solid #49BAA0;
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        position: relative;
+        transition: box-shadow 0.2s;
+    }
+
+    .ext-item-row:hover {
+        box-shadow: 0 2px 10px rgba(73, 186, 160, 0.13);
+    }
+
+    .ext-item-row .row-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .ext-item-num {
+        background: var(--primary-color);
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 2px 10px;
+        border-radius: 20px;
+        letter-spacing: 0.5px;
+    }
+
+
+    /* ══ GRID PRINCIPAL: 2 COLUMNAS ══ */
+    .item-two-col {
+        display: grid;
+        grid-template-columns: 1fr 310px;
+        gap: 14px;
+        align-items: start;
+    }
+
+    @media (max-width: 860px) {
+        .item-two-col {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Columna izquierda: selector + preview + checks */
+    .item-col-left {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* — Preview info-card del extintor — */
+    .asset-row-preview {
+        display: none;
+        background: #f7fdfb;
+        border: 1px solid #c8e8de;
+        border-left: 3px solid #49BAA0;
+        border-radius: 7px;
+        padding: 10px 12px;
+        margin-top: 6px;
+        animation: fadeInPreview 0.2s ease;
+    }
+
+    @keyframes fadeInPreview {
+        from {
+            opacity: 0;
+            transform: translateY(-4px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .asset-row-preview.visible {
+        display: block;
+    }
+
+    .preview-header {
+        font-size: 0.62rem;
+        color: #2a8a72;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    /* Grid: 4 columnas × 2 filas */
+    .preview-fields {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px 12px;
+    }
+
+    @media (max-width: 700px) {
+        .preview-fields {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .preview-field {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .preview-field-lbl {
+        font-size: 0.58rem;
+        color: #7aab9e;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .preview-field-val {
+        font-size: 0.83rem;
+        font-weight: 700;
+        color: #1e3d35;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Checkboxes: 3 cols × 2 filas */
+    .check-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+    }
+
+    @media (max-width: 576px) {
+        .check-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .check-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.73rem;
+        color: var(--text-color);
+        background: #f6faf8;
+        padding: 4px 7px;
+        border-radius: 5px;
+        border: 1px solid #e2ede8;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+
+    .check-item input[type="checkbox"] {
+        width: 13px;
+        height: 13px;
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .check-item input[type="checkbox"]:checked+* {
+        color: var(--primary-color);
+    }
+
+    /* Columna derecha: panel de acciones */
+    .item-col-right {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border-left: 3px solid #e8f4ef;
+        padding-left: 14px;
+    }
+
+    @media (max-width: 860px) {
+        .item-col-right {
+            border-left: none;
+            border-top: 2px solid #e8f4ef;
+            padding-left: 0;
+            padding-top: 10px;
+        }
+    }
+
+    /* Labels comunes */
+    .tech-label {
+        font-size: 0.65rem;
+        color: var(--text-light);
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 3px;
+        letter-spacing: 0.3px;
+    }
+
+    .form-group {
+        margin-bottom: 0;
+    }
+
+    /* Celdas de recarga */
+    .recarga-cell {
+        background: #fff8f0;
+        border: 1px dashed #fd7e14;
+        border-radius: 6px;
+        padding: 7px 9px;
+    }
+
+    .recarga-cell .tech-label {
+        color: #c0580a;
+    }
+
+    .prox-recarga-display {
+        padding: 4px 8px;
+        background: #fff;
+        border: 1px solid #fbd5a8;
+        border-radius: 5px;
+        font-size: 0.82rem;
+        color: var(--text-light);
+        min-height: 30px;
+        display: flex;
+        align-items: center;
+    }
+
+    .field-hint {
+        font-size: 0.62rem;
+        color: var(--text-light);
+        margin-top: 2px;
+    }
+
+    /* Tom Select — fondo blanco sólido (fix transparencia) */
+    .ts-wrapper.form-control,
+    .ts-wrapper {
+        padding: 0 !important;
+        border: none !important;
+        background: #ffffff !important;
+    }
+
+    .ts-control,
+    .ts-control.has-items,
+    .ts-control.focus {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 6px !important;
+        font-size: 0.9rem !important;
+        min-height: 38px !important;
+        box-shadow: none !important;
+        color: var(--text-color, #333) !important;
+    }
+
+    .ts-control input,
+    .ts-control input:focus {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: var(--text-color, #333) !important;
+        opacity: 1 !important;
+    }
+
+    .ts-control:focus-within,
+    .ts-wrapper.focus .ts-control {
+        border-color: #49BAA0 !important;
+        box-shadow: 0 0 0 3px rgba(73, 186, 160, 0.15) !important;
+        background: #ffffff !important;
+    }
+
+    .ts-dropdown,
+    .ts-dropdown-content {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        border: 1px solid #d0ece4 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12) !important;
+        font-size: 0.88rem !important;
+        z-index: 9999 !important;
+    }
+
+    .ts-dropdown-content {
+        max-height: 260px;
+        overflow-y: auto;
+    }
+
+    .ts-dropdown .option {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: var(--text-color, #333) !important;
+        padding: 8px 12px;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.12s;
+    }
+
+    .ts-dropdown .option:hover,
+    .ts-dropdown .option.active {
+        background: #e8f7f3 !important;
+        background-color: #e8f7f3 !important;
+        color: #1a5c4f !important;
+    }
+
+    .ts-dropdown .extintor-opt-code {
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: #1a5c4f;
+    }
+
+    .ts-dropdown .extintor-opt-meta {
+        font-size: 0.76rem;
+        color: #888;
+        margin-top: 1px;
+    }
+
+    .ts-dropdown .no-results {
+        background: #ffffff !important;
+        padding: 12px;
+        color: #888;
+        text-align: center;
+        font-size: 0.85rem;
+    }
+</style>
 {% endblock %}
 
 {% block header_title %}Inspecciones de Seguridad - Extintores{% endblock %}
@@ -13,8 +355,9 @@
 <div class="inspection-form-container" style="max-width: 100%;">
     <div class="dashboard-header">
         <div>
-            <h1 style="font-size: 1.5rem; font-weight: 700;">{% if form.instance.pk %}Editar{% else %}Nueva{% endif %}
-                Inspección de Extintores</h1>
+            <h1 style="font-size: 1.5rem; font-weight: 700;">
+                {% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Inspección de Extintores
+            </h1>
             <p style="color: var(--text-light); font-size: 0.9rem;">Formato R-RH-SST-019</p>
         </div>
         <a href="{% url 'extinguisher_list' %}" class="btn-link"><i class="fas fa-arrow-left"></i> Volver</a>
@@ -23,27 +366,9 @@
     <form method="post" novalidate id="inspection-form">
         {% csrf_token %}
 
+        <!-- DATOS GENERALES -->
         <div class="card">
             <h3 class="inspection-section-title"><i class="fas fa-info-circle"></i> Datos Generales</h3>
-            <style>
-                .inspection-grid {
-                    display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 20px;
-                }
-
-                @media (max-width: 992px) {
-                    .inspection-grid {
-                        grid-template-columns: repeat(2, 1fr);
-                    }
-                }
-
-                @media (max-width: 576px) {
-                    .inspection-grid {
-                        grid-template-columns: 1fr;
-                    }
-                }
-            </style>
             <div class="inspection-grid">
                 <div class="form-group">
                     <label style="font-weight: 600;">{{ form.inspection_date.label }}</label>
@@ -61,83 +386,14 @@
                     {{ form.inspector_role.errors }}
                 </div>
             </div>
-
-            <!-- Campo Extintor con Buscador -->
-            <div style="margin-top: 20px;">
-                <label style="font-weight: 600; margin-bottom: 8px; display: block;">
-                    <i class="fas fa-fire-extinguisher" style="color: #fd7e14; margin-right: 6px;"></i>
-                    Extintor (Activo del Inventario)
-                </label>
-                {% if form.asset.help_text %}
-                <div
-                    style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 16px; color: #856404;">
-                    <i class="fas fa-exclamation-triangle" style="margin-right: 6px;"></i>
-                    {{ form.asset.help_text }}
-                </div>
-                {% else %}
-                <div style="position: relative;">
-                    <input type="text" id="asset-search" placeholder="Buscar por código, área o tipo..." style="width: 100%; padding: 8px 12px 8px 36px; border: 1px solid #dee2e6; border-radius: 6px;
-                               font-size: 0.9rem; margin-bottom: 6px; box-sizing: border-box;" autocomplete="off">
-                    <i class="fas fa-search"
-                        style="position: absolute; left: 12px; top: 10px; color: #aaa; font-size: 0.85rem;"></i>
-                </div>
-                {{ form.asset }}
-                {{ form.asset.errors }}
-                {% endif %}
-
-                <!-- Preview del activo seleccionado -->
-                <div id="asset-preview" style="display: none; margin-top: 12px; background: #f8faf9; border: 1px solid #d0ece4;
-                           border-radius: 8px; padding: 16px; border-left: 4px solid #49BAA0;">
-                    <div style="font-size: 0.75rem; color: var(--text-light); font-weight: 700;
-                                text-transform: uppercase; margin-bottom: 12px;">
-                        <i class="fas fa-info-circle" style="margin-right: 4px;"></i> Datos del extintor seleccionado
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
-                        <div>
-                            <div
-                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
-                                Código</div>
-                            <div id="pv-code" style="font-weight: 600;">—</div>
-                        </div>
-                        <div>
-                            <div
-                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
-                                Área</div>
-                            <div id="pv-area" style="font-weight: 600;">—</div>
-                        </div>
-                        <div>
-                            <div
-                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
-                                Capacidad</div>
-                            <div id="pv-cap" style="font-weight: 600;">—</div>
-                        </div>
-                        <div>
-                            <div
-                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
-                                Tipo/Clase</div>
-                            <div id="pv-tipo" style="font-weight: 600;">—</div>
-                        </div>
-                        <div>
-                            <div
-                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
-                                Próx. Recarga</div>
-                            <div id="pv-recarga" style="font-weight: 600;">—</div>
-                        </div>
-                        <div>
-                            <div
-                                style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; font-weight: 700;">
-                                Estado</div>
-                            <div id="pv-estado" style="font-weight: 600;">—</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
+        <!-- EXTINTORES INSPECCIONADOS -->
         <div class="card">
-            <div class="card-header" style="margin-bottom: 15px;">
-                <h3 class="inspection-section-title" style="margin-bottom: 0; border: none;"><i
-                        class="fas fa-fire-extinguisher"></i> Extintores Inspeccionados</h3>
+            <div class="card-header" style="margin-bottom: 20px;">
+                <h3 class="inspection-section-title" style="margin-bottom: 0; border: none;">
+                    <i class="fas fa-fire-extinguisher"></i> Extintores Inspeccionados
+                </h3>
                 <button type="button" class="btn"
                     style="background-color: #f8faf9; color: var(--primary-color); border: 2px dashed var(--primary-color); padding: 8px 16px;"
                     id="add-item-btn">
@@ -147,87 +403,85 @@
 
             {{ items.management_form }}
 
-            <style>
-                .mass-table th {
-                    vertical-align: middle;
-                    text-align: center;
-                    background: #f8faf9;
-                    color: var(--text-color);
-                    font-weight: 600;
-                    font-size: 0.8rem;
-                    padding: 12px;
-                }
+            <div id="items-container">
+                {% for item_form in items %}
+                <div class="ext-item-row" data-idx="{{ forloop.counter }}">
+                    {% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}
 
-                .mass-table td {
-                    vertical-align: top;
-                    padding: 12px;
-                    border-bottom: 1px solid #eee;
-                }
+                    <div class="row-header">
+                        <span class="ext-item-num">Extintor #{{ forloop.counter }}</span>
+                        {% if items.can_delete %}
+                        <div style="display:none;">{{ item_form.DELETE }}</div>
+                        <button type="button" class="btn-link" style="color: #dc3545;" onclick="removeRow(this)">
+                            <i class="fas fa-trash-alt"></i> Eliminar
+                        </button>
+                        {% endif %}
+                    </div>
 
-                .check-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 8px;
-                    text-align: left;
-                }
+                    {% if item_form.errors %}
+                    <div
+                        style="background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;padding:8px 10px;margin-bottom:10px;color:#991b1b;font-size:0.82rem;">
+                        {{ item_form.errors }}
+                    </div>
+                    {% endif %}
 
-                .check-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    font-size: 0.8rem;
-                    color: var(--text-color);
-                    background: #f8faf9;
-                    padding: 4px 8px;
-                    border-radius: 4px;
-                    border: 1px solid #eee;
-                }
+                    <!-- GRID 2 COLUMNAS -->
+                    <div class="item-two-col">
 
-                .check-item input[type="checkbox"] {
-                    margin: 0;
-                    width: 16px;
-                    height: 16px;
-                    cursor: pointer;
-                }
+                        <!-- COLUMNA IZQUIERDA: selector + preview + checkboxes -->
+                        <div class="item-col-left">
 
-                .tech-data-stack {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                }
+                            <!-- Selector extintor -->
+                            <div class="form-group">
+                                <label class="tech-label">
+                                    <i class="fas fa-fire-extinguisher" style="color:#fd7e14; margin-right:3px;"></i>
+                                    Extintor del Inventario <span style="color:#dc3545;">*</span>
+                                </label>
+                                {{ item_form.asset }}
+                                {{ item_form.asset.errors }}
+                            </div>
 
-                .tech-field {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 2px;
-                }
+                            <!-- Preview info del extintor -->
+                            <div class="asset-row-preview">
+                                <div class="preview-header">
+                                    <i class="fas fa-check-circle" style="color:#49BAA0;"></i>
+                                    Datos del extintor seleccionado
+                                </div>
+                                <div class="preview-fields">
+                                    <div class="preview-field">
+                                        <span class="preview-field-lbl">Código</span>
+                                        <span class="preview-field-val pv-code">—</span>
+                                    </div>
+                                    <div class="preview-field">
+                                        <span class="preview-field-lbl">Área</span>
+                                        <span class="preview-field-val pv-area">—</span>
+                                    </div>
+                                    <div class="preview-field">
+                                        <span class="preview-field-lbl">Tipo / Clase</span>
+                                        <span class="preview-field-val pv-tipo">—</span>
+                                    </div>
+                                    <div class="preview-field">
+                                        <span class="preview-field-lbl">Capacidad</span>
+                                        <span class="preview-field-val pv-cap">—</span>
+                                    </div>
+                                    <div class="preview-field">
+                                        <span class="preview-field-lbl">Últ. Recarga</span>
+                                        <span class="preview-field-val pv-ultima-recarga">—</span>
+                                    </div>
+                                    <div class="preview-field">
+                                        <span class="preview-field-lbl">Próx. Recarga</span>
+                                        <span class="preview-field-val pv-recarga">—</span>
+                                    </div>
+                                    <div class="preview-field" style="grid-column: span 2;">
+                                        <span class="preview-field-lbl">Estado en inventario</span>
+                                        <span class="preview-field-val pv-estado">—</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                .tech-label {
-                    font-size: 0.7rem;
-                    color: var(--text-light);
-                    font-weight: 600;
-                    text-transform: uppercase;
-                }
-
-                .form-control-sm {
-                    padding: 4px 8px;
-                    font-size: 0.85rem;
-                }
-            </style>
-
-            <div class="table-wrapper" style="overflow-x: auto;">
-                <table class="mass-table" id="items-table" style="width: 100%; min-width: 1000px;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid #eee;">
-                            <th style="width: 45%;">PUNTOS DE REVISIÓN</th>
-                            <th style="width: 35%;">ESTADO / OBS.</th>
-                            <th style="width: 20%;">ACCIÓN</th>
-                        </tr>
-                    </thead>
-                    <tbody id="items-tbody">
-                        {% for item_form in items %}
-                        <tr class="item-row">
-                            <td>
+                            <!-- Checkboxes: 3 cols x 2 filas -->
+                            <div>
+                                <div class="tech-label" style="margin-bottom:5px;">Puntos de Verificación</div>
                                 <div class="check-grid">
                                     <label class="check-item">{{ item_form.pressure_gauge_ok }} Manómetro</label>
                                     <label class="check-item">{{ item_form.safety_pin_ok }} Seguro</label>
@@ -236,177 +490,341 @@
                                     <label class="check-item">{{ item_form.access_ok }} Acceso</label>
                                     <label class="check-item">{{ item_form.label_ok }} Etiqueta</label>
                                 </div>
-                            </td>
-                            <td>
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    <div class="tech-field">
-                                        <span class="tech-label">Estado</span>
-                                        {{ item_form.status }}
-                                    </div>
-                                    <div class="tech-field">
-                                        <span class="tech-label">Observaciones</span>
-                                        {{ item_form.observations }}
-                                    </div>
-                                </div>
-                            </td>
-                            <td style="text-align: center; vertical-align: middle;">
-                                {% if items.can_delete %}
-                                <div style="display: none;">{{ item_form.DELETE }}</div>
-                                <button type="button" class="btn-link" style="color: #dc3545;"
-                                    onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% if item_form.errors %}
-                        <tr class="error-row">
-                            <td colspan="7">{{ item_form.errors }}</td>
-                        </tr>
-                        {% endif %}
-                        {% endfor %}
-                    </tbody>
-                </table>
+                            </div>
+
+                        </div>
+
+                        <!-- COLUMNA DERECHA: estado + obs + recarga -->
+                        <div class="item-col-right">
+
+                            <div>
+                                <div class="tech-label">Estado Final</div>
+                                {{ item_form.status }}
+                            </div>
+
+                            <div>
+                                <div class="tech-label">Observaciones</div>
+                                {{ item_form.observations }}
+                            </div>
+
+                            <div class="recarga-cell">
+                                <div class="tech-label"><i class="fas fa-sync-alt" style="margin-right:3px;"></i> Fecha
+                                    de Recarga</div>
+                                {{ item_form.fecha_recarga_realizada }}
+                                <div class="field-hint">Dejar vacío si no hubo recarga</div>
+                            </div>
+
+                            <div class="recarga-cell">
+                                <div class="tech-label">Próxima Recarga Calculada</div>
+                                <div class="prox-recarga-display">—</div>
+                                <div class="field-hint">Automático (+ 1 año)</div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+                {% endfor %}
             </div>
+
+            {% if not items %}
+            <p style="text-align:center; color:var(--text-light); padding: 20px;">
+                Haz clic en <b>Agregar Extintor</b> para comenzar.
+            </p>
+            {% endif %}
         </div>
 
         <div style="margin-top: 32px; display: flex; gap: 12px; justify-content: flex-end;">
             <a href="{% url 'extinguisher_list' %}" class="btn" style="background: #e9ecef; color: #495057;">Volver</a>
             <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save" style="margin-right: 8px;"></i> Guardar Inspección Masiva
+                <i class="fas fa-save" style="margin-right: 8px;"></i> Guardar Inspección
             </button>
         </div>
     </form>
 </div>
 
-<!-- Template for new rows -->
+<!-- Template row vacía para JS -->
 <script type="text/template" id="row-template">
-    <tr class="item-row">
-        <td>
-            <div class="check-grid">
-                <label class="check-item">{{ items.empty_form.pressure_gauge_ok }} Manómetro</label>
-                <label class="check-item">{{ items.empty_form.safety_pin_ok }} Seguro</label>
-                <label class="check-item">{{ items.empty_form.hose_nozzle_ok }} Manguera</label>
-                <label class="check-item">{{ items.empty_form.signage_ok }} Señalización</label>
-                <label class="check-item">{{ items.empty_form.access_ok }} Acceso</label>
-                <label class="check-item">{{ items.empty_form.label_ok }} Etiqueta</label>
+<div class="ext-item-row" data-idx="__NUM__">
+    __HIDDEN_FIELDS__
+    <div class="row-header">
+        <span class="ext-item-num">Extintor #__NUM__</span>
+        <button type="button" class="btn-link" style="color: #dc3545;" onclick="removeRow(this)">
+            <i class="fas fa-trash-alt"></i> Eliminar
+        </button>
+    </div>
+
+    <!-- GRID 2 COLUMNAS -->
+    <div class="item-two-col">
+
+        <!-- COLUMNA IZQUIERDA: selector + preview + checkboxes -->
+        <div class="item-col-left">
+
+            <div class="form-group">
+                <label class="tech-label">
+                    <i class="fas fa-fire-extinguisher" style="color:#fd7e14; margin-right:3px;"></i>
+                    Extintor del Inventario <span style="color:#dc3545;">*</span>
+                </label>
+                __ASSET_SELECT__
             </div>
-        </td>
-        <td>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <div class="tech-field">
-                    <span class="tech-label">Estado</span>
-                    {{ items.empty_form.status }}
+
+            <!-- Preview info del extintor -->
+            <div class="asset-row-preview">
+                <div class="preview-header">
+                    <i class="fas fa-check-circle" style="color:#49BAA0;"></i>
+                    Datos del extintor seleccionado
                 </div>
-                <div class="tech-field">
-                    <span class="tech-label">Observaciones</span>
-                    {{ items.empty_form.observations }}
+                <div class="preview-fields">
+                    <div class="preview-field">
+                        <span class="preview-field-lbl">Código</span>
+                        <span class="preview-field-val pv-code">—</span>
+                    </div>
+                    <div class="preview-field">
+                        <span class="preview-field-lbl">Área</span>
+                        <span class="preview-field-val pv-area">—</span>
+                    </div>
+                    <div class="preview-field">
+                        <span class="preview-field-lbl">Tipo / Clase</span>
+                        <span class="preview-field-val pv-tipo">—</span>
+                    </div>
+                    <div class="preview-field">
+                        <span class="preview-field-lbl">Capacidad</span>
+                        <span class="preview-field-val pv-cap">—</span>
+                    </div>
+                    <div class="preview-field">
+                        <span class="preview-field-lbl">Últ. Recarga</span>
+                        <span class="preview-field-val pv-ultima-recarga">—</span>
+                    </div>
+                    <div class="preview-field">
+                        <span class="preview-field-lbl">Próx. Recarga</span>
+                        <span class="preview-field-val pv-recarga">—</span>
+                    </div>
+                    <div class="preview-field" style="grid-column: span 2;">
+                        <span class="preview-field-lbl">Estado en inventario</span>
+                        <span class="preview-field-val pv-estado">—</span>
+                    </div>
                 </div>
             </div>
-        </td>
-        <td style="text-align: center; vertical-align: middle;">
-            <button type="button" class="btn-link" style="color: #dc3545;" onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button>
-        </td>
-    </tr>
+
+            <div>
+                <div class="tech-label" style="margin-bottom:5px;">Puntos de Verificación</div>
+                <div class="check-grid">
+                    <label class="check-item"><input type="checkbox" name="items-__PREFIX__-pressure_gauge_ok" id="id_items-__PREFIX__-pressure_gauge_ok" checked> Manómetro</label>
+                    <label class="check-item"><input type="checkbox" name="items-__PREFIX__-safety_pin_ok" id="id_items-__PREFIX__-safety_pin_ok" checked> Seguro</label>
+                    <label class="check-item"><input type="checkbox" name="items-__PREFIX__-hose_nozzle_ok" id="id_items-__PREFIX__-hose_nozzle_ok" checked> Manguera</label>
+                    <label class="check-item"><input type="checkbox" name="items-__PREFIX__-signage_ok" id="id_items-__PREFIX__-signage_ok" checked> Señalización</label>
+                    <label class="check-item"><input type="checkbox" name="items-__PREFIX__-access_ok" id="id_items-__PREFIX__-access_ok" checked> Acceso</label>
+                    <label class="check-item"><input type="checkbox" name="items-__PREFIX__-label_ok" id="id_items-__PREFIX__-label_ok" checked> Etiqueta</label>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- COLUMNA DERECHA: estado + obs + recarga -->
+        <div class="item-col-right">
+
+            <div>
+                <div class="tech-label">Estado Final</div>
+                <select name="items-__PREFIX__-status" id="id_items-__PREFIX__-status" class="form-control">
+                    <option value="Bueno" selected>Bueno</option>
+                    <option value="Malo">Malo</option>
+                    <option value="Recargar">Recargar</option>
+                </select>
+            </div>
+
+            <div>
+                <div class="tech-label">Observaciones</div>
+                <textarea name="items-__PREFIX__-observations" id="id_items-__PREFIX__-observations" rows="3" placeholder="Observaciones..." class="form-control"></textarea>
+            </div>
+
+            <div class="recarga-cell">
+                <div class="tech-label"><i class="fas fa-sync-alt" style="margin-right:3px;"></i> Fecha de Recarga</div>
+                __FECHA_RECARGA__
+                
+            </div>
+
+            <div class="recarga-cell">
+                <div class="tech-label">Próxima Recarga Calculada</div>
+                <div class="prox-recarga-display">—</div>
+                <div class="field-hint">Automático (+ 1 año)</div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
 </script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const addItemBtn = document.getElementById('add-item-btn');
-        const itemsTbody = document.getElementById('items-tbody');
+        // ── Extraer datos de asset options del primer select antes de Tom Select ──
+        const firstSelect = document.querySelector('.asset-item-select');
+        let rawAssetOptions = [];
+        if (firstSelect) {
+            Array.from(firstSelect.options).forEach(opt => {
+                rawAssetOptions.push({
+                    value: opt.value,
+                    text: opt.text,
+                    code: opt.getAttribute('data-code') || '',
+                    area: opt.getAttribute('data-area') || '',
+                    cap: opt.getAttribute('data-cap') || '',
+                    tipo: opt.getAttribute('data-tipo') || '',
+                    ultima_recarga: opt.getAttribute('data-ultima-recarga') || '',
+                    recarga: opt.getAttribute('data-recarga') || '',
+                    estado: opt.getAttribute('data-estado') || '',
+                    search: opt.getAttribute('data-search') || opt.text,
+                });
+            });
+        }
+
+        // ── Formato de fecha YYYY-MM-DD → DD/MM/YYYY ──
+        function fmtDate(val) {
+            if (!val || val === '-') return '—';
+            const parts = val.split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return val;
+        }
+
+        // ── Inicializar Tom Select en una fila ──
+        function initRow(row) {
+            const sel = row.querySelector('.asset-item-select');
+            const preview = row.querySelector('.asset-row-preview');
+            if (!sel || sel._tomSelectInstance) return; // evitar doble init
+
+            const ts = new TomSelect(sel, {
+                valueField: 'value',
+                labelField: 'text',
+                searchField: ['code', 'area', 'tipo', 'search'],
+                options: rawAssetOptions,
+                maxOptions: null,
+                placeholder: '--- Seleccione extintor ---',
+                allowEmptyOption: true,
+                plugins: ['clear_button'],
+                render: {
+                    option: function (data, escape) {
+                        if (!data.value) {
+                            return `<div class="option" style="color:#aaa; font-style:italic;">${escape(data.text)}</div>`;
+                        }
+                        const estadoColor = data.estado === 'Activo' ? '#28a745'
+                            : data.estado === 'Vencido' ? '#dc3545' : '#fd7e14';
+                        return `<div class="option">
+                            <div class="extintor-opt-code"><i class="fas fa-fire-extinguisher" style="color:#fd7e14;margin-right:5px;"></i>${escape(data.code || data.text)}
+                                <span style="font-size:0.72rem; font-weight:400; color:${estadoColor}; margin-left:8px;">${escape(data.estado)}</span>
+                            </div>
+                            <div class="extintor-opt-meta">${escape(data.area)} &nbsp;·&nbsp; ${escape(data.tipo)} &nbsp;·&nbsp; ${escape(data.cap)}</div>
+                        </div>`;
+                    },
+                    item: function (data, escape) {
+                        if (!data.value) return `<div>${escape(data.text)}</div>`;
+                        return `<div><strong>${escape(data.code || data.text)}</strong><span style="font-size:0.8rem;color:#666;margin-left:8px;">${escape(data.area)}</span></div>`;
+                    },
+                    no_results: function (data, escape) {
+                        return `<div class="no-results"><i class="fas fa-search" style="margin-right:5px;"></i>No se encontraron resultados para "${escape(data.input)}"</div>`;
+                    }
+                },
+                onChange: function (value) {
+                    const item = this.options[value];
+                    if (!item || !item.value) {
+                        if (preview) preview.classList.remove('visible');
+                        return;
+                    }
+                    const estadoColor = item.estado === 'Activo' ? '#28a745'
+                        : item.estado === 'Vencido' ? '#dc3545' : '#fd7e14';
+                    row.querySelector('.pv-code').textContent = item.code || '—';
+                    row.querySelector('.pv-area').textContent = item.area || '—';
+                    row.querySelector('.pv-cap').textContent = item.cap || '—';
+                    row.querySelector('.pv-tipo').textContent = item.tipo || '—';
+                    row.querySelector('.pv-ultima-recarga').textContent = fmtDate(item.ultima_recarga);
+                    row.querySelector('.pv-recarga').textContent = fmtDate(item.recarga);
+                    row.querySelector('.pv-estado').innerHTML = `<span style="font-weight:700;color:${estadoColor};">${item.estado || '—'}</span>`;
+                    if (preview) preview.classList.add('visible');
+                }
+            });
+
+            // Guardar referencia para que initRow no se ejecute dos veces
+            sel._tomSelectInstance = ts;
+
+            // Disparar preview si ya hay valor (modo edición)
+            if (sel.value) ts.trigger('change', sel.value);
+
+            // ── Wiring: fecha de recarga → próxima recarga calculada ──
+            const recargaInput = row.querySelector('input[type="date"][id*="fecha_recarga_realizada"]');
+            const proxDisplay = row.querySelector('.prox-recarga-display');
+            if (recargaInput && proxDisplay) {
+                function calcProxRecarga() {
+                    const val = recargaInput.value;
+                    if (val) {
+                        const d = new Date(val + 'T00:00:00');
+                        d.setFullYear(d.getFullYear() + 1);
+                        const dd = String(d.getDate()).padStart(2, '0');
+                        const mm = String(d.getMonth() + 1).padStart(2, '0');
+                        const yyyy = d.getFullYear();
+                        proxDisplay.textContent = `${dd}/${mm}/${yyyy}`;
+                        proxDisplay.style.color = 'var(--text-color)';
+                        proxDisplay.style.fontWeight = '600';
+                        proxDisplay.style.borderColor = '#fd7e14';
+                    } else {
+                        proxDisplay.textContent = '—';
+                        proxDisplay.style.color = 'var(--text-light)';
+                        proxDisplay.style.fontWeight = 'normal';
+                        proxDisplay.style.borderColor = '#fbd5a8';
+                    }
+                }
+                recargaInput.addEventListener('change', calcProxRecarga);
+                calcProxRecarga();
+            }
+        }
+
+        // Init filas existentes
+        document.querySelectorAll('.ext-item-row').forEach(initRow);
+
+        // ── Agregar nueva fila ──
+        const addBtn = document.getElementById('add-item-btn');
+        const container = document.getElementById('items-container');
         const totalForms = document.getElementById('id_items-TOTAL_FORMS');
-        const template = document.getElementById('row-template').innerHTML;
+        const rowTpl = document.getElementById('row-template').innerHTML;
 
-        addItemBtn.addEventListener('click', function () {
-            const formIdx = parseInt(totalForms.value);
-            const newRow = template.replace(/__prefix__/g, formIdx).replace(/empty_form/g, formIdx);
+        addBtn.addEventListener('click', function () {
+            const idx = parseInt(totalForms.value);
+            const num = idx + 1;
 
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(`<table>${newRow}</table>`, 'text/html');
-            const row = doc.querySelector('tr');
+            // Native select (sin init de Tom Select aquí — lo hará initRow)
+            let assetSelect = `<select name="items-${idx}-asset" id="id_items-${idx}-asset" class="form-control asset-item-select" style="width:100%;"></select>`;
+            let hiddenFields = `<input type="hidden" name="items-${idx}-id" id="id_items-${idx}-id" value="">`;
 
-            itemsTbody.appendChild(row);
-            totalForms.value = formIdx + 1;
+            let html = rowTpl
+                .replace(/__PREFIX__/g, idx)
+                .replace(/__NUM__/g, num)
+                .replace('__HIDDEN_FIELDS__', hiddenFields)
+                .replace('__ASSET_SELECT__', assetSelect)
+                .replace('__FECHA_RECARGA__', `<input type="date" name="items-${idx}-fecha_recarga_realizada" id="id_items-${idx}-fecha_recarga_realizada" class="form-control">`);
+
+            const div = document.createElement('div');
+            div.innerHTML = html.trim();
+            const newRow = div.firstElementChild;
+            container.appendChild(newRow);
+            totalForms.value = num;
+
+            initRow(newRow);
         });
     });
 
+    // ── Eliminar fila ──
     function removeRow(btn) {
-        const row = btn.closest('.item-row');
+        const row = btn.closest('.ext-item-row');
         const deleteInput = row.querySelector('input[name$="-DELETE"]');
-
         if (deleteInput) {
             deleteInput.checked = true;
-            row.classList.add('deleted');
             row.style.display = 'none';
         } else {
             row.remove();
         }
+        // Renum visible rows
+        let n = 1;
+        document.querySelectorAll('.ext-item-row:not([style*="display: none"])').forEach(r => {
+            const lbl = r.querySelector('.ext-item-num');
+            if (lbl) lbl.textContent = `Extintor #${n++}`;
+        });
     }
-
-    // Lógica para el buscador de extintores
-    document.addEventListener('DOMContentLoaded', function () {
-        const searchInput = document.getElementById('asset-search');
-        const selectAsset = document.getElementById('id_asset');
-        const previewBox = document.getElementById('asset-preview');
-
-        if (!selectAsset) return;
-
-        // Preview handler
-        function updatePreview() {
-            const selectedOpt = selectAsset.options[selectAsset.selectedIndex];
-            if (!selectedOpt || !selectedOpt.value) {
-                previewBox.style.display = 'none';
-                return;
-            }
-
-            document.getElementById('pv-code').textContent = selectedOpt.getAttribute('data-code') || '—';
-            document.getElementById('pv-area').textContent = selectedOpt.getAttribute('data-area') || '—';
-            document.getElementById('pv-cap').textContent = selectedOpt.getAttribute('data-cap') || '—';
-            document.getElementById('pv-tipo').textContent = selectedOpt.getAttribute('data-tipo') || '—';
-            document.getElementById('pv-recarga').textContent = selectedOpt.getAttribute('data-recarga') || '—';
-
-            const estado = selectedOpt.getAttribute('data-estado') || '—';
-            document.getElementById('pv-estado').innerHTML = `<span class="badge badge-secondary" style="font-size:0.75rem;">${estado}</span>`;
-
-            previewBox.style.display = 'block';
-        }
-
-        // Run preview on load
-        updatePreview();
-
-        // Run preview on change
-        selectAsset.addEventListener('change', updatePreview);
-
-        // Search handler
-        if (searchInput) {
-            searchInput.addEventListener('input', function () {
-                const term = this.value.toLowerCase().trim();
-                let hasMatch = false;
-
-                for (let i = 1; i < selectAsset.options.length; i++) {
-                    const opt = selectAsset.options[i];
-                    const searchData = opt.getAttribute('data-search') || '';
-                    if (searchData.includes(term)) {
-                        opt.style.display = '';
-                        // Select first matching option if current is hidden
-                        if (!hasMatch && term !== '') {
-                            selectAsset.selectedIndex = i;
-                            updatePreview();
-                        }
-                        hasMatch = true;
-                    } else {
-                        opt.style.display = 'none';
-                    }
-                }
-
-                // Reset selection if cleared
-                if (term === '') {
-                    // keep current if it exists, otherwise back to defaults
-                    updatePreview();
-                } else if (!hasMatch) {
-                    selectAsset.selectedIndex = 0;
-                    updatePreview();
-                }
-            });
-        }
-    });
 </script>
 {% endblock %}

@@ -6,6 +6,8 @@ from .views import (
     TipoExtintorListView, TipoExtintorCreateView, TipoExtintorUpdateView, TipoExtintorDeleteView,
     # Assets (Operativo)
     AssetListView, AssetCreateView, AssetUpdateView, AssetDeleteView, AssetDetailView,
+    # Historial de Inspecciones
+    AssetInspectionHistoryView,
     # AJAX
     AssetTypeDetailFormView,
 )
@@ -23,13 +25,14 @@ urlpatterns = [
     path('tipos-extintor/<int:pk>/edit/', TipoExtintorUpdateView.as_view(), name='tipo_extintor_update'),
     path('tipos-extintor/<int:pk>/delete/', TipoExtintorDeleteView.as_view(), name='tipo_extintor_delete'),
 
-    # ── Assets (Operativo) ───────────────────────────────────────────────────
+    # ── Assets (Operativo) ──────────────────────────────────────────────────────────
     path('', AssetListView.as_view(), name='asset_list'),
     path('add/', AssetCreateView.as_view(), name='asset_create'),
     path('<int:pk>/', AssetDetailView.as_view(), name='asset_detail'),
     path('<int:pk>/edit/', AssetUpdateView.as_view(), name='asset_update'),
     path('<int:pk>/delete/', AssetDeleteView.as_view(), name='asset_delete'),
+    path('<int:pk>/historial-inspecciones/', AssetInspectionHistoryView.as_view(), name='asset_inspection_history'),
 
-    # ── AJAX ─────────────────────────────────────────────────────────────────
+    # ── AJAX ─────────────────────────────────────────────────────────────────────
     path('ajax/detail-form/', AssetTypeDetailFormView.as_view(), name='asset_detail_form_ajax'),
 ]

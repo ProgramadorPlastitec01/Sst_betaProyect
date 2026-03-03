@@ -53,6 +53,35 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         week_ahead = today + timedelta(days=notification_days)
         context['notification_days'] = notification_days
         
+        # ── Lógica de Alertas de Activos (Dashboard Principal) ───────
+        from gestion_activos.models import Asset
+        # Pre-fetching de detalles para optimizar el cálculo del property 'estado_actual'
+        assets_qs = Asset.objects.select_related('asset_type').prefetch_related('extintor_detail', 'montacargas_detail').all()
+        
+        vencidos_count = 0
+        proximos_count = 0
+        criticos_count = 0
+        
+        for asset in assets_qs:
+            st = asset.estado_actual
+            if st in ('VENCIDO', 'MANTENIMIENTO_VENCIDO'):
+                vencidos_count += 1
+            elif st in ('PROXIMO_A_VENCER', 'PROXIMO_MANTENIMIENTO'):
+                proximos_count += 1
+            
+            # Se consideran críticos aquellos fuera de servicio (activo=False)
+            if not asset.activo:
+                criticos_count += 1
+        
+        context['asset_alerts'] = {
+            'vencidos': vencidos_count,
+            'proximos': proximos_count,
+            'criticos': criticos_count,
+            'total': vencidos_count + proximos_count + criticos_count,
+            'has_alerts': (vencidos_count + proximos_count + criticos_count) > 0
+        }
+        # ─────────────────────────────────────────────────────────────
+        
         # 1. Define modules and their patterns for InspectionSchedule
         inspection_modules = [
             {'key': 'extinguisher', 'patterns': ['extintor'], 'model': ExtinguisherInspection},

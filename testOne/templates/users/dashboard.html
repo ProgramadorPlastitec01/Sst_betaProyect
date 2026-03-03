@@ -6,11 +6,121 @@
 {% block header_title %}Resumen General de Gestión{% endblock %}
 
 {% block content %}
+<!-- Estilos para Alertas de Activos -->
+<style>
+    .alert-card-premium {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        margin-bottom: 32px;
+        overflow: hidden;
+        border: 1px solid #edf2f0;
+        transition: transform 0.2s;
+    }
+
+    .alert-card-premium:hover {
+        transform: translateY(-2px);
+    }
+
+    .alert-indicator-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .alert-indicator-btn:hover {
+        filter: brightness(1.1);
+        transform: scale(1.05);
+    }
+
+    .alert-indicator-btn .count {
+        background: rgba(255, 255, 255, 0.25);
+        padding: 2px 8px;
+        border-radius: 5px;
+        min-width: 24px;
+        text-align: center;
+    }
+
+    .no-alerts-banner {
+        background: #f0fdf4;
+        border-left: 5px solid #10b981;
+        padding: 15px 22px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 32px;
+        border: 1px solid #d1fae5;
+    }
+</style>
+
 <div class="card bg-primary-gradient no-border" style="padding: 40px; margin-bottom: 32px;">
     <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 10px;">¡Bienvenido, {{ user.first_name }}!</h2>
     <p style="font-size: 1.1rem; opacity: 0.9;">Hoy es un buen día para verificar los estándares de seguridad
         industrial.</p>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECCIÓN DE ALERTAS DE ACTIVOS
+═══════════════════════════════════════════════════════ -->
+{% if asset_alerts.has_alerts %}
+<div class="alert-card-premium" style="border-left: 5px solid #dc3545;">
+    <div
+        style="display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; flex-wrap: wrap; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 18px;">
+            <div
+                style="background: #fee2e2; color: #dc3545; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: #1e3d35; margin: 0;">Alertas de Activos</h3>
+                <p style="font-size: 0.88rem; color: #666; margin: 2px 0 0 0;">Requieren atención preventiva inmediata.
+                </p>
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            {% if asset_alerts.vencidos > 0 %}
+            <a href="{% url 'asset_list' %}?estado=VENCIDO" class="alert-indicator-btn"
+                style="background: #dc3545; color: white;" title="Ver activos con revisión vencida">
+                <span class="count">{{ asset_alerts.vencidos }}</span> Vencidos
+            </a>
+            {% endif %}
+
+            {% if asset_alerts.proximos > 0 %}
+            <a href="{% url 'asset_list' %}?estado=PROXIMO_A_VENCER" class="alert-indicator-btn"
+                style="background: #f59e0b; color: white;" title="Vencimiento en los próximos 30 días">
+                <span class="count">{{ asset_alerts.proximos }}</span> Próximos
+            </a>
+            {% endif %}
+
+            {% if asset_alerts.criticos > 0 %}
+            <a href="{% url 'asset_list' %}?activo=0" class="alert-indicator-btn"
+                style="background: #7f1d1d; color: white;" title="Activos fuera de servicio o inactivos">
+                <span class="count">{{ asset_alerts.criticos }}</span> Críticos
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="no-alerts-banner">
+    <div style="color: #10b981; font-size: 1.4rem;">
+        <i class="fas fa-check-circle"></i>
+    </div>
+    <div>
+        <p style="margin: 0; font-weight: 700; color: #064e3b; font-size: 1rem;">Estado Óptimo de Activos</p>
+        <p style="margin: 0; font-size: 0.85rem; color: #065f46;">No hay alertas activas. Todos los activos están al
+            día.</p>
+    </div>
+</div>
+{% endif %}
 
 
 <!-- Notifications Section -->

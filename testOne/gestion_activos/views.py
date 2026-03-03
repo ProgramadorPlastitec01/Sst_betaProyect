@@ -111,6 +111,10 @@ class AssetListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
         if f_search:
             qs = qs.filter(code__icontains=f_search)
 
+        f_activo = self.request.GET.get('activo', '')
+        if f_activo != '':
+            qs = qs.filter(activo=(f_activo == '1'))
+
         # Filtro de estado se aplica en Python (es calculado)
         f_status = self.request.GET.get('estado', '')
         if f_status:
@@ -394,7 +398,98 @@ class TipoExtintorDeleteView(LoginRequiredMixin, DeleteView):
             return redirect('configuration')
         return super().dispatch(request, *args, **kwargs)
 
+
+
     def delete(self, request, *args, **kwargs):
         obj = self.get_object()
         messages.success(request, f'Tipo "{obj.nombre}" eliminado.')
         return super().delete(request, *args, **kwargs)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HISTORIAL DE INSPECCIONES POR ACTIVO (AJAX)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class AssetInspectionHistoryView(LoginRequiredMixin, View):
+    """
+    Devuelve el historial de inspecciones de un activo como JSON.
+    Recorre todos los módulos de inspección que tienen FK al activo.
+    Escalable: agregar nuevos modelos de inspección es trivial.
+    """
+
+    # Mapa de (modelo, campo_FK, tipo_label, url_name)
+    INSPECTION_SOURCES = [
+        # (app_label.Model, field_on_model, label, detail_url_name)
+        ('inspections.ExtinguisherInspection', 'asset', 'Extintor', 'extinguisher_detail'),
+        ('inspections.ForkliftInspection',     'asset', 'Montacargas', 'forklift_detail'),
+    ]
+
+    def get(self, request, pk):
+        asset = get_object_or_404(Asset, pk=pk)
+        records = []
+
+        from django.apps import apps
+
+        for model_path, fk_field, tipo_label, detail_url_name in self.INSPECTION_SOURCES:
+            try:
+                app_label, model_name = model_path.split('.')
+                Model = apps.get_model(app_label, model_name)
+            except (LookupError, ValueError):
+                continue
+
+            qs = Model.objects.filter(
+                **{fk_field: asset}
+            ).select_related('inspector', 'area').order_by('-inspection_date')
+
+            for insp in qs:
+                # Estado
+                status_val = getattr(insp, 'status', None) or getattr(insp, 'general_status', '—')
+
+                # Inspector
+                inspector_name = '—'
+                if insp.inspector:
+                    inspector_name = insp.inspector.get_full_name() or insp.inspector.username
+
+                # Observaciones
+                obs = getattr(insp, 'observations', '') or getattr(insp, 'additional_observations', '') or ''
+
+                # URL de detalle
+                try:
+                    from django.urls import reverse
+                    detail_url = reverse(detail_url_name, args=[insp.pk])
+                except Exception:
+                    detail_url = '#'
+
+                # Indicadores adicionales (recarga, etc.)
+                extra = []
+                if hasattr(insp, 'items'):
+                    try:
+                        items_with_recharge = insp.items.filter(
+                            fecha_recarga_realizada__isnull=False
+                        ).count()
+                        if items_with_recharge:
+                            extra.append(f'{items_with_recharge} recarga(s)')
+                    except Exception:
+                        pass
+
+                records.append({
+                    'id': insp.pk,
+                    'fecha': insp.inspection_date.strftime('%d/%m/%Y') if insp.inspection_date else '—',
+                    'fecha_iso': insp.inspection_date.isoformat() if insp.inspection_date else '',
+                    'tipo': tipo_label,
+                    'status': status_val,
+                    'area': str(insp.area) if insp.area else '—',
+                    'inspector': inspector_name,
+                    'observaciones': str(obs)[:200] if obs else '',
+                    'extras': extra,
+                    'url': detail_url,
+                })
+
+        # Ordenar más reciente primero
+        records.sort(key=lambda r: r['fecha_iso'], reverse=True)
+
+        return JsonResponse({
+            'asset_code': asset.code,
+            'total': len(records),
+            'records': records,
+        })
