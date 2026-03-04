@@ -274,7 +274,7 @@
                     <select name="year" class="form-control" onchange="this.form.submit()">
                         <option value="">Todos</option>
                         {% for y in years_data %}
-                        <option value="{{ y }}" {% if request.GET.year == y|stringformat:"i" %}selected{% endif %}>{{ y }}
+                        <option value="{{ y }}" {% if request.GET.year==y|stringformat:"i" %}selected{% endif %}>{{ y }}
                         </option>
                         {% endfor %}
                     </select>
@@ -288,7 +288,8 @@
                     <select name="area" class="form-control">
                         <option value="">Todas las Áreas</option>
                         {% for area in areas %}
-                        <option value="{{ area.id }}" {% if request.GET.area == area.id|stringformat:"s"%}selected{%endif%}>
+                        <option value="{{ area.id }}" {% if
+                            request.GET.area==area.id|stringformat:"s"%}selected{%endif%}>
                             {{ area.name }}
                         </option>
                         {% endfor %}
@@ -299,7 +300,7 @@
                     <select name="type" class="form-control">
                         <option value="">Todos los Tipos</option>
                         {% for t in types %}
-                        <option value="{{ t }}" {% if request.GET.type == t %}selected{% endif %}>{{ t }}</option>
+                        <option value="{{ t }}" {% if request.GET.type==t %}selected{% endif %}>{{ t }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -308,7 +309,7 @@
                     <select name="status" class="form-control">
                         <option value="">Todos los Estados</option>
                         {% for s in statuses %}
-                        <option value="{{ s }}" {% if request.GET.status == s %}selected{% endif %}>{{ s }}</option>
+                        <option value="{{ s }}" {% if request.GET.status==s %}selected{% endif %}>{{ s }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -317,7 +318,8 @@
                     <select name="responsible" class="form-control">
                         <option value="">Todos</option>
                         {% for user in users %}
-                        <option value="{{ user.id }}" {% if request.GET.responsible == user.id|stringformat:"s"%}selected{% endif %}>
+                        <option value="{{ user.id }}" {% if
+                            request.GET.responsible==user.id|stringformat:"s"%}selected{% endif %}>
                             {{ user.get_full_name|default:user.username }}
                         </option>
                         {% endfor %}
@@ -328,7 +330,8 @@
                     <select name="participant" class="form-control">
                         <option value="">Todos</option>
                         {% for user in users %}
-                        <option value="{{ user.id }}" {% if request.GET.participant == user.id|stringformat:"s"%}selected{% endif %}>
+                        <option value="{{ user.id }}" {% if
+                            request.GET.participant==user.id|stringformat:"s"%}selected{% endif %}>
                             {{ user.get_full_name|default:user.username }}
                         </option>
                         {% endfor %}
@@ -419,7 +422,7 @@
                         <td style="color: #6B7280;">{{ item.date_prog|date:"d/m/Y"|default:"-" }}</td>
                         <td style="font-weight: 600; color: #374151;">{{ item.date_exec|date:"d/m/Y"|default:"-" }}</td>
                         <td><span
-                                class="badge {% if 'Cerrada' in item.status %}badge-success{% elif 'Pendiente' in item.status or 'Programada' in item.status %}badge-warning{% elif 'proceso' in item.status %}badge-info{% else %}badge-secondary{% endif %}">
+                                class="badge {% if 'Cerrada' in item.status %}badge-success{% elif 'Seguimiento en proceso' in item.status %}badge-orange{% elif 'En proceso' in item.status %}badge-primary{% elif 'Programada' in item.status or 'Pendiente' in item.status %}badge-secondary{% else %}badge-secondary{% endif %}">
                                 {{ item.status }}</span>
 
                         </td>
@@ -468,9 +471,9 @@
 
     // Mapeo: etiqueta del dataset → palabras clave en la columna Estado (índice 5)
     const DATASET_STATUS_MAP = {
-        'Cerradas': ['cerrada'],                   // cerrada / cerrada con hallazgos
-        'Pendientes': ['programada', 'pendiente por ejecutar'],  // sin registro, fecha futura
-        'Vencidas': ['vencida']                    // sin registro, fecha pasada
+        'Cerradas': ['cerrada', 'cerrada con seguimientos'],
+        'Pendientes': ['programada', 'pendiente por ejecutar', 'en proceso', 'seguimiento en proceso'],
+        'Vencidas': ['vencida']
     };
 
     function applyChartFilter() {
@@ -496,7 +499,7 @@
             // Detectar mes a partir de cualquiera de las dos fechas (formato d/m/Y o -)
             function extractMonth(dateStr) {
                 const parts = dateStr.split('/');
-                return parts.length  ==  3 ? parseInt(parts[1], 10) - 1 : null; // 0-indexed
+                return parts.length == 3 ? parseInt(parts[1], 10) - 1 : null; // 0-indexed
             }
             const mProg = extractMonth(dateProg);
             const mExec = extractMonth(dateExec);
@@ -507,14 +510,14 @@
             if (yearFilter) {
                 function extractYear(dateStr) {
                     const parts = dateStr.split('/');
-                    return parts.length  ==  3 ? parts[2] : null;
+                    return parts.length == 3 ? parts[2] : null;
                 }
                 const yProg = extractYear(dateProg);
                 const yExec = extractYear(dateExec);
-                yearOk = yExec  ==  yearFilter || yProg  ==  yearFilter;
+                yearOk = yExec == yearFilter || yProg == yearFilter;
             }
 
-            const monthOk = rowMonth  ==  monthIdx;
+            const monthOk = rowMonth == monthIdx;
             const statusOk = keywords.some(k => statusTxt.includes(k));
 
             if (monthOk && statusOk && yearOk) {
@@ -527,7 +530,7 @@
 
         // Mostrar mensaje si 0 resultados
         const noResultRow = document.getElementById('chart-no-result-row');
-        if (noResultRow) noResultRow.style.display = visibleCount  ==  0 ? '' : 'none';
+        if (noResultRow) noResultRow.style.display = visibleCount == 0 ? '' : 'none';
     }
 
     function clearChartFilter() {
@@ -555,7 +558,8 @@
         const chartEl = document.getElementById('trendChart');
         if (!chartEl) return;
         const ctx = chartEl.getContext('2d');
-        const reportLabels = {{ trend_data.labels| safe }};
+        const reportLabels = {{ trend_data.labels| safe
+    }};
     const reportCerr = {{ trend_data.cerradas| safe }};
     const reportPend = {{ trend_data.pendientes| safe }};
     const reportVenc = {{ trend_data.vencidas| safe }};
@@ -578,7 +582,7 @@
             },
             // ── Click handler: filtrar tabla ──
             onClick: (event, elements) => {
-                if (!elements || elements.length  ==  0) return;
+                if (!elements || elements.length == 0) return;
                 const el = elements[0];
                 const monthIdx = el.index;           // 0-11
                 const datasetIdx = el.datasetIndex;    // 0=Cerr, 1=Pend(line), 2=Venc

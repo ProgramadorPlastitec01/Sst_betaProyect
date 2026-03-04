@@ -183,31 +183,32 @@ class InspectionSchedule(models.Model):
             if insp:
                 # Check for 'status' field (workflow)
                 if hasattr(insp, 'status'):
-                    # Use get_status_display if available
-                    if hasattr(insp, 'get_status_display'):
-                        label = insp.get_status_display()
-                    else:
-                        label = insp.status
+                    # Mapeo de estados internos a etiquetas visibles
+                    st = insp.status
+                    if st == 'Programada': return 'Programada'
+                    if st == 'En proceso': return 'En proceso'
+                    if st == 'Seguimiento en proceso': return 'Seguimiento en proceso'
+                    if st == 'Cerrada': return 'Cerrada'
+                    if st == 'Cerrada con seguimientos': return 'Cerrada con seguimientos'
                     
-                    if label == 'Pendiente': return 'Pendiente por ejecutar'
-                    if label == 'Programada': return 'Pendiente por ejecutar'
-                    return label
+                    # Fallback para estados viejos que puedan quedar en DB
+                    if st == 'Cerrada con Hallazgos': return 'Seguimiento en proceso'
+                    if st == 'Pendiente de Firmas': return 'En proceso'
+                    if st == 'Pendiente': return 'Programada'
+                    
+                    return st
                 
                 # Fallback to general_status
                 if hasattr(insp, 'general_status'):
                      gs = insp.general_status
-                     if gs == 'No Cumple': return 'Cerrada con Hallazgos'
+                     if gs == 'No Cumple': return 'Seguimiento en proceso' # Antes era Cerrada con Hallazgos
                      if gs == 'Cumple': return 'Cerrada'
-                     if hasattr(insp, 'get_general_status_display'):
-                         return insp.get_general_status_display()
                      return gs
-            # Fallback for orphan 'Realizada' -> Treat as Pendiente
-            return "Pendiente por ejecutar"
+            return "Programada"
         # Non-realized - Check if overdue
-        from datetime import date
         if self.scheduled_date < date.today():
             return "Vencida"
-        return "Pendiente por ejecutar"
+        return "Programada"
 
     @property
     def status_css_class(self):
@@ -216,20 +217,20 @@ class InspectionSchedule(models.Model):
             if insp:
                 if hasattr(insp, 'status'):
                     st = insp.status
-                    if st == 'Cerrada': return 'badge-success' # Green
-                    if st == 'Cerrada con Hallazgos': return 'badge-warning' # Orange/Yellow
-                    if st == 'En proceso': return 'badge-primary' # Blue
+                    if st in ['Cerrada', 'Cerrada con seguimientos']: return 'badge-success'
+                    if st in ['Seguimiento en proceso', 'Cerrada con Hallazgos']: return 'badge-orange'
+                    if st in ['En proceso', 'Pendiente de Firmas']: return 'badge-primary'
+                    if st == 'Programada': return 'badge-secondary'
                     return 'badge-secondary'
                 
                 if hasattr(insp, 'general_status'):
                     gs = insp.general_status
                     if gs == 'Cumple': return 'badge-success'
-                    if gs == 'No Cumple': return 'badge-warning'
-            # Fallback for orphan 'Realizada' -> Treat as Pendiente (Grey)
+                    if gs == 'No Cumple': return 'badge-orange-dark'
             return 'badge-secondary'
         if self.scheduled_date < date.today():
-             return 'badge-danger' # Red
-        return 'badge-secondary' # Grey
+             return 'badge-danger'
+        return 'badge-secondary'
 
     @property
     def is_overdue(self):
@@ -329,9 +330,9 @@ class ExtinguisherInspection(BaseInspection):
     INSPECTION_STATUS_CHOICES = [
         ('Programada', 'Programada'),
         ('En proceso', 'En proceso'),
-        ('Pendiente de Firmas', 'Pendiente de Firmas'),
+        ('Seguimiento en proceso', 'Seguimiento en proceso'),
         ('Cerrada', 'Cerrada'),
-        ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
+        ('Cerrada con seguimientos', 'Cerrada con seguimientos'),
     ]
     status = models.CharField(
         max_length=30, 
@@ -431,6 +432,11 @@ class ExtinguisherItem(models.Model):
         verbose_name="Fecha de Recarga Realizada",
         help_text="Completar solo si se realizó una recarga durante esta inspección"
     )
+    fecha_proxima_recarga = models.DateField(
+        null=True, blank=True,
+        verbose_name="Próxima Recarga",
+        help_text="Calculado: 1 año después de la recarga realizada"
+    )
     registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
 
 # 2. First Aid Inspection (R-RH-SST-020)
@@ -450,10 +456,9 @@ class FirstAidInspection(BaseInspection):
     INSPECTION_STATUS_CHOICES = [
         ('Programada', 'Programada'),
         ('En proceso', 'En proceso'),
-        ('Pendiente de Firmas', 'Pendiente de Firmas'),
+        ('Seguimiento en proceso', 'Seguimiento en proceso'),
         ('Cerrada', 'Cerrada'),
-        ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
-        ('Seguimiento', 'Seguimiento'),
+        ('Cerrada con seguimientos', 'Cerrada con seguimientos'),
     ]
     status = models.CharField(
         max_length=30, 
@@ -552,13 +557,13 @@ class ProcessInspection(BaseInspection):
 
     # New fields for standardized logic
     STATUS_CHOICES = [
-        ('Pendiente', 'Pendiente por ejecutar'),
+        ('Programada', 'Programada'),
         ('En proceso', 'En proceso'),
-        ('Pendiente de Firmas', 'Pendiente de Firmas'),
+        ('Seguimiento en proceso', 'Seguimiento en proceso'),
         ('Cerrada', 'Cerrada'),
-        ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
+        ('Cerrada con seguimientos', 'Cerrada con seguimientos'),
     ]
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Pendiente', verbose_name="Estado")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Programada', verbose_name="Estado")
 
     def get_participants(self):
         from django.contrib.auth import get_user_model
@@ -646,13 +651,13 @@ class StorageInspection(BaseInspection):
 
     # Standardized logic matching ProcessInspection
     STATUS_CHOICES = [
-        ('Pendiente', 'Pendiente por ejecutar'),
+        ('Programada', 'Programada'),
         ('En proceso', 'En proceso'),
-        ('Pendiente de Firmas', 'Pendiente de Firmas'),
+        ('Seguimiento en proceso', 'Seguimiento en proceso'),
         ('Cerrada', 'Cerrada'),
-        ('Cerrada con Hallazgos', 'Cerrada con Hallazgos'),
+        ('Cerrada con seguimientos', 'Cerrada con seguimientos'),
     ]
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Pendiente', verbose_name="Estado")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Programada', verbose_name="Estado")
 
     def get_participants(self):
         from django.contrib.auth import get_user_model
@@ -740,13 +745,13 @@ class ForkliftInspection(BaseInspection):
     )
 
     STATUS_CHOICES = [
-        ('Pendiente', 'Pendiente'),
+        ('Programada', 'Programada'),
         ('En proceso', 'En proceso'),
-        ('Pendiente de Firmas', 'Pendiente de Firmas'),
+        ('Seguimiento en proceso', 'Seguimiento en proceso'),
         ('Cerrada', 'Cerrada'),
-        ('Cerrada con Hallazgos', 'Cerrada con Hallazgos')
+        ('Cerrada con seguimientos', 'Cerrada con seguimientos'),
     ]
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Pendiente', verbose_name="Estado")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Programada', verbose_name="Estado")
 
     def get_participants(self):
         from django.contrib.auth import get_user_model

@@ -413,58 +413,76 @@ class TipoExtintorDeleteView(LoginRequiredMixin, DeleteView):
 class AssetInspectionHistoryView(LoginRequiredMixin, View):
     """
     Devuelve el historial de inspecciones de un activo como JSON.
-    Recorre todos los módulos de inspección que tienen FK al activo.
-    Escalable: agregar nuevos modelos de inspección es trivial.
+
+    Soporta dos tipos de relación:
+    - 'direct': el FK al activo está directamente en el modelo de inspección
+    - 'items':  el FK al activo está en el modelo de ítems (inspection.items__asset)
+
+    Agregar nuevos módulos es trivial ampliando INSPECTION_SOURCES.
     """
 
-    # Mapa de (modelo, campo_FK, tipo_label, url_name)
+    # Mapa: (app_label.Model, tipo_relacion, label, url_name)
+    # tipo_relacion: 'direct' = inspection.asset | 'items' = inspection.items__asset
     INSPECTION_SOURCES = [
-        # (app_label.Model, field_on_model, label, detail_url_name)
-        ('inspections.ExtinguisherInspection', 'asset', 'Extintor', 'extinguisher_detail'),
-        ('inspections.ForkliftInspection',     'asset', 'Montacargas', 'forklift_detail'),
+        ('inspections.ExtinguisherInspection', 'items',  'Extintor',    'extinguisher_detail'),
+        ('inspections.ForkliftInspection',     'direct', 'Montacargas', 'forklift_detail'),
     ]
+
+    def _build_queryset(self, Model, rel_type, asset):
+        """Construye el queryset según el tipo de relación."""
+        if rel_type == 'direct':
+            # El FK está directamente en la inspección
+            return Model.objects.filter(asset=asset).select_related('inspector', 'area')
+        elif rel_type == 'items':
+            # El FK está en los ítems: buscar inspecciones que contengan ese activo
+            return Model.objects.filter(items__asset=asset).distinct().select_related('inspector', 'area')
+        return Model.objects.none()
 
     def get(self, request, pk):
         asset = get_object_or_404(Asset, pk=pk)
         records = []
 
         from django.apps import apps
+        from django.urls import reverse
 
-        for model_path, fk_field, tipo_label, detail_url_name in self.INSPECTION_SOURCES:
+        for model_path, rel_type, tipo_label, detail_url_name in self.INSPECTION_SOURCES:
             try:
                 app_label, model_name = model_path.split('.')
                 Model = apps.get_model(app_label, model_name)
             except (LookupError, ValueError):
                 continue
 
-            qs = Model.objects.filter(
-                **{fk_field: asset}
-            ).select_related('inspector', 'area').order_by('-inspection_date')
+            qs = self._build_queryset(Model, rel_type, asset).order_by('-inspection_date')
 
             for insp in qs:
                 # Estado
-                status_val = getattr(insp, 'status', None) or getattr(insp, 'general_status', '—')
+                status_val = getattr(insp, 'status', None) or getattr(insp, 'general_status', '-')
 
                 # Inspector
-                inspector_name = '—'
+                inspector_name = '-'
                 if insp.inspector:
                     inspector_name = insp.inspector.get_full_name() or insp.inspector.username
 
                 # Observaciones
                 obs = getattr(insp, 'observations', '') or getattr(insp, 'additional_observations', '') or ''
 
+                # Indicador de si es seguimiento
+                es_seguimiento = getattr(insp, 'parent_inspection_id', None) is not None
+
                 # URL de detalle
                 try:
-                    from django.urls import reverse
                     detail_url = reverse(detail_url_name, args=[insp.pk])
                 except Exception:
                     detail_url = '#'
 
-                # Indicadores adicionales (recarga, etc.)
+                # Indicadores adicionales
                 extra = []
+                if es_seguimiento:
+                    extra.append('Seguimiento')
                 if hasattr(insp, 'items'):
                     try:
                         items_with_recharge = insp.items.filter(
+                            asset=asset,
                             fecha_recarga_realizada__isnull=False
                         ).count()
                         if items_with_recharge:
@@ -474,11 +492,11 @@ class AssetInspectionHistoryView(LoginRequiredMixin, View):
 
                 records.append({
                     'id': insp.pk,
-                    'fecha': insp.inspection_date.strftime('%d/%m/%Y') if insp.inspection_date else '—',
+                    'fecha': insp.inspection_date.strftime('%d/%m/%Y') if insp.inspection_date else '-',
                     'fecha_iso': insp.inspection_date.isoformat() if insp.inspection_date else '',
                     'tipo': tipo_label,
                     'status': status_val,
-                    'area': str(insp.area) if insp.area else '—',
+                    'area': str(insp.area) if insp.area else '-',
                     'inspector': inspector_name,
                     'observaciones': str(obs)[:200] if obs else '',
                     'extras': extra,

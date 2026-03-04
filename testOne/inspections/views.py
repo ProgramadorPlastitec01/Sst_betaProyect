@@ -624,6 +624,11 @@ class FormsetMixin:
                 context['items'].extra = len(initial)
             else:
                 context['items'] = self.formset_class(instance=self.object)
+        
+        # SI ES UN SEGUIMIENTO (tiene parent_inspection), forzamos extra=0
+        if getattr(self, 'object', None) and hasattr(self.object, 'parent_inspection') and self.object.parent_inspection:
+            context['items'].extra = 0
+            
         return context
     
     def form_valid(self, form):
@@ -722,7 +727,10 @@ class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
             try:
                 detail = item.asset.extintor_detail
                 detail.fecha_recarga = item.fecha_recarga_realizada
-                detail.fecha_vencimiento = item.fecha_recarga_realizada + relativedelta(years=1)
+                if item.fecha_proxima_recarga:
+                    detail.fecha_vencimiento = item.fecha_proxima_recarga
+                else:
+                    detail.fecha_vencimiento = item.fecha_recarga_realizada + relativedelta(years=1)
                 detail.save(update_fields=['fecha_recarga', 'fecha_vencimiento'])
                 actualizados += 1
             except ExtintorDetail.DoesNotExist:
@@ -754,6 +762,8 @@ class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
 
+        if form.instance.status == 'Programada':
+            form.instance.status = 'En proceso'
         response = super().form_valid(form)
 
         # Sync recharge dates to inventory
@@ -798,7 +808,10 @@ class ExtinguisherUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
             try:
                 detail = item.asset.extintor_detail
                 detail.fecha_recarga = item.fecha_recarga_realizada
-                detail.fecha_vencimiento = item.fecha_recarga_realizada + relativedelta(years=1)
+                if item.fecha_proxima_recarga:
+                    detail.fecha_vencimiento = item.fecha_proxima_recarga
+                else:
+                    detail.fecha_vencimiento = item.fecha_recarga_realizada + relativedelta(years=1)
                 detail.save(update_fields=['fecha_recarga', 'fecha_vencimiento'])
                 actualizados += 1
             except ExtintorDetail.DoesNotExist:
@@ -817,6 +830,8 @@ class ExtinguisherUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
 
+        if form.instance.status == 'Programada':
+            form.instance.status = 'En proceso'
         response = super().form_valid(form)
 
         # Sync recharge dates to inventory
@@ -915,47 +930,42 @@ class SignExtinguisherInspectionView(LoginRequiredMixin, View):
         
         if signatures_count >= all_participants.count():
             # FULL CLOSURE LOGIC
-            failed_items = inspection.items.filter(status='Malo')
+            failed_items = inspection.items.filter(status__in=['Malo', 'Recargar'])
             
-            # Additional validation for observations before closing
-            for item in failed_items:
-                if not item.observations:
-                    messages.error(request, f'El ítem {item.extinguisher_number} ({item.location}) requiere observación antes de cerrar.')
-                    # Note: We already created the signature, but we roll back the status if failed? 
-                    # Better to check observations BEFORE creating signature if it's the last one.
-                    # But the requirement doesn't specify sequence of observations check vs signature.
-                    pass
-
             if failed_items.exists():
-                inspection.status = 'Cerrada con Hallazgos'
+                inspection.status = 'Seguimiento en proceso'
                 inspection.save()
                 
-                # Follow-up Generation
+                # Generación de Seguimiento
                 from system_config.models import SystemConfig
                 days = SystemConfig.get_value('dias_seguimiento_auto', 15)
                 follow_up_date = timezone.now().date() + timedelta(days=days)
+                
                 follow_up = ExtinguisherInspection.objects.create(
                     parent_inspection=inspection,
                     area=inspection.area,
+                    asset=inspection.asset,
                     inspector=inspection.inspector, 
                     inspector_role=inspection.inspector_role,
                     inspection_date=follow_up_date,
                     status='Programada',
                 )
-                new_items = []
+                
                 for item in failed_items:
-                    new_items.append(ExtinguisherItem(
+                    target_asset_id = item.asset_id or inspection.asset_id
+                    ExtinguisherItem.objects.create(
                         inspection=follow_up,
+                        asset_id=target_asset_id,
                         pressure_gauge_ok=item.pressure_gauge_ok,
                         safety_pin_ok=item.safety_pin_ok,
                         hose_nozzle_ok=item.hose_nozzle_ok,
                         signage_ok=item.signage_ok,
                         access_ok=item.access_ok,
                         label_ok=item.label_ok,
-                        status=item.status,
+                        status='Malo',
                         observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento pendiente",
-                    ))
-                ExtinguisherItem.objects.bulk_create(new_items)
+                        registered_by=user
+                    )
                 
                 try:
                     jefes_group = NotificationGroup.objects.get(name="Jefes", is_active=True)
@@ -968,13 +978,33 @@ class SignExtinguisherInspectionView(LoginRequiredMixin, View):
                             notification_type='alert'
                         )
                 except: pass
-                messages.success(request, f'Inspección cerrada con hallazgos (Firmas completadas). Seguimiento generado para {follow_up_date.strftime("%d/%m/%Y")}.')
+                messages.success(request, f'Inspección finalizada con hallazgos. Seguimiento generado para {follow_up_date.strftime("%d/%m/%Y")}.')
             else:
                 inspection.status = 'Cerrada'
                 inspection.save()
-                messages.success(request, 'Inspección cerrada exitosamente (Firmas completas).')
+                
+                # SI ES UN SEGUIMIENTO, verificar si el padre ya se puede cerrar definitivamente
+                if inspection.parent_inspection:
+                    curr = inspection
+                    parent_updated = False
+                    while curr.parent_inspection:
+                        p = curr.parent_inspection
+                        # Solo cerramos el padre si todos sus hijos directos están en estados terminales
+                        if not p.follow_ups.exclude(status__in=['Cerrada', 'Cerrada con seguimientos']).exists():
+                            p.status = 'Cerrada con seguimientos'
+                            p.save()
+                            curr = p
+                            parent_updated = True
+                        else:
+                            break
+                    if parent_updated:
+                        messages.success(request, 'Seguimiento completado y jerarquía de inspecciones cerrada.')
+                    else:
+                        messages.success(request, 'Seguimiento completado.')
+                else:
+                    messages.success(request, 'Inspección cerrada exitosamente.')
         else:
-            inspection.status = 'Pendiente de Firmas'
+            inspection.status = 'En proceso'
             inspection.save()
             messages.success(request, 'Firma registrada exitosamente. Pendiente de firmas de otros participantes.')
             
@@ -986,11 +1016,19 @@ class ExtinguisherReportView(LoginRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        items = self.object.items.all()
         context['signatures'] = self.object.signatures.select_related('user').all()
+        context['total_inspected'] = items.count()
+        context['total_good'] = items.filter(status='Bueno').count()
+        context['total_bad'] = items.filter(status__in=['Malo', 'Recargar']).count()
         return context
 
 class ExtinguisherItemCreateView(LoginRequiredMixin, CreateView):
     model = ExtinguisherItem; form_class = ExtinguisherItemForm; template_name = 'inspections/extinguisher_item_form.html'
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['inspection'] = get_object_or_404(ExtinguisherInspection, pk=self.kwargs['pk'])
+        return context
     def form_valid(self, form):
         insp = get_object_or_404(ExtinguisherInspection, pk=self.kwargs['pk'])
         form.instance.inspection = insp
@@ -1001,6 +1039,10 @@ class ExtinguisherItemCreateView(LoginRequiredMixin, CreateView):
 
 class ExtinguisherItemUpdateView(LoginRequiredMixin, UpdateView):
     model = ExtinguisherItem; form_class = ExtinguisherItemForm; template_name = 'inspections/extinguisher_item_form.html'
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['inspection'] = self.object.inspection
+        return context
     def form_valid(self, form):
         form.instance.registered_by = self.request.user
         return super().form_valid(form)
@@ -1051,6 +1093,8 @@ class FirstAidCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspec
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
             
+        if form.instance.status == 'Programada':
+            form.instance.status = 'En proceso'
         response = super().form_valid(form)
         messages.success(self.request, f'Inspección de botiquines guardada exitosamente para {form.instance.area}')
         return response
@@ -1090,6 +1134,8 @@ class FirstAidUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspec
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
             
+        if form.instance.status == 'Programada':
+            form.instance.status = 'En proceso'
         response = super().form_valid(form)
         messages.success(self.request, 'Inspección de botiquines actualizada correctamente')
         return response
@@ -1188,7 +1234,7 @@ class SignFirstAidInspectionView(LoginRequiredMixin, View):
         if signatures_count >= all_participants.count():
             missing_items = inspection.items.filter(status='No Existe')
             if missing_items.exists():
-                inspection.status = 'Cerrada con Hallazgos'
+                inspection.status = 'Seguimiento en proceso'
                 inspection.general_status = 'No Cumple'
                 inspection.save()
                 
@@ -1212,21 +1258,40 @@ class SignFirstAidInspectionView(LoginRequiredMixin, View):
                         status='No Existe',
                         observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento"
                     )
-                messages.info(request, f"Inspección cerrada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
+                messages.info(request, f"Inspección finalizada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
             else:
                 inspection.status = 'Cerrada'
                 inspection.general_status = 'Cumple'
                 inspection.save()
-                if inspection.schedule_item:
-                    s_item = inspection.schedule_item
-                    s_item.status = 'Realizada'
-                    s_item.save()
-                    next_s = s_item.generate_next_schedule()
-                    if next_s:
-                        messages.info(request, f"📅 Nueva programación generada para {next_s.scheduled_date}")
-            messages.success(request, 'Favorito registrado. Inspección cerrada por completar todas las firmas.')
+                
+                # SI ES UN SEGUIMIENTO, verificar si el padre ya se puede cerrar definitivamente
+                if inspection.parent_inspection:
+                    curr = inspection
+                    parent_updated = False
+                    while curr.parent_inspection:
+                        p = curr.parent_inspection
+                        if not p.follow_ups.exclude(status__in=['Cerrada', 'Cerrada con seguimientos']).exists():
+                            p.status = 'Cerrada con seguimientos'
+                            p.save()
+                            curr = p
+                            parent_updated = True
+                        else:
+                            break
+                    if parent_updated:
+                        messages.success(request, 'Seguimiento completado y jerarquía de inspecciones cerrada.')
+                    else:
+                        messages.success(request, 'Seguimiento completado.')
+                else:
+                    if inspection.schedule_item:
+                        s_item = inspection.schedule_item
+                        s_item.status = 'Realizada'
+                        s_item.save()
+                        next_s = s_item.generate_next_schedule()
+                        if next_s:
+                            messages.info(request, f"📅 Nueva programación generada para {next_s.scheduled_date}")
+                    messages.success(request, 'Inspección cerrada por completar todas las firmas.')
         else:
-            inspection.status = 'Pendiente de Firmas'
+            inspection.status = 'En proceso'
             inspection.save()
             messages.success(request, 'Firma registrada. Pendiente de firmas de otros participantes.')
         
@@ -1337,6 +1402,8 @@ class ProcessCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspect
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
             
+        if form.instance.status == 'Programada':
+            form.instance.status = 'En proceso'
         response = super().form_valid(form)
         messages.success(self.request, f'Inspección de procesos guardada exitosamente para {form.instance.area}')
         return response
@@ -1357,6 +1424,8 @@ class ProcessUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspect
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
             
+        if form.instance.status == 'Programada':
+            form.instance.status = 'En proceso'
         response = super().form_valid(form)
         messages.success(self.request, 'Inspección de procesos actualizada correctamente')
         return response
@@ -1463,7 +1532,7 @@ class SignProcessInspectionView(LoginRequiredMixin, View):
         if signatures_count >= all_participants.count():
             failed_items = inspection.items.filter(item_status='Malo')
             if failed_items.exists():
-                inspection.status = 'Cerrada con Hallazgos'
+                inspection.status = 'Seguimiento en proceso'
                 inspection.save()
                 
                 from system_config.models import SystemConfig
@@ -1477,7 +1546,7 @@ class SignProcessInspectionView(LoginRequiredMixin, View):
                     inspector_role=inspection.inspector_role,
                     inspected_process=inspection.inspected_process,
                     inspection_date=follow_up_date,
-                    status='Pendiente',
+                    status='Programada',
                 )
                 for item in failed_items:
                     ProcessCheckItem.objects.create(
@@ -1487,20 +1556,39 @@ class SignProcessInspectionView(LoginRequiredMixin, View):
                         item_status='Malo',
                         observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento"
                     )
-                messages.info(request, f"Inspección cerrada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
+                messages.info(request, f"Inspección finalizada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
             else:
                 inspection.status = 'Cerrada'
                 inspection.save()
-                if inspection.schedule_item:
-                    s_item = inspection.schedule_item
-                    s_item.status = 'Realizada'
-                    s_item.save()
-                    next_s = s_item.generate_next_schedule()
-                    if next_s:
-                        messages.info(request, f"📅 Nueva programación generada para {next_s.scheduled_date}")
-            messages.success(request, 'Favorito registrado. Inspección cerrada por completar todas las firmas.')
+                
+                # SI ES UN SEGUIMIENTO, verificar si el padre ya se puede cerrar definitivamente
+                if inspection.parent_inspection:
+                    curr = inspection
+                    parent_updated = False
+                    while curr.parent_inspection:
+                        p = curr.parent_inspection
+                        if not p.follow_ups.exclude(status__in=['Cerrada', 'Cerrada con seguimientos']).exists():
+                            p.status = 'Cerrada con seguimientos'
+                            p.save()
+                            curr = p
+                            parent_updated = True
+                        else:
+                            break
+                    if parent_updated:
+                        messages.success(request, 'Seguimiento completado y jerarquía de inspecciones cerrada.')
+                    else:
+                        messages.success(request, 'Seguimiento completado.')
+                else:
+                    if inspection.schedule_item:
+                        s_item = inspection.schedule_item
+                        s_item.status = 'Realizada'
+                        s_item.save()
+                        next_s = s_item.generate_next_schedule()
+                        if next_s:
+                            messages.info(request, f"📅 Nueva programación generada para {next_s.scheduled_date}")
+                    messages.success(request, 'Inspección cerrada exitosamente.')
         else:
-            inspection.status = 'Pendiente de Firmas'
+            inspection.status = 'En proceso'
             inspection.save()
             messages.success(request, 'Firma registrada. Pendiente de firmas de otros participantes.')
         
@@ -1593,6 +1681,8 @@ class StorageCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspect
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
             
+        if form.instance.status == 'Programada':
+            form.instance.status = 'En proceso'
         response = super().form_valid(form)
         messages.success(self.request, f'Inspección de almacenamiento guardada exitosamente para {form.instance.area}')
         return response
@@ -1613,6 +1703,8 @@ class StorageUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspect
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
             
+        if form.instance.status == 'Programada':
+            form.instance.status = 'En proceso'
         response = super().form_valid(form)
         messages.success(self.request, 'Inspección de almacenamiento actualizada correctamente')
         return response
@@ -1719,7 +1811,7 @@ class SignStorageInspectionView(LoginRequiredMixin, View):
         if signatures_count >= all_participants.count():
             failed_items = inspection.items.filter(item_status='Malo')
             if failed_items.exists():
-                inspection.status = 'Cerrada con Hallazgos'
+                inspection.status = 'Seguimiento en proceso'
                 inspection.save()
                 
                 from system_config.models import SystemConfig
@@ -1733,7 +1825,7 @@ class SignStorageInspectionView(LoginRequiredMixin, View):
                     inspector_role=inspection.inspector_role,
                     inspected_process=inspection.inspected_process,
                     inspection_date=follow_up_date,
-                    status='Pendiente',
+                    status='Programada',
                 )
                 for item in failed_items:
                     StorageCheckItem.objects.create(
@@ -1743,20 +1835,39 @@ class SignStorageInspectionView(LoginRequiredMixin, View):
                         item_status='Malo',
                         observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento"
                     )
-                messages.info(request, f"Inspección cerrada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
+                messages.info(request, f"Inspección finalizada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
             else:
                 inspection.status = 'Cerrada'
                 inspection.save()
-                if inspection.schedule_item:
-                    s_item = inspection.schedule_item
-                    s_item.status = 'Realizada'
-                    s_item.save()
-                    next_s = s_item.generate_next_schedule()
-                    if next_s:
-                        messages.info(request, f"📅 Nueva programación generada para {next_s.scheduled_date}")
-            messages.success(request, 'Favorito registrado. Inspección cerrada por completar todas las firmas.')
+                
+                # SI ES UN SEGUIMIENTO, verificar si el padre ya se puede cerrar definitivamente
+                if inspection.parent_inspection:
+                    curr = inspection
+                    parent_updated = False
+                    while curr.parent_inspection:
+                        p = curr.parent_inspection
+                        if not p.follow_ups.exclude(status__in=['Cerrada', 'Cerrada con seguimientos']).exists():
+                            p.status = 'Cerrada con seguimientos'
+                            p.save()
+                            curr = p
+                            parent_updated = True
+                        else:
+                            break
+                    if parent_updated:
+                        messages.success(request, 'Seguimiento completado y jerarquía de inspecciones cerrada.')
+                    else:
+                        messages.success(request, 'Seguimiento completado.')
+                else:
+                    if inspection.schedule_item:
+                        s_item = inspection.schedule_item
+                        s_item.status = 'Realizada'
+                        s_item.save()
+                        next_s = s_item.generate_next_schedule()
+                        if next_s:
+                            messages.info(request, f"📅 Nueva programación generada para {next_s.scheduled_date}")
+                    messages.success(request, 'Inspección cerrada exitosamente.')
         else:
-            inspection.status = 'Pendiente de Firmas'
+            inspection.status = 'En proceso'
             inspection.save()
             messages.success(request, 'Firma registrada. Pendiente de firmas de otros participantes.')
         
@@ -1843,6 +1954,8 @@ class ForkliftCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspec
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
             
+        if form.instance.status == 'Programada':
+            form.instance.status = 'En proceso'
         response = super().form_valid(form)
         messages.success(self.request, f'Inspección de montacargas guardada exitosamente - {form.instance.forklift_type}')
         return response
@@ -1863,6 +1976,8 @@ class ForkliftUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspec
         if user_role_name in [c[0] for c in form.fields['inspector_role'].choices]:
             form.instance.inspector_role = user_role_name
             
+        if form.instance.status == 'Programada':
+            form.instance.status = 'En proceso'
         response = super().form_valid(form)
         messages.success(self.request, 'Inspección de montacargas actualizada correctamente')
         return response
@@ -1969,7 +2084,7 @@ class SignForkliftInspectionView(LoginRequiredMixin, View):
         if signatures_count >= all_participants.count():
             failed_items = inspection.items.filter(item_status='Malo')
             if failed_items.exists():
-                inspection.status = 'Cerrada con Hallazgos'
+                inspection.status = 'Seguimiento en proceso'
                 inspection.save()
                 
                 from system_config.models import SystemConfig
@@ -1979,10 +2094,11 @@ class SignForkliftInspectionView(LoginRequiredMixin, View):
                 follow_up = ForkliftInspection.objects.create(
                     parent_inspection=inspection,
                     area=inspection.area,
+                    asset=inspection.asset,
                     inspector=inspection.inspector, 
                     inspector_role=inspection.inspector_role,
                     inspection_date=follow_up_date,
-                    status='Pendiente',
+                    status='Programada',
                     forklift_type=inspection.forklift_type
                 )
                 for item in failed_items:
@@ -1993,20 +2109,39 @@ class SignForkliftInspectionView(LoginRequiredMixin, View):
                         item_status='Malo',
                         observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento"
                     )
-                messages.info(request, f"Inspección cerrada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
+                messages.info(request, f"Inspección finalizada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
             else:
                 inspection.status = 'Cerrada'
                 inspection.save()
-                if inspection.schedule_item:
-                    s_item = inspection.schedule_item
-                    s_item.status = 'Realizada'
-                    s_item.save()
-                    next_s = s_item.generate_next_schedule()
-                    if next_s:
-                        messages.info(request, f"📅 Nueva programación generada para {next_s.scheduled_date}")
-            messages.success(request, 'Favorito registrado. Inspección cerrada por completar todas las firmas.')
+                
+                # SI ES UN SEGUIMIENTO, verificar si el padre ya se puede cerrar definitivamente
+                if inspection.parent_inspection:
+                    curr = inspection
+                    parent_updated = False
+                    while curr.parent_inspection:
+                        p = curr.parent_inspection
+                        if not p.follow_ups.exclude(status__in=['Cerrada', 'Cerrada con seguimientos']).exists():
+                            p.status = 'Cerrada con seguimientos'
+                            p.save()
+                            curr = p
+                            parent_updated = True
+                        else:
+                            break
+                    if parent_updated:
+                        messages.success(request, 'Seguimiento completado y jerarquía de inspecciones cerrada.')
+                    else:
+                        messages.success(request, 'Seguimiento completado.')
+                else:
+                    if inspection.schedule_item:
+                        s_item = inspection.schedule_item
+                        s_item.status = 'Realizada'
+                        s_item.save()
+                        next_s = s_item.generate_next_schedule()
+                        if next_s:
+                            messages.info(request, f"📅 Nueva programación generada para {next_s.scheduled_date}")
+                    messages.success(request, 'Inspección cerrada exitosamente.')
         else:
-            inspection.status = 'Pendiente de Firmas'
+            inspection.status = 'En proceso'
             inspection.save()
             messages.success(request, 'Firma registrada. Pendiente de firmas de otros participantes.')
         
@@ -2018,7 +2153,11 @@ class ForkliftReportView(LoginRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        items = self.object.items.all()
         context['signatures'] = self.object.signatures.select_related('user').all()
+        context['total_inspected'] = items.count()
+        context['total_good'] = items.filter(item_status='Bueno').count()
+        context['total_bad'] = items.filter(item_status='Malo').count()
         return context
 
 # --- REPORT MODULE VIEWS ---
@@ -2168,7 +2307,7 @@ class InspectionReportView(RolePermissionRequiredMixin, TemplateView):
         context['areas'] = Area.objects.filter(is_active=True)
         context['users'] = User.objects.filter(is_active=True).order_by('first_name')
         context['types'] = [m[1] for m in inspection_modules]
-        context['statuses'] = ['Programada', 'Pendiente', 'En proceso', 'Pendiente de Firmas', 'Cerrada', 'Cerrada con Hallazgos']
+        context['statuses'] = ['Programada', 'En proceso', 'Seguimiento en proceso', 'Cerrada', 'Cerrada con seguimientos']
 
         # Dynamic Years Data
         all_years = set()

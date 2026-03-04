@@ -394,11 +394,13 @@
                 <h3 class="inspection-section-title" style="margin-bottom: 0; border: none;">
                     <i class="fas fa-fire-extinguisher"></i> Extintores Inspeccionados
                 </h3>
+                {% if not form.instance.parent_inspection %}
                 <button type="button" class="btn"
                     style="background-color: #f8faf9; color: var(--primary-color); border: 2px dashed var(--primary-color); padding: 8px 16px;"
                     id="add-item-btn">
                     <i class="fas fa-plus-circle"></i> Agregar Extintor
                 </button>
+                {% endif %}
             </div>
 
             {{ items.management_form }}
@@ -516,7 +518,7 @@
 
                             <div class="recarga-cell">
                                 <div class="tech-label">Próxima Recarga Calculada</div>
-                                <div class="prox-recarga-display">—</div>
+                                {{ item_form.fecha_proxima_recarga }}
                                 <div class="field-hint">Automático (+ 1 año)</div>
                             </div>
 
@@ -645,7 +647,7 @@
 
             <div class="recarga-cell">
                 <div class="tech-label">Próxima Recarga Calculada</div>
-                <div class="prox-recarga-display">—</div>
+                <input type="date" name="items-__PREFIX__-fecha_proxima_recarga" id="id_items-__PREFIX__-fecha_proxima_recarga" class="form-control js-next-recharge-date" readonly style="background-color: #f8f9fa;">
                 <div class="field-hint">Automático (+ 1 año)</div>
             </div>
 
@@ -748,30 +750,25 @@
             if (sel.value) ts.trigger('change', sel.value);
 
             // ── Wiring: fecha de recarga → próxima recarga calculada ──
-            const recargaInput = row.querySelector('input[type="date"][id*="fecha_recarga_realizada"]');
-            const proxDisplay = row.querySelector('.prox-recarga-display');
-            if (recargaInput && proxDisplay) {
+            const recargaInput = row.querySelector('.js-recharge-date');
+            const proxInput = row.querySelector('.js-next-recharge-date');
+            if (recargaInput && proxInput) {
                 function calcProxRecarga() {
                     const val = recargaInput.value;
                     if (val) {
                         const d = new Date(val + 'T00:00:00');
                         d.setFullYear(d.getFullYear() + 1);
-                        const dd = String(d.getDate()).padStart(2, '0');
-                        const mm = String(d.getMonth() + 1).padStart(2, '0');
                         const yyyy = d.getFullYear();
-                        proxDisplay.textContent = `${dd}/${mm}/${yyyy}`;
-                        proxDisplay.style.color = 'var(--text-color)';
-                        proxDisplay.style.fontWeight = '600';
-                        proxDisplay.style.borderColor = '#fd7e14';
+                        const mm = String(d.getMonth() + 1).padStart(2, '0');
+                        const dd = String(d.getDate()).padStart(2, '0');
+                        proxInput.value = `${yyyy}-${mm}-${dd}`;
                     } else {
-                        proxDisplay.textContent = '—';
-                        proxDisplay.style.color = 'var(--text-light)';
-                        proxDisplay.style.fontWeight = 'normal';
-                        proxDisplay.style.borderColor = '#fbd5a8';
+                        proxInput.value = '';
                     }
                 }
                 recargaInput.addEventListener('change', calcProxRecarga);
-                calcProxRecarga();
+                // No llamamos a calcProxRecarga aquí si ya tiene valor desde el servidor
+                if (!proxInput.value && recargaInput.value) calcProxRecarga();
             }
         }
 
@@ -797,7 +794,7 @@
                 .replace(/__NUM__/g, num)
                 .replace('__HIDDEN_FIELDS__', hiddenFields)
                 .replace('__ASSET_SELECT__', assetSelect)
-                .replace('__FECHA_RECARGA__', `<input type="date" name="items-${idx}-fecha_recarga_realizada" id="id_items-${idx}-fecha_recarga_realizada" class="form-control">`);
+                .replace('__FECHA_RECARGA__', `<input type="date" name="items-${idx}-fecha_recarga_realizada" id="id_items-${idx}-fecha_recarga_realizada" class="form-control js-recharge-date">`);
 
             const div = document.createElement('div');
             div.innerHTML = html.trim();

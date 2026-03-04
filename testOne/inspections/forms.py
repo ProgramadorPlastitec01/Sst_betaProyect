@@ -150,11 +150,15 @@ class ExtinguisherItemForm(forms.ModelForm):
         self.fields['asset'].empty_label = '--- Seleccione extintor ---'
         self.fields['asset'].label = 'Extintor'
 
-        # Pre-fill fecha_recarga if editing and instance has a value
-        if self.instance.pk and self.instance.fecha_recarga_realizada:
-            self.fields['fecha_recarga_realizada'].widget.attrs['value'] = (
-                self.instance.fecha_recarga_realizada.strftime('%Y-%m-%d')
-            )
+        # Disable asset change on update
+        if self.instance.pk:
+            self.fields['asset'].disabled = True
+            self.fields['asset'].required = False
+            
+            if self.instance.fecha_recarga_realizada:
+                self.fields['fecha_recarga_realizada'].widget.attrs['value'] = self.instance.fecha_recarga_realizada.strftime('%Y-%m-%d')
+            if self.instance.fecha_proxima_recarga:
+                self.fields['fecha_proxima_recarga'].widget.attrs['value'] = self.instance.fecha_proxima_recarga.strftime('%Y-%m-%d')
 
     class Meta:
         model = ExtinguisherItem
@@ -170,11 +174,27 @@ class ExtinguisherItemForm(forms.ModelForm):
                 format='%Y-%m-%d',
                 attrs={
                     'type': 'date',
-                    'class': 'form-control',
+                    'class': 'form-control js-recharge-date',
                     'placeholder': 'DD/MM/AAAA',
                 }
             ),
+            'fecha_proxima_recarga': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={
+                    'type': 'date',
+                    'class': 'form-control js-next-recharge-date',
+                    'placeholder': 'DD/MM/AAAA',
+                    'readonly': 'readonly',
+                    'style': 'background-color: #f8f9fa;'
+                }
+            ),
         }
+
+    def clean_asset(self):
+        # Return existing asset if field is disabled
+        if self.instance.pk:
+            return self.instance.asset
+        return self.cleaned_data.get('asset')
 
     def clean(self):
         cleaned_data = super().clean()

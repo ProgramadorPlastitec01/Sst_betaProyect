@@ -1,6 +1,58 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}SST - {% if form.instance.pk %}Editar{% else %}Agregar{% endif %} Extintor{% endblock %}
+
+{% block extra_head %}
+<!-- Tom Select para búsqueda de activos -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<style>
+    .inspection-section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #eef2f1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+
+    @media (max-width: 600px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .check-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+        background: #f8faf9;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        border: 1px solid #e2eee8;
+    }
+
+    .check-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
 
 {% block header_title %}Registro Técnico de Extintor{% endblock %}
 
@@ -12,20 +64,25 @@
                 Equipo Extintor</h1>
             <p style="color: var(--text-light); font-size: 0.9rem;">Inspección técnica detallada del equipo.</p>
         </div>
+        <a href="{% if form.instance.pk %}{% url 'extinguisher_detail' form.instance.inspection.pk %}{% else %}{% url 'extinguisher_detail' view.kwargs.pk %}{% endif %}"
+            class="btn-link">
+            <i class="fas fa-arrow-left"></i> Volver al detalle
+        </a>
     </div>
 
     <div class="card">
-        <form method="post" novalidate>
+        <form method="post" novalidate id="extinguisher-item-form">
             {% csrf_token %}
 
             {% if form.errors %}
             <div
-                style="background-color: #fee; border: 1px solid #fcc; padding: 10px; border-radius: 5px; margin-bottom: 15px; color: #c00;">
-                <p style="margin: 0; font-weight: bold;">Error al guardar:</p>
-                <ul style="margin: 5px 0 0 20px;">
+                style="background-color: #fee; border: 1px solid #fcc; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #c00;">
+                <p style="margin: 0 0 10px 0; font-weight: bold;"><i class="fas fa-exclamation-triangle"></i> Error al
+                    guardar:</p>
+                <ul style="margin: 0 0 0 20px; font-size: 0.9rem;">
                     {% for field in form %}
                     {% for error in field.errors %}
-                    <li>{{ field.label }}: {{ error }}</li>
+                    <li><strong>{{ field.label }}:</strong> {{ error }}</li>
                     {% endfor %}
                     {% endfor %}
                     {% for error in form.non_field_errors %}
@@ -35,8 +92,16 @@
             </div>
             {% endif %}
 
-            <h3 class="inspection-section-title"><i class="fas fa-tag"></i> Datos Básicos</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+            <h3 class="inspection-section-title"><i class="fas fa-tag"></i> Datos del Equipo</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label style="font-weight: 600;">{{ form.asset.label }} <span style="color:red;">*</span></label>
+                    {{ form.asset }}
+                    {% if form.instance.pk %}
+                    <small style="color: #666;">El equipo está bloqueado para edición.</small>
+                    {% endif %}
+                    {{ form.asset.errors }}
+                </div>
                 <div class="form-group">
                     <label style="font-weight: 600;">{{ form.status.label }}</label>
                     {{ form.status }}
@@ -44,25 +109,30 @@
             </div>
 
             <h3 class="inspection-section-title"><i class="fas fa-check-double"></i> Puntos de Verificación</h3>
-            <div
-                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; background: #f8faf9; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
-                <div style="display: flex; align-items: center; gap: 10px;">{{ form.pressure_gauge_ok }} <span
-                        style="font-size: 0.9rem;">{{ form.pressure_gauge_ok.label }}</span></div>
-                <div style="display: flex; align-items: center; gap: 10px;">{{ form.safety_pin_ok }} <span
-                        style="font-size: 0.9rem;">{{ form.safety_pin_ok.label }}</span></div>
-                <div style="display: flex; align-items: center; gap: 10px;">{{ form.hose_nozzle_ok }} <span
-                        style="font-size: 0.9rem;">{{ form.hose_nozzle_ok.label }}</span></div>
-                <div style="display: flex; align-items: center; gap: 10px;">{{ form.signage_ok }} <span
-                        style="font-size: 0.9rem;">{{ form.signage_ok.label }}</span></div>
-                <div style="display: flex; align-items: center; gap: 10px;">{{ form.access_ok }} <span
-                        style="font-size: 0.9rem;">{{ form.access_ok.label }}</span></div>
-                <div style="display: flex; align-items: center; gap: 10px;">{{ form.label_ok }} <span
-                        style="font-size: 0.9rem;">{{ form.label_ok.label }}</span></div>
+            <div class="check-grid">
+                <label class="check-item">{{ form.pressure_gauge_ok }} <span>{{ form.pressure_gauge_ok.label}}</span></label>
+                <label class="check-item">{{ form.safety_pin_ok }} <span>{{ form.safety_pin_ok.label }}</span></label>
+                <label class="check-item">{{ form.hose_nozzle_ok }} <span>{{ form.hose_nozzle_ok.label }}</span></label>
+                <label class="check-item">{{ form.signage_ok }} <span>{{ form.signage_ok.label }}</span></label>
+                <label class="check-item">{{ form.access_ok }} <span>{{ form.access_ok.label }}</span></label>
+                <label class="check-item">{{ form.label_ok }} <span>{{ form.label_ok.label }}</span></label>
             </div>
 
-            <div class="form-group">
-                <label style="font-weight: 600;">{{ form.observations.label }}</label>
-                {{ form.observations }}
+            <h3 class="inspection-section-title"><i class="fas fa-calendar-alt"></i> Mantenimiento y Notas</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label style="font-weight: 600;">{{ form.fecha_recarga_realizada.label }}</label>
+                    {{ form.fecha_recarga_realizada }}
+                </div>
+                <div class="form-group">
+                    <label style="font-weight: 600;">{{ form.fecha_proxima_recarga.label }}</label>
+                    {{ form.fecha_proxima_recarga }}
+                    <small style="color: #666; display: block; margin-top: 4px;">Automático (+ 1 año)</small>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label style="font-weight: 600;">{{ form.observations.label }}</label>
+                    {{ form.observations }}
+                </div>
             </div>
 
             <div
@@ -70,7 +140,7 @@
                 <a href="{% if form.instance.pk %}{% url 'extinguisher_detail' form.instance.inspection.pk %}{% else %}{% url 'extinguisher_detail' view.kwargs.pk %}{% endif %}"
                     class="btn" style="background: #e9ecef; color: #495057;">Cancelar</a>
 
-                {% if not form.instance.pk %}
+                {% if not form.instance.pk and not inspection.parent_inspection %}
                 <button type="submit" name="save_and_add" class="btn"
                     style="background: #f8faf9; color: var(--primary-color); border: 1px solid var(--primary-color);">
                     Guardar y Agregar Otro
@@ -84,4 +154,46 @@
         </form>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Inicializar Tom Select para el activo
+        const assetSelect = document.querySelector('.asset-item-select');
+        if (assetSelect) {
+            new TomSelect(assetSelect, {
+                create: false,
+                sortField: {
+                    field: "text",
+                    direction: "asc"
+                },
+                placeholder: "--- Seleccione extintor ---",
+                allowEmptyOption: true
+            });
+        }
+
+        // --- Lógica de cálculo de próxima recarga ---
+        const recargaInput = document.querySelector('input[name="fecha_recarga_realizada"]');
+        const proxInput = document.querySelector('input[name="fecha_proxima_recarga"]');
+
+        function updateProxRecarga() {
+            if (recargaInput && recargaInput.value && proxInput) {
+                const dateParts = recargaInput.value.split('-');
+                if (dateParts.length === 3) {
+                    const year = parseInt(dateParts[0]);
+                    const month = dateParts[1];
+                    const day = dateParts[2];
+                    const nextYear = year + 1;
+                    proxInput.value = `${nextYear}-${month}-${day}`;
+                }
+            } else if (proxInput && !proxInput.value) {
+                proxInput.value = '';
+            }
+        }
+
+        if (recargaInput) {
+            recargaInput.addEventListener('change', updateProxRecarga);
+            if (!proxInput.value && recargaInput.value) updateProxRecarga();
+        }
+    });
+</script>
 {% endblock %}

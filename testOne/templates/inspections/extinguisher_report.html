@@ -179,67 +179,77 @@
         </div>
     </div>
 
-    {% if object.asset %}
-    <!-- Activo Inspeccionado -->
-    <h3><i class="fas fa-fire-extinguisher"></i> Activo Inspeccionado</h3>
+    <!-- Resumen de Inspección -->
+    <h3><i class="fas fa-chart-pie"></i> Resumen de Inspección</h3>
     <div
-        style="background:#fff8e1; border:1px solid #ffe082; padding:16px; margin-bottom:24px; border-left:4px solid #f9a825;">
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; font-size:0.85rem;">
+        style="background:#f8f9fa; border:1px solid #dee2e6; padding:16px; margin-bottom:24px; border-left:4px solid var(--primary-color);">
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; text-align:center;">
             <div>
                 <div
-                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#7b6000; margin-bottom:3px;">
-                    Código</div>
-                <div>{{ object.asset.code }}</div>
+                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#555; margin-bottom:5px;">
+                    Total Inspeccionados</div>
+                <div style="font-size:1.5rem; font-weight:700; color:var(--primary-color);">
+				{{ total_inspected|default:object.items.count }}</div>
             </div>
             <div>
                 <div
-                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#7b6000; margin-bottom:3px;">
-                    Área / Ubicación</div>
-                <div>{{ object.asset.area|default:"—" }}</div>
+                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#555; margin-bottom:5px;">
+                    Estado Bueno</div>
+                <div style="font-size:1.5rem; font-weight:700; color:#2e7d32;">{{ total_good|default:"0" }}</div>
             </div>
             <div>
                 <div
-                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#7b6000; margin-bottom:3px;">
-                    Capacidad</div>
-                <div>{{ object.asset.extintor_detail.capacidad_kg|default:"—" }} lbs</div>
-            </div>
-            <div>
-                <div
-                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#7b6000; margin-bottom:3px;">
-                    Tipo / Clase</div>
-                <div>{{ object.asset.extintor_detail.tipo_agente|default:"—" }}</div>
-            </div>
-            <div>
-                <div
-                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#7b6000; margin-bottom:3px;">
-                    Próx. Recarga</div>
-                <div>{{ object.asset.extintor_detail.fecha_vencimiento|date:"d/m/Y"|default:"—" }}</div>
-            </div>
-            <div>
-                <div
-                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#7b6000; margin-bottom:3px;">
-                    Estado Activo</div>
-                <div>{{ object.asset.estado_label }}</div>
+                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#555; margin-bottom:5px;">
+                    Hallazgos (Malo/Recarga)</div>
+                <div style="font-size:1.5rem; font-weight:700; color:#c62828;">{{ total_bad|default:"0" }}</div>
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- Details Table -->
-    <h3><i class="fas fa-fire-extinguisher"></i> Detalle de Extintores</h3>
+    <h3><i class="fas fa-tasks"></i> Detalle de Extintores Inspeccionados</h3>
     <table class="table-report">
         <thead>
             <tr>
-                <th>Estado General</th>
-                <th>Observaciones</th>
+                <th style="width: 25%">Extintor</th>
+                <th style="width: 40%">Revisión Puntos Clave</th>
+                <th style="width: 15%">Estado</th>
+                <th style="width: 20%">Observaciones</th>
             </tr>
         </thead>
         <tbody>
             {% for item in object.items.all %}
             <tr>
-                <td
-                    style="font-weight: bold; color: {% if item.status == 'Bueno' %}#28a745{% else %}#dc3545{% endif %};">
-                    {{ item.status }}
+                <td>
+                    {% if item.asset %}
+                    <div style="font-weight: 700;">{{ item.asset.code }}</div>
+                    <div style="font-size: 0.75rem; color: #666;">{{ item.asset.area|default:"—" }}</div>
+                    {% if item.asset.extintor_detail %}
+                    <div style="font-size: 0.7rem; color: #888;">
+                        {{ item.asset.extintor_detail.tipo_agente|default:"" }}
+                        {% if item.asset.extintor_detail.capacidad_kg %} · {{ item.asset.extintor_detail.capacidad_kg }}
+                        lbs{% endif %}
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <span style="color: #999;">Sin activo asignado</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; font-size: 0.75rem;">
+                        <span>{% if item.pressure_gauge_ok %}✔{% else %}✘{% endif %} Manómetro</span>
+                        <span>{% if item.safety_pin_ok %}✔{% else %}✘{% endif %} Seguro</span>
+                        <span>{% if item.hose_nozzle_ok %}✔{% else %}✘{% endif %} Manguera</span>
+                        <span>{% if item.signage_ok %}✔{% else %}✘{% endif %} Señalización</span>
+                        <span>{% if item.access_ok %}✔{% else %}✘{% endif %} Acceso</span>
+                        <span>{% if item.label_ok %}✔{% else %}✘{% endif %} Etiqueta</span>
+                    </div>
+                </td>
+                <td style="text-align: center;">
+                    <span class="status-badge"
+                        style="background-color: {% if item.status == 'Bueno' %}#28a745{% elif item.status == 'Malo' %}#dc3545{% else %}#ffc107{% endif %};">
+                        {{ item.status }}
+                    </span>
                 </td>
                 <td>{{ item.observations|default:"-" }}</td>
             </tr>

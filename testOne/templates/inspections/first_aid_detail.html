@@ -35,7 +35,7 @@
                 <i class="fas fa-file-signature"></i> Firmas
             </button>
 
-            {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
+            {% if object.status != 'Cerrada' and object.status != 'Cerrada con seguimientos' %}
             <a href="{% url 'first_aid_edit' object.pk %}" class="btn btn-primary"><i class="fas fa-edit"></i>
                 Editar</a>
             {% endif %}
@@ -71,14 +71,15 @@
                             <td style="padding:12px; font-weight:600;">
                                 {{ p.user.get_full_name|default:p.user.username }}
                                 {% if p.user == object.inspector %}<small class="text-muted">(Inspector)</small>
-								{% endif %}
+                                {% endif %}
                             </td>
                             <td style="padding:12px;">
                                 {% if p.has_signed %}
                                 <span class="badge"
                                     style="background:#28a745; color:white; padding:4px 8px; border-radius:4px; font-size:0.75rem;">FIRMADO</span>
                                 {% else %}
-                                <span class="badge" style="background:#ffc107; color:#212529; padding:4px 8px; border-radius:4px; font-size:0.75rem;">PENDIENTE</span>
+                                <span class="badge"
+                                    style="background:#ffc107; color:#212529; padding:4px 8px; border-radius:4px; font-size:0.75rem;">PENDIENTE</span>
                                 {% endif %}
                             </td>
                             <td style="padding:12px; font-size:0.85rem; color:#6c757d;">
@@ -95,7 +96,7 @@
             </div>
 
             <div style="text-align:right; border-top:1px solid #eee; padding-top:20px;">
-                {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
+                {% if object.status != 'Cerrada' and object.status != 'Cerrada con seguimientos' %}
                 {% if can_sign %}
                 <form action="{% url 'first_aid_sign' object.pk %}" method="post" style="display:inline;"
                     onsubmit="return confirm('¿Está seguro de firmar esta inspección? Se utilizará su firma digital registrada en el Perfil.');">
@@ -227,7 +228,7 @@
             <h3 class="inspection-section-title" style="margin: 0; border: none;"><i class="fas fa-list-check"></i>
                 Elementos Inspeccionados</h3>
 
-            {% if object.status == 'En proceso' or object.status == 'Programada' %}
+            {% if object.status == 'En proceso' or object.status == 'Programada' and not object.parent_inspection %}
             <a href="{% url 'first_aid_item_create' object.pk %}" class="btn"
                 style="background-color: #f8faf9; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 6px 12px; font-size: 0.8rem;">
                 <i class="fas fa-plus-circle"></i> Nuevo Ítem

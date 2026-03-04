@@ -35,7 +35,7 @@
             </button>
 
 
-            {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
+            {% if object.status != 'Cerrada' and object.status != 'Cerrada con seguimientos' %}
             <a href="{% url 'forklift_edit' object.pk %}" class="btn btn-primary"><i class="fas fa-edit"></i> Editar</a>
             {% endif %}
         </div>
@@ -88,6 +88,20 @@
             </div>
             {% endif %}
             {% endwith %}
+
+            {% if object.asset %}
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Equipo
+                    Inspeccionado</label>
+                <div style="font-weight: 600;">
+                    <a href="{% url 'asset_detail' object.asset.pk %}"
+                        style="text-decoration:none; color:var(--primary-color);">
+                        {{ object.asset.code }} - {{ object.asset.name }}
+                    </a>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         {% if object.additional_observations %}
@@ -184,7 +198,7 @@
                         </td>
                         <td>{{ item.observations|default:"-" }}</td>
                         <td class="text-center">
-                            {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
+                            {% if object.status != 'Cerrada' and object.status != 'Cerrada con seguimientos' %}
                             <a href="{% url 'forklift_item_edit' item.pk %}" class="btn btn-sm"
                                 style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar">
                                 <i class="fas fa-edit"></i>
@@ -256,7 +270,7 @@
         </div>
 
         <div style="text-align:right; border-top:1px solid #eee; padding-top:20px;">
-            {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' %}
+            {% if object.status != 'Cerrada' and object.status != 'Cerrada con seguimientos' %}
             {% if can_sign %}
             <form action="{% url 'sign_forklift_inspection' object.pk %}" method="post" style="display:inline;"
                 onsubmit="return confirm('¿Está seguro de firmar esta inspección? Se utilizará su firma digital registrada en el Perfil.');">

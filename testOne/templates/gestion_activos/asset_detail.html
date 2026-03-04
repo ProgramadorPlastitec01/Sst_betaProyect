@@ -268,6 +268,58 @@
             transform: rotate(360deg);
         }
     }
+
+    /* ── Botón Detalle en tabla de historial ── */
+    .h-action-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #49BAA0;
+        color: #fff !important;
+        text-decoration: none;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 5px 12px;
+        border-radius: 6px;
+        transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+        white-space: nowrap;
+    }
+
+    .h-action-link:hover {
+        background: #3aa38c;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(73, 186, 160, 0.3);
+        color: #fff !important;
+    }
+
+    .h-action-link i {
+        font-size: 0.8rem;
+    }
+
+    /* Badge tipo de inspeccion en tabla */
+    .h-tipo {
+        background: #e8f5f2;
+        color: #1a5c4a;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 20px;
+        display: inline-block;
+    }
+
+    /* Pill badge de seguimiento */
+    .h-badge-seg {
+        display: inline-block;
+        background: #fff8e6;
+        color: #996a00;
+        border: 1px solid #ffe5a0;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 20px;
+        margin-left: 4px;
+        vertical-align: middle;
+    }
 </style>
 {% endblock %}
 
@@ -483,12 +535,15 @@
             let rows = slice.map(r => `
                 <tr>
                     <td><b style="color:#1e3d35;">${r.fecha}</b></td>
-                    <td><span class="h-tipo">${r.tipo}</span></td>
+                    <td>
+                        <span class="h-tipo">${r.tipo}</span>
+                        ${r.extras && r.extras.includes('Seguimiento') ? '<span class="h-badge-seg">Seguimiento</span>' : ''}
+                    </td>
                     <td>${getStatusBadge(r.status)}</td>
                     <td style="font-size:0.82rem; color:#666;">${r.inspector}</td>
                     <td style="text-align:center;">
                         <a href="${r.url}" class="h-action-link" target="_blank">
-                            <i class="fas fa-external-link-alt"></i> Detalle
+                            <i class="fas fa-eye"></i> Ver Detalle
                         </a>
                     </td>
                 </tr>

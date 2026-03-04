@@ -95,30 +95,26 @@
                     <td>
                         <div class="d-flex flex-column">
                             <span class="compliance-badge" style="font-size: 0.75rem; width: fit-content;
-                                {% if inspection.status == 'Cerrada' %}
+                                {% if inspection.status == 'Cerrada' or inspection.status == 'Cerrada con seguimientos' %}
                                     background: #d4edda; color: #155724;
-                                {% elif inspection.status == 'Cerrada con Hallazgos' %}
-                                    background: #fff3cd; color: #856404;
-                                {% elif inspection.status == 'Pendiente de Firmas' %}
-                                    background: #fff3e0; color: #e65100;
-                                {% elif inspection.status == 'En proceso' %}
+                                {% elif inspection.status == 'Seguimiento en proceso' or inspection.status == 'Cerrada con Hallazgos' %}
+                                    background: #ffe4cc; color: #e67e22;
+                                {% elif inspection.status == 'En proceso' or inspection.status == 'Pendiente de Firmas' %}
                                     background: #cce5ff; color: #004085;
                                 {% else %}
                                     background: #e2e3e5; color: #495057;
                                 {% endif %}">
-                                {% if inspection.status == 'Pendiente de Firmas' %}
-                                <i class="fas fa-pen-nib" style="margin-right:4px;"></i>
-                                {% elif inspection.status == 'Cerrada' %}
+                                {% if inspection.status == 'Cerrada' or inspection.status == 'Cerrada con seguimientos' %}
                                 <i class="fas fa-check-circle" style="margin-right:4px;"></i>
-                                {% elif inspection.status == 'Cerrada con Hallazgos' %}
+                                {% elif inspection.status == 'Seguimiento en proceso' or inspection.status == 'Cerrada con Hallazgos' %}
                                 <i class="fas fa-exclamation-circle" style="margin-right:4px;"></i>
-                                {% elif inspection.status == 'En proceso' %}
+                                {% elif inspection.status == 'En proceso' or inspection.status == 'Pendiente de Firmas' %}
                                 <i class="fas fa-spinner" style="margin-right:4px;"></i>
                                 {% else %}
                                 <i class="fas fa-clock" style="margin-right:4px;"></i>
                                 {% endif %}
                                 {{ inspection.get_status_display }}
-                            </span>
+                            </span><br>
                             {% if inspection.get_total_follow_ups_count > 0 %}
                             <small class="text-muted mt-1" style="font-size: 0.7rem;">
                                 <i class="fas fa-link"></i> Seguimientos: {{ inspection.get_total_follow_ups_count }}
@@ -132,7 +128,7 @@
                                 title="Ver Detalle">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            {% if inspection.status != 'Cerrada' and inspection.status != 'Cerrada con Hallazgos' %}
+                            {% if inspection.status != 'Cerrada' and inspection.status != 'Cerrada con seguimientos' %}
                             <a href="{% url 'forklift_edit' inspection.pk %}" class="btn btn-sm btn-primary"
                                 title="Editar">
                                 <i class="fas fa-edit"></i>

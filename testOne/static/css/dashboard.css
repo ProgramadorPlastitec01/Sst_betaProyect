@@ -149,6 +149,11 @@
     color: #41464b;
 }
 
+.badge-orange {
+    background-color: #ffe4cc;
+    color: #e67e22;
+}
+
 /* Chart Styling */
 .chart-card {
     padding: 30px;
