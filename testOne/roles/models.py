@@ -26,10 +26,11 @@ class Permission(models.Model):
         ('edit', 'Editar'),
         ('delete', 'Eliminar'),
         ('reset_password', 'Restablecer Contraseña'),
+        ('gestionar_movimientos', 'Gestionar Movimientos'),
     ]
     
     module = models.CharField(max_length=50, choices=MODULE_CHOICES, verbose_name='Módulo')
-    action = models.CharField(max_length=20, choices=ACTION_CHOICES, verbose_name='Acción')
+    action = models.CharField(max_length=30, choices=ACTION_CHOICES, verbose_name='Acción')
     codename = models.CharField(max_length=100, unique=True, verbose_name='Código')
     description = models.CharField(max_length=255, verbose_name='Descripción')
     is_active = models.BooleanField(default=True, verbose_name='Activo')

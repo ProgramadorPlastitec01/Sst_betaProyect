@@ -109,8 +109,15 @@
                 {% has_permission 'assets' 'view' as can_view_assets %}
                 {% if can_view_assets %}
                 <li>
-                    <a href="{% url 'asset_list' %}" class="{% if 'activos' in request.path %}active{% endif %}">
+                    <a href="{% url 'asset_list' %}"
+                        class="{% if request.resolver_match.url_name == 'asset_list' or request.resolver_match.url_name == 'asset_detail' %}active{% endif %}">
                         <i class="fas fa-boxes"></i> <span>Gestión de Activos</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'asset_report' %}"
+                        class="{% if request.resolver_match.url_name == 'asset_report' %}active{% endif %}">
+                        <i class="fas fa-chart-pie"></i> <span>Reporte</span>
                     </a>
                 </li>
                 {% endif %}
@@ -120,7 +127,7 @@
                 <li>
                     <a href="{% url 'inspection_reports' %}"
                         class="{% if request.resolver_match.url_name  ==  'inspection_reports' %}active{% endif %}">
-                        <i class="fas fa-chart-line"></i> <span>Reportes</span>
+                        <i class="fas fa-chart-line"></i> <span>Consultas</span>
                     </a>
                 </li>
                 {% endif %}

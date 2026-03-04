@@ -51,6 +51,15 @@
             <div class="stat-label">Requieren Atención</div>
         </div>
     </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f0ad4e 0%, #da8c16 100%);">
+            <i class="fas fa-exchange-alt"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ temporales_count }}</div>
+            <div class="stat-label">Reemplazos Temporales</div>
+        </div>
+    </div>
 </div>
 
 {# Filters #}
@@ -134,13 +143,20 @@
                             {{ asset.asset_type.name }}
                         </span>
                     </td>
-                    <td style="font-family: monospace; font-weight: 600; color: #49BAA0;">{{ asset.code }}</td>
+                    <td style="font-family: monospace; font-weight: 600; color: #49BAA0;">
+                        {{ asset.code }}
+                        {% if asset.temporal %}
+                        <span
+                            style="font-size: 0.65rem; background: #fff8e6; color: #996a00; border: 1px solid #ffe5a0; padding: 2px 6px; border-radius: 12px; margin-left: 5px; vertical-align: text-top; font-family: sans-serif;">Temporal</span>
+                        {% endif %}
+                    </td>
                     <td>{{ asset.area }}</td>
                     <td>
                         <span class="compliance-badge {{ asset.estado_css }}" style="font-size: 0.78rem;">
                             {% if asset.estado_actual == 'VENCIDO' or asset.estado_actual == 'MANTENIMIENTO_VENCIDO' %}
                             <i class="fas fa-times-circle" style="margin-right: 4px;"></i>
-                            {% elif asset.estado_actual == 'PROXIMO_A_VENCER' or asset.estado_actual == 'PROXIMO_MANTENIMIENTO' %}
+                            {% elif asset.estado_actual == 'PROXIMO_A_VENCER' or asset.estado_actual ==
+                            'PROXIMO_MANTENIMIENTO' %}
                             <i class="fas fa-exclamation-triangle" style="margin-right: 4px;"></i>
                             {% else %}
                             <i class="fas fa-check-circle" style="margin-right: 4px;"></i>

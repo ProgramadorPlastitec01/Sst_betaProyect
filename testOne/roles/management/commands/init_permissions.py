@@ -55,6 +55,15 @@ class Command(BaseCommand):
             {'module': 'forklift', 'action': 'create', 'description': 'Registrar inspecciones de montacargas'},
             {'module': 'forklift', 'action': 'edit', 'description': 'Editar inspecciones de montacargas'},
             {'module': 'forklift', 'action': 'delete', 'description': 'Eliminar inspecciones de montacargas'},
+
+            # Activos - Inventario
+            {'module': 'assets', 'action': 'view', 'description': 'Ver inventario de activos'},
+            {'module': 'assets', 'action': 'create', 'description': 'Crear nuevos activos'},
+            {'module': 'assets', 'action': 'edit', 'description': 'Editar activos'},
+            {'module': 'assets', 'action': 'delete', 'description': 'Eliminar activos'},
+
+            # Movimientos de Activos
+            {'module': 'assets', 'action': 'gestionar_movimientos', 'description': 'Registrar movimientos de activos (salidas, reemplazos, retornos)'},
         ]
         
         self.stdout.write(self.style.SUCCESS('\n=== Inicializando Permisos ===\n'))

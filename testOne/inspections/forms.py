@@ -141,7 +141,7 @@ class ExtinguisherItemForm(forms.ModelForm):
         try:
             tipo_extintor = AssetType.objects.get(name='Extintor')
             qs = Asset.objects.filter(
-                asset_type=tipo_extintor, activo=True
+                asset_type=tipo_extintor, activo=True, extintor_detail__estado_movimiento='NORMAL'
             ).select_related('area', 'extintor_detail__tipo_agente').order_by('code')
         except AssetType.DoesNotExist:
             qs = Asset.objects.none()

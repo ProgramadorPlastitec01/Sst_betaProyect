@@ -1,0 +1,763 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reporte Ejecutivo de Inventario - SST{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+    .reports-container {
+        padding: 20px;
+    }
+
+    .filter-card {
+        background: #fff;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        margin-bottom: 25px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #4b5563;
+    }
+
+    .form-control {
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        align-items: center;
+        border-top: 1px solid #f3f4f6;
+        padding-top: 20px;
+    }
+
+    .btn-sst {
+        background: #49BAA0;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: filter 0.2s;
+    }
+
+    .btn-sst:hover {
+        filter: brightness(0.9);
+        color: white;
+    }
+
+    .btn-export {
+        background: #10b981;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.2s;
+        text-decoration: none;
+    }
+
+    .btn-export:hover {
+        background: #059669;
+        color: white;
+    }
+
+    .btn-pdf {
+        background: #ef4444;
+    }
+
+    .btn-pdf:hover {
+        background: #dc2626;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+
+    .report-stat-card {
+        background: #fff;
+        padding: 15px;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transition: transform 0.2s;
+    }
+
+    .report-stat-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .stat-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .icon-blue {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
+
+    .icon-green {
+        background: #f0fdf4;
+        color: #22c55e;
+    }
+
+    .icon-red {
+        background: #fef2f2;
+        color: #ef4444;
+    }
+
+    .icon-yellow {
+        background: #fefce8;
+        color: #eab308;
+    }
+
+    .icon-gray {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .icon-orange {
+        background: #fff7ed;
+        color: #f97316;
+    }
+
+    .stat-val {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #111827;
+        margin: 0;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6b7280;
+        font-weight: 500;
+        margin: 0;
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+
+    @media (max-width: 992px) {
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .chart-card {
+        background: #fff;
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        position: relative;
+        min-height: 250px;
+    }
+
+    .chart-card h3 {
+        font-size: 1rem;
+        color: #374151;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+
+    .data-card {
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+    }
+
+    .report-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .report-table th {
+        background: #f9fafb;
+        padding: 12px 16px;
+        text-align: left;
+        font-weight: 600;
+        color: #4b5563;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .report-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: middle;
+    }
+
+    /* Compliance Card */
+    .compliance-card {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+    }
+
+    .compliance-card h3 {
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+
+    .compliance-val {
+        font-size: 3rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .compliance-desc {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin-top: 5px;
+    }
+
+    /* Document header for PDF */
+    .print-header {
+        display: none;
+        margin-bottom: 30px;
+        text-align: center;
+        border-bottom: 2px solid #333;
+        padding-bottom: 15px;
+    }
+
+    .print-header h1 {
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+    }
+
+    .print-header p {
+        font-size: 0.9rem;
+        color: #666;
+        margin: 2px;
+    }
+
+    @media print {
+        body {
+            background: white;
+        }
+
+        .sidebar,
+        .topbar,
+        .filter-card,
+        .btn-export,
+        .btn-pdf,
+        .btn-sst {
+            display: none !important;
+        }
+
+        .main-content {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .reports-container {
+            padding: 0;
+        }
+
+        .print-header {
+            display: block;
+        }
+
+        .charts-grid {
+            page-break-inside: avoid;
+        }
+
+        .data-card {
+            border: none;
+            box-shadow: none;
+        }
+
+        .report-table {
+            border: 1px solid #ddd;
+        }
+
+        .report-table th,
+        .report-table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .chart-card {
+            break-inside: avoid;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block header_title %}Reporte Ejecutivo de Inventario{% endblock %}
+
+{% block content %}
+<div class="reports-container" id="report-content">
+
+    <div class="print-header">
+        <h1>REPORTE EJECUTIVO DE INVENTARIO - ACTIVOS</h1>
+        <p>Generado por: {{ request.user.get_full_name|default:request.user.username }}</p>
+        <p id="print-date"></p>
+    </div>
+
+    <div class="filter-card" data-html2canvas-ignore>
+        <form method="GET" action="{% url 'asset_report' %}" id="filter-form">
+            <div class="filter-grid">
+                <div class="form-group">
+                    <label>Área</label>
+                    <select name="area" class="form-control" onchange="this.form.submit()">
+                        <option value="">Todas las Áreas</option>
+                        {% for area in areas %}
+                        <option value="{{ area.id }}" {% if request.GET.area == area.id|stringformat:"s" %}selected{% endif %}>
+                            {{ area.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Activo</label>
+                    <select name="tipo" class="form-control" onchange="this.form.submit()">
+                        <option value="">Todos los Tipos</option>
+                        {% for t in asset_types %}
+                        <option value="{{ t.id }}" {% if request.GET.tipo == t.id|stringformat:"s" %}selected{% endif %}>
+                            {{ t.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select name="estado" class="form-control" onchange="this.form.submit()">
+                        <option value="">Todos los Estados</option>
+                        <option value="ACTIVO" {% if request.GET.estado == 'ACTIVO' %}selected{% endif %}>Activo /
+                            Operativo</option>
+                        <option value="VENCIDO" {% if request.GET.estado == 'VENCIDO' %}selected{% endif %}>Vencido
+                        </option>
+                        <option value="REEMPLAZADO" {% if request.GET.estado == 'REEMPLAZADO' %}selected{% endif %}>
+                            Reemplazado</option>
+                        <option value="FUERA_DE_SERVICIO" {% if request.GET.estado == 'FUERA_DE_SERVICIO' %}selected{% endif %}>Fuera de Servicio</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Uso Temporal</label>
+                    <select name="temporal" class="form-control" onchange="this.form.submit()">
+                        <option value="">Ambos</option>
+                        <option value="no" {% if request.GET.temporal == 'no' %}selected{% endif %}>Solo Fijos</option>
+                        <option value="si" {% if request.GET.temporal == 'si' %}selected{% endif %}>Solo Temporales
+                        </option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <a href="{% url 'asset_report' %}" class="btn-sst" style="background:#6b7280;">Limpiar Filtros</a>
+                <button type="button" class="btn-export"
+                    onclick="window.location.href='?'+new URLSearchParams(new FormData(document.getElementById('filter-form'))).toString()+'&export=excel'">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </button>
+                <button type="button" class="btn-export btn-pdf" onclick="generatePDF()">
+                    <i class="fas fa-file-pdf"></i> Imprimir / PDF
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Indicador de Cumplimiento General -->
+    <div class="compliance-card">
+        <h3>Índice de Cumplimiento Operativo (Activos Fijos)</h3>
+        <p class="compliance-val"> {{ kpis.cumplimiento }}% </p>
+        <p class="compliance-desc"> Porcentaje de activos fijos en estado óptimo sobre el total de activos fijos. </p>
+    </div>
+
+    <!-- KPIs -->
+    <div class="stats-grid">
+        <div class="report-stat-card">
+            <div class="stat-icon icon-blue"><i class="fas fa-boxes"></i></div>
+            <div>
+                <p class="stat-val">{{ kpis.total }}</p>
+                <p class="stat-label">Total Activos</p>
+            </div>
+        </div>
+        <div class="report-stat-card">
+            <div class="stat-icon icon-green"><i class="fas fa-check-circle"></i></div>
+            <div>
+                <p class="stat-val">{{ kpis.activos }}</p>
+                <p class="stat-label">En Estado Óptimo</p>
+            </div>
+        </div>
+        <div class="report-stat-card">
+            <div class="stat-icon icon-red"><i class="fas fa-exclamation-triangle"></i></div>
+            <div>
+                <p class="stat-val">{{ kpis.vencidos }}</p>
+                <p class="stat-label">Vencidos / Mantenimiento</p>
+            </div>
+        </div>
+        <div class="report-stat-card">
+            <div class="stat-icon icon-yellow"><i class="fas fa-exchange-alt"></i></div>
+            <div>
+                <p class="stat-val">{{ kpis.reemplazados }}</p>
+                <p class="stat-label">Reemplazados</p>
+            </div>
+        </div>
+        <div class="report-stat-card">
+            <div class="stat-icon icon-gray"><i class="fas fa-ban"></i></div>
+            <div>
+                <p class="stat-val">{{ kpis.fueraservicio }}</p>
+                <p class="stat-label">Fuera de Servicio</p>
+            </div>
+        </div>
+        <div class="report-stat-card">
+            <div class="stat-icon icon-orange"><i class="fas fa-clock"></i></div>
+            <div>
+                <p class="stat-val">{{ kpis.temporales }}</p>
+                <p class="stat-label">Equipos Temporales</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>Distribución por Estado</h3>
+            <div style="position: relative; height: 200px; width: 100%;">
+                <canvas id="chartStatus"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>Distribución por Tipo de Activo</h3>
+            <div style="position: relative; height: 200px; width: 100%;">
+                <canvas id="chartType"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>Distribución por Área</h3>
+            <div style="position: relative; height: 200px; width: 100%;">
+                <canvas id="chartArea"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>Fijos vs Temporales</h3>
+            <div style="position: relative; height: 200px; width: 100%;">
+                <canvas id="chartTemp"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtro Activo (Interactivo) -->
+    <div id="active-filter-container"
+        style="display: none; background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <i class="fas fa-filter"></i> <span id="active-filter-text">Filtro Activo</span>
+        </div>
+        <button type="button" onclick="clearInteractiveFilter()"
+            style="background: transparent; border: none; color: #0369a1; cursor: pointer; font-weight: bold; font-size: 1.1rem;">&times;
+            Limpiar</button>
+    </div>
+
+    <!-- Tabla Detallada -->
+    <div class="data-card">
+        <div
+            style="padding: 15px 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 1.1rem; color: #374151;">Detalle de Inventario</h3>
+            <span style="font-size: 0.9rem; color: #6b7280;">Mostrando <span id="table-count">{{ assets|length }}</span>
+                registros</span>
+        </div>
+        <div class="table-responsive">
+            <table class="report-table" id="inventoryTable">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Tipo</th>
+                        <th>Área</th>
+                        <th>Estado</th>
+                        <th>Temporal</th>
+                        <th>Próx. Recarga/Mant.</th>
+                    </tr>
+                </thead>
+                <tbody id="inventory-tbody">
+                    {% for asset in assets %}
+                    <tr class="asset-row" data-estado="{{ asset.estado_actual }}" data-tipo="{{ asset.tipo_nombre }}"
+                        data-area="{{ asset.area.name|default:'Sin Área' }}"
+                        data-temporal="{{ asset.temporal|yesno:'si,no' }}">
+                        <td style="font-weight: 500;">{{ asset.code }}</td>
+                        <td>{{ asset.tipo_nombre }}</td>
+                        <td>{{ asset.area.name|default:"-" }}</td>
+                        <td>
+                            <span class="badge {{ asset.estado_css }}">{{ asset.estado_label }}</span>
+                        </td>
+                        <td>
+                            {% if asset.temporal %}
+                            <span class="badge badge-warning">SÍ</span>
+                            {% else %}
+                            <span class="badge badge-info">NO</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if asset.get_detail_data.fecha_vencimiento %}
+                            {{ asset.get_detail_data.fecha_vencimiento|date:"d/m/Y" }}
+                            {% elif asset.get_detail_data.fecha_proximo_mantenimiento %}
+                            {{ asset.get_detail_data.fecha_proximo_mantenimiento|date:"d/m/Y" }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr id="empty-row">
+                        <td colspan="6" style="text-align: center; padding: 30px; color: #6b7280;">
+                            No hay activos que coincidan con los filtros aplicados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr id="no-results-row" style="display: none;">
+                        <td colspan="6" style="text-align: center; padding: 30px; color: #6b7280;">
+                            No hay activos que coincidan con el filtro interactivo.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Variables globales para el filtro interactivo
+    let currentFilterType = null;
+    let currentFilterValue = null;
+
+    function applyInteractiveFilter(type, value, description) {
+        currentFilterType = type;
+        currentFilterValue = value;
+
+        const container = document.getElementById('active-filter-container');
+        const textSpan = document.getElementById('active-filter-text');
+
+        if (type && value) {
+            container.style.display = 'flex';
+            textSpan.textContent = `Filtro Activo: ${description}`;
+        } else {
+            container.style.display = 'none';
+        }
+
+        filterTableRows();
+    }
+
+    function clearInteractiveFilter() {
+        applyInteractiveFilter(null, null, '');
+    }
+
+    function filterTableRows() {
+        const rows = document.querySelectorAll('.asset-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            let show = true;
+
+            if (currentFilterType) {
+                const rowValue = row.getAttribute(`data-${currentFilterType}`);
+
+                // Mapeos especiales o coincidencias directas
+                if (currentFilterType == 'temporales') {
+                    show = (currentFilterValue == 'si' && row.getAttribute('data-temporal') == 'si');
+                } else if (currentFilterType == 'vencidos') {
+                    show = (rowValue == currentFilterValue);
+                } else if (currentFilterType == 'estado_multiple') {
+                    // Para el KPI de Vencidos (incluye extintores y montacargas)
+                    const st = row.getAttribute('data-estado');
+                    show = (st == 'VENCIDO' || st == 'MANTENIMIENTO_VENCIDO' || st == 'Vencido' || st == 'Mantenimiento Vencido');
+                } else if (currentFilterType == 'fueraservicio') {
+                    show = (row.getAttribute('data-estado') == 'FUERA_DE_SERVICIO');
+                } else if (currentFilterType == 'optimo') {
+                    // Soporte para ambos tipos de activos
+                    const st = row.getAttribute('data-estado');
+                    show = (st == 'ACTIVO' || st == 'OPERATIVO' || st == 'Activo' || st == 'Operativo');
+                } else if (currentFilterType == 'reemplazado') {
+                    show = (row.getAttribute('data-estado') == 'REEMPLAZADO');
+                } else {
+                    show = (rowValue == currentFilterValue);
+                }
+            }
+
+            row.style.display = show ? '' : 'none';
+            if (show) visibleCount++;
+        });
+
+        document.getElementById('table-count').textContent = visibleCount;
+
+        const noResultsRow = document.getElementById('no-results-row');
+        const emptyRow = document.getElementById('empty-row');
+
+        if (noResultsRow) {
+            noResultsRow.style.display = (visibleCount == 0 && rows.length > 0) ? '' : 'none';
+        }
+        if (emptyRow && rows.length == 0) {
+            emptyRow.style.display = '';
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const d = new Date();
+        document.getElementById('print-date').textContent = "Fecha de Emisión: " + d.toLocaleString('es-ES');
+
+        // Esconder contenedor de filtro inicial
+        document.getElementById('active-filter-container').style.display = 'none';
+
+        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
+
+        // Handler common para clicks en charts
+        const handleChartClick = (typeFunc, chartMap) => (event, elements, chart) => {
+            if (elements.length > 0) {
+                const index = elements[0].index;
+                const label = chart.data.labels[index];
+                let filterType = chartMap;
+                let filterVal = label;
+
+                // Mapeo especial para estados a sus values internos
+                if (filterType == 'estado') {
+                    const statusMap = {
+                        'Activo': 'ACTIVO',
+                        'Operativo': 'OPERATIVO',
+                        'Vencido': 'VENCIDO',
+                        'Mantenimiento Vencido': 'MANTENIMIENTO_VENCIDO',
+                        'Proximo a Vencer': 'PROXIMO_A_VENCER',
+                        'Proximo Mantenimiento': 'PROXIMO_MANTENIMIENTO',
+                        'Reemplazado': 'REEMPLAZADO',
+                        'Fuera de Servicio': 'FUERA_DE_SERVICIO',
+                        'Fuera de servicio': 'FUERA_DE_SERVICIO',
+                        'Baja': 'BAJA'
+                    };
+                    filterVal = statusMap[label] || label;
+                } else if (filterType == 'temporal') {
+                    filterVal = (label == 'Temporales') ? 'si' : 'no';
+                }
+
+                applyInteractiveFilter(filterType, filterVal, `${chart.canvas.id.replace('chart', '')}: ${label}`);
+            }
+        };
+
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } }
+        };
+
+        // Data desde servidor
+        const dataStatus = {{ charts.status| safe }};
+    const dataType = {{ charts.type| safe }};
+    const dataArea = {{ charts.area| safe }};
+    const dataTemp = {{ charts.temp| safe }};
+
+    new Chart(document.getElementById('chartStatus').getContext('2d'), {
+        type: 'doughnut',
+        data: { labels: dataStatus.labels, datasets: [{ data: dataStatus.data, backgroundColor: colors, borderWidth: 1 }] },
+        options: { ...commonOptions, onClick: handleChartClick('status', 'estado') }
+    });
+
+    new Chart(document.getElementById('chartType').getContext('2d'), {
+        type: 'pie',
+        data: { labels: dataType.labels, datasets: [{ data: dataType.data, backgroundColor: colors, borderWidth: 1 }] },
+        options: { ...commonOptions, onClick: handleChartClick('type', 'tipo') }
+    });
+
+    new Chart(document.getElementById('chartTemp').getContext('2d'), {
+        type: 'pie',
+        data: { labels: dataTemp.labels, datasets: [{ data: dataTemp.data, backgroundColor: ['#10b981', '#f59e0b'], borderWidth: 1 }] },
+        options: { ...commonOptions, onClick: handleChartClick('temp', 'temporal') }
+    });
+
+    new Chart(document.getElementById('chartArea').getContext('2d'), {
+        type: 'bar',
+        data: { labels: dataArea.labels, datasets: [{ label: 'Activos', data: dataArea.data, backgroundColor: '#3b82f6', borderRadius: 4 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+            onClick: handleChartClick('area', 'area')
+        }
+    });
+
+    // KPI Interactivity
+    const kpiCards = document.querySelectorAll('.report-stat-card, .compliance-card');
+    kpiCards.forEach(card => {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', function () {
+            const h3 = this.querySelector('h3');
+            const pLabel = this.querySelector('.stat-label');
+            const label = h3 ? h3.innerText : (pLabel ? pLabel.innerText : '');
+
+            if (label.includes('Total Activos')) {
+                clearInteractiveFilter();
+            } else if (label.includes('Estado Óptimo')) {
+                applyInteractiveFilter('optimo', 'ACTIVO', 'Estado Óptimo');
+            } else if (label.includes('Vencidos')) {
+                applyInteractiveFilter('estado_multiple', 'VENCIDOS', 'Vencidos / Mantenimiento');
+            } else if (label.includes('Reemplazados')) {
+                applyInteractiveFilter('reemplazado', 'REEMPLAZADO', 'Reemplazados');
+            } else if (label.includes('Fuera de Servicio')) {
+                applyInteractiveFilter('fueraservicio', 'FUERA_DE_SERVICIO', 'Fuera de Servicio');
+            } else if (label.includes('Temporales')) {
+                applyInteractiveFilter('temporales', 'si', 'Equipos Temporales');
+            } else if (label.includes('Cumplimiento')) {
+                clearInteractiveFilter(); // Opcion default para card grande
+            }
+        });
+    });
+
+    });
+
+    function generatePDF() {
+        window.print();
+    }
+</script>
+{% endblock %}
