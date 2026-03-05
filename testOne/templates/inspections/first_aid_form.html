@@ -5,6 +5,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+<script src="{% static 'js/evidence_manager.js' %}"></script>
 {% endblock %}
 
 {% block header_title %}Inspecciones de Seguridad - Botiquines{% endblock %}
@@ -20,7 +21,7 @@
         <a href="{% url 'first_aid_list' %}" class="btn-link"><i class="fas fa-arrow-left"></i> Volver</a>
     </div>
 
-    <form method="post" novalidate id="inspection-form">
+    <form method="post" novalidate id="inspection-form" enctype="multipart/form-data">
         {% csrf_token %}
 
         <div class="card">
@@ -50,9 +51,10 @@
                             <th class="inspection-table-header" style="width: 50px;">NO.</th>
                             <th class="inspection-table-header">NOMBRE DEL ELEMENTO</th>
                             <th class="inspection-table-header" style="width: 120px;">CANTIDAD</th>
-                            <th class="inspection-table-header" style="width: 160px;">VENCIMIENTO</th>
-                            <th class="inspection-table-header" style="width: 140px;">ESTADO</th>
-                            <th class="inspection-table-header">OBSERVACIONES</th>
+                            <th class="inspection-table-header" style="width: 130px;">VENCIMIENTO</th>
+                            <th class="inspection-table-header" style="width: 120px;">ESTADO</th>
+                            <th class="inspection-table-header" style="width: 180px;">OBSERVACIONES</th>
+                            <th class="inspection-table-header" style="width: 120px; text-align: center;">EVIDENCIA</th>
                             <th class="inspection-table-header" style="width: 50px;"></th>
                         </tr>
                     </thead>
@@ -70,7 +72,12 @@
                             <td>{{ item_form.expiration_date }}</td>
                             <td>{{ item_form.status }}</td>
                             <td>{{ item_form.observations }}</td>
-                            <td style="text-align: center;">
+                            <td style="vertical-align: middle;">
+                                <div style="display: flex; justify-content: center; align-items: center;">
+                                    {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=item_form.instance.pk|default:item_form.prefix evidences=item_form.instance.evidences can_edit=True %}
+                                </div>
+                            </td>
+                            <td style="text-align: center; vertical-align: middle;">
                                 {% if items.can_delete %}
                                 <div style="display: none;">{{ item_form.DELETE }}</div>
                                 <button type="button" class="btn-link" style="color: #dc3545;"
@@ -78,21 +85,9 @@
                                 {% endif %}
                             </td>
                         </tr>
-                        <tr class="evidence-row" style="background: #fdfdfd;">
-                            <div style="padding: 10px; border-top: 1px dashed #eee;">
-                                <label style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 5px;">
-                                    <i class="fas fa-camera"></i> Evidencia del Item
-                                </label>
-                                {% include 'inspections/includes/evidence_manager.html' with
-                                content_type_id=item_content_type_id
-                                object_id=item_form.instance.pk|default:item_form.prefix
-                                evidences=item_form.instance.evidences can_edit=True %}
-                            </div>
-                            </td>
-                        </tr>
                         {% if item_form.errors %}
                         <tr class="error-row">
-                            <td colspan="7">{{ item_form.errors }}</td>
+                            <td colspan="8">{{ item_form.errors }}</td>
                         </tr>
                         {% endif %}
                         {% endfor %}
@@ -124,7 +119,7 @@
 <!-- Template for new rows -->
 <script type="text/template" id="row-template">
     <tr class="item-row">
-        <td class="row-number" style="text-align: center; font-weight: 700; color: var(--primary-color);">__prefix__</td>
+        <td class="row-number" style="text-align: center; font-weight: 700; color: var(--primary-color);">__NUM__</td>
         <td>
             {{ items.empty_form.element_name }}
         </td>
@@ -132,15 +127,18 @@
         <td>{{ items.empty_form.expiration_date }}</td>
         <td>{{ items.empty_form.status }}</td>
         <td>{{ items.empty_form.observations }}</td>
-        <td style="text-align: center;">
-            <button type="button" class="btn-link" style="color: #dc3545;" onclick="removeRow(this)"><i class="fas fa-times"></i></button>
-        </td>
-    </tr>
-    <tr class="evidence-row" style="background: #fdfdfd;">
-        <td colspan="7">
-            <div style="padding: 8px; font-size: 0.75rem; color: #6c757d;">
-                <i class="fas fa-info-circle"></i> Debe guardar para adjuntar evidencia a este elemento.
+        <td style="vertical-align: middle; text-align: center;">
+            <div class="evidence-container" id="evidence-container-{{ item_content_type_id }}-items-__PREFIX__">
+                <label class="evidence-add-btn" title="Agregar evidencia">
+                    <i class="fas fa-camera"></i>
+                    <span>Agregar</span>
+                    <input type="file" accept="image/*" style="display: none;"
+                        onchange="uploadEvidence(this, '{{ item_content_type_id }}', 'items-__PREFIX__')">
+                </label>
             </div>
+        </td>
+        <td style="text-align: center; vertical-align: middle;">
+            <button type="button" class="btn-link" style="color: #dc3545;" onclick="removeRow(this)"><i class="fas fa-times"></i></button>
         </td>
     </tr>
 </script>
@@ -154,18 +152,21 @@
 
         addItemBtn.addEventListener('click', function () {
             const formIdx = parseInt(totalForms.value);
-            const newHtml = template.replace(/__prefix__/g, formIdx).replace(/empty_form/g, formIdx);
+            // __PREFIX__ and __NUM__ are our custom markers (uppercase), safe to replace
+            // empty_form is Django's placeholder for field names/ids
+            let newHtml = template
+                .replace(/__PREFIX__/g, formIdx)
+                .replace(/__NUM__/g, formIdx)
+                .replace(/empty_form/g, formIdx);
 
             const parser = new DOMParser();
             const doc = parser.parseFromString(`<table>${newHtml}</table>`, 'text/html');
             const rows = doc.querySelectorAll('tr');
 
-            let insertedRow = null;
             rows.forEach(row => {
                 const rowNum = row.querySelector('.row-number');
                 if (rowNum) {
                     rowNum.textContent = itemsTbody.querySelectorAll('.item-row:not(.deleted)').length + 1;
-                    insertedRow = row;
                 }
                 itemsTbody.appendChild(row);
             });
@@ -176,20 +177,13 @@
 
     function removeRow(btn) {
         const row = btn.closest('.item-row');
-        const evidenceRow = row.nextElementSibling;
         const deleteInput = row.querySelector('input[name$="-DELETE"]');
 
         if (deleteInput) {
             deleteInput.checked = true;
             row.classList.add('deleted');
             row.style.display = 'none';
-            if (evidenceRow && evidenceRow.classList.contains('evidence-row')) {
-                evidenceRow.style.display = 'none';
-            }
         } else {
-            if (evidenceRow && evidenceRow.classList.contains('evidence-row')) {
-                evidenceRow.remove();
-            }
             row.remove();
         }
         updateRowNumbers();

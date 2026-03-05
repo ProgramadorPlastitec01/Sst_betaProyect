@@ -177,7 +177,7 @@
         <div class="card-header" style="margin-bottom: 15px;">
             <h3 class="inspection-section-title" style="margin: 0; border: none;"><i
                     class="fas fa-fire-extinguisher"></i> Extintores Inspeccionados</h3>
-            {% if object.status != 'Cerrada' and object.status != 'Cerrada con Hallazgos' and not object.parent_inspection %}
+            {% if object.status in 'En proceso,Programada,Seguimiento en proceso' and not object.parent_inspection and not object.follow_ups.exists %}
             <a href="{% url 'extinguisher_item_create' object.pk %}" class="btn"
                 style="background-color: #f8faf9; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 6px 12px; font-size: 0.8rem;">
                 <i class="fas fa-plus-circle"></i> Agregar Extintor
@@ -206,8 +206,7 @@
                             {% if item.asset.extintor_detail %}
                             <div style="font-size: 0.75rem; color: #666; margin-top: 2px;">
                                 {{ item.asset.extintor_detail.tipo_agente|default:"" }}
-                                {% if item.asset.extintor_detail.capacidad_kg %} ·
-                                {{ item.asset.extintor_detail.capacidad_kg }} lbs{% endif %}
+                                {% if item.asset.extintor_detail.capacidad_kg %} · {{ item.asset.extintor_detail.capacidad_kg }} lbs{% endif %}
                             </div>
                             {% endif %}
                             {% else %}

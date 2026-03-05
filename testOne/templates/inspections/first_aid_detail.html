@@ -181,8 +181,6 @@
             </div>
         </div>
         {% endif %}
-
-        {% if object.observations %}
     </div>
 
     <!-- Timeline Section (MOVIDO ABAJO) -->
@@ -253,6 +251,7 @@
                         <th>Vencimiento</th>
                         <th>Estado</th>
                         <th>Observaciones</th>
+                        <th style="width: 120px; text-align: center;">Evidencia</th>
                         {% if object.status == 'En proceso' or object.status == 'Programada' %}
                         <th style="width: 80px;">Acciones</th>
                         {% endif %}
@@ -271,9 +270,12 @@
                             </span>
                         </td>
                         <td style="font-size: 0.85rem;">{{ item.observations|default:"-" }}</td>
+                        <td style="vertical-align: middle; text-align: center;">
+                            {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=item.pk evidences=item.evidences.all can_edit=False %}
+                        </td>
 
                         {% if object.status == 'En proceso' or object.status == 'Programada' %}
-                        <td style="text-align: center;">
+                        <td style="text-align: center; vertical-align: middle;">
                             <a href="{% url 'first_aid_item_edit' item.pk %}" class="btn btn-sm"
                                 style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar">
                                 <i class="fas fa-edit"></i>
@@ -281,24 +283,9 @@
                         </td>
                         {% endif %}
                     </tr>
-                    {% if item.evidences.exists %}
-                    <tr style="background: #fdfdfd;">
-                        <td
-                            colspan="{% if object.status == 'En proceso' or object.status == 'Programada' %}6{% else %}5{% endif %}">
-                            <div style="padding: 10px; border-top: 1px dashed #eee;">
-                                <label
-                                    style="display: block; font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Evidencia
-                                    del Item:</label>
-                                {% include 'inspections/includes/evidence_manager.html' with
-                                content_type_id=item_content_type_id object_id=item.pk evidences=item.evidences.all
-                                can_edit=False %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endif %}
                     {% empty %}
                     <tr>
-                        <td colspan="{% if object.status == 'En proceso' %}6{% else %}5{% endif %}"
+                        <td colspan="{% if object.status == 'En proceso' or object.status == 'Programada' %}7{% else %}6{% endif %}"
                             style="text-align: center; padding: 24px; color: var(--text-light);">No hay elementos
                             registrados en esta inspección.</td>
                     </tr>

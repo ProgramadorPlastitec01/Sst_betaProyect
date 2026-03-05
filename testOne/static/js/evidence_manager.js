@@ -61,8 +61,38 @@ window.uploadEvidence = function (input, contentTypeId, objectId) {
 
     // Local mode: if no objectId exists (record hasn't been saved yet)
     if (isLocal) {
-        const reader = new FileReader();
         const tempId = 'temp_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+        // ── STEP 1: Clone and detach input BEFORE touching addBtn.innerHTML ──
+        // Replacing addBtn.innerHTML would destroy 'input' from the DOM, causing parentNode=null
+        const clonedInput = input.cloneNode(true);
+        clonedInput.value = '';
+        if (input.parentNode) {
+            input.parentNode.replaceChild(clonedInput, input);
+        }
+
+        // Configure original input as a hidden file carrier for form submission
+        let inputName = `pending_evidences_${contentTypeId}`;
+        if (objectId && objectId !== 'None') {
+            inputName += `_${objectId}`; // e.g., pending_evidences_15_items-0
+        }
+        input.name = inputName;
+        input.id = tempId;
+        input.style.display = 'none';
+
+        const targetForm = clonedInput.form || (container ? container.closest('form') : null);
+        if (targetForm) targetForm.appendChild(input);
+
+        // ── STEP 2: Show loading spinner (safe — input is already out of addBtn) ──
+        const originalContent = addBtn ? addBtn.innerHTML : '';
+        if (addBtn) {
+            addBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Cargando...</span>';
+            addBtn.style.pointerEvents = 'none';
+            addBtn.style.opacity = '0.6';
+        }
+
+        // ── STEP 3: Read file and build thumbnail preview ──
+        const reader = new FileReader();
 
         reader.onload = function (e) {
             const dataUrl = e.target.result;
@@ -77,30 +107,26 @@ window.uploadEvidence = function (input, contentTypeId, objectId) {
 
             if (container && addBtn) {
                 container.insertBefore(wrapper, addBtn);
+            } else if (container) {
+                container.appendChild(wrapper);
+            }
+
+            // Restore add button
+            if (addBtn) {
+                addBtn.innerHTML = originalContent;
+                addBtn.style.pointerEvents = '';
+                addBtn.style.opacity = '';
             }
         };
 
-        // Clone the input to leave a fresh one in the button
-        const clonedInput = input.cloneNode(true);
-        clonedInput.value = ''; // clear for next pick
-        input.parentNode.replaceChild(clonedInput, input);
-
-        let inputName = `pending_evidences_${contentTypeId}`;
-        if (objectId && objectId !== 'None') {
-            inputName += `_${objectId}`; // e.g., pending_evidences_15_items-0
-        }
-
-        // Modify the original input to be hidden and appended to the form
-        input.name = inputName;
-        input.id = tempId;
-        input.style.display = 'none';
-
-        if (clonedInput.form) {
-            clonedInput.form.appendChild(input);
-        } else {
-            const form = container.closest('form');
-            if (form) form.appendChild(input);
-        }
+        reader.onerror = function () {
+            toastr.error('Error al leer la imagen');
+            if (addBtn) {
+                addBtn.innerHTML = originalContent;
+                addBtn.style.pointerEvents = '';
+                addBtn.style.opacity = '';
+            }
+        };
 
         reader.readAsDataURL(file);
         return;

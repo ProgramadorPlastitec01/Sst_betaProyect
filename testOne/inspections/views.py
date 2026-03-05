@@ -86,6 +86,9 @@ class EvidenceMixin:
                 (ForkliftInspection, ForkliftCheckItem),
             ]
             
+            # All item model types (for reverse lookup)
+            all_item_models = [item for _, item in inspection_item_map]
+            
             # Legacy/Primary content type for the object being handled
             context['inspection_content_type_id'] = ContentType.objects.get_for_model(model_to_use).id
             
@@ -94,6 +97,11 @@ class EvidenceMixin:
                 if model_to_use == insp:
                     context['item_content_type_id'] = ContentType.objects.get_for_model(item).id
                     break
+            
+            # Reverse lookup: if the current model IS an item model, set item_content_type_id directly
+            if model_to_use in all_item_models:
+                context['item_content_type_id'] = ContentType.objects.get_for_model(model_to_use).id
+
         return context
 
 # --- Mixin to provide matrix context to any view ---
@@ -700,31 +708,24 @@ class FormsetMixin:
             handle_pending_evidences(self.request, self.object)
             link_to_schedule(self.request, self.object)
             if items.is_valid():
-                # Set registered_by for each item
-                instances = items.save(commit=False)
-                for instance in instances:
-                    instance.inspection = self.object
-                    instance.registered_by = self.request.user
-                    instance.save()
-                    
-                    # Find form prefix for this instance
-                    form_prefix = None
-                    for item_form in items.forms:
-                        if item_form.instance == instance:
-                            form_prefix = item_form.prefix
-                            break
-                    
-                    if form_prefix:
-                        handle_pending_evidences(self.request, instance, prefix=form_prefix)
-                
-                # Handle deletions
-                for obj in items.deleted_objects:
-                    obj.delete()
-                    
-                items.instance = self.object
-                # Note: items.save() would call commit=True on all. 
-                # Since we already saved above, we just need to handle the many-to-many if any, 
-                # but these models don't have M2M on items.
+                # Iterate directly over forms to keep prefix always in sync
+                for item_form in items.forms:
+                    if item_form in items.deleted_forms:
+                        if item_form.instance.pk:
+                            item_form.instance.delete()
+                        continue
+                    # Only process forms that have changed or are new with data
+                    if not item_form.has_changed() and not item_form.instance.pk:
+                        continue
+                    if item_form.has_changed() or item_form.instance.pk:
+                        instance = item_form.save(commit=False)
+                        instance.inspection = self.object
+                        instance.registered_by = self.request.user
+                        instance.save()
+                        # item_form.prefix is always the correct Django prefix (e.g. 'items-0')
+                        handle_pending_evidences(self.request, instance, prefix=item_form.prefix)
+                        # Save M2M if any
+                        item_form.save_m2m()
             else:
                 transaction.set_rollback(True)
                 return self.form_invalid(form)
@@ -1025,7 +1026,7 @@ class SignExtinguisherInspectionView(LoginRequiredMixin, View):
                 
                 for item in failed_items:
                     target_asset_id = item.asset_id or inspection.asset_id
-                    ExtinguisherItem.objects.create(
+                    new_item = ExtinguisherItem.objects.create(
                         inspection=follow_up,
                         asset_id=target_asset_id,
                         pressure_gauge_ok=item.pressure_gauge_ok,
@@ -1038,6 +1039,26 @@ class SignExtinguisherInspectionView(LoginRequiredMixin, View):
                         observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento pendiente",
                         registered_by=user
                     )
+                    # Copiar evidencias del ítem original al nuevo ítem de seguimiento
+                    from django.contrib.contenttypes.models import ContentType
+                    import shutil, os
+                    from django.core.files.base import ContentFile
+                    item_ct = ContentType.objects.get_for_model(ExtinguisherItem)
+                    for evidence in InspectionEvidence.objects.filter(content_type=item_ct, object_id=item.pk):
+                        try:
+                            evidence.image.open('rb')
+                            file_content = evidence.image.read()
+                            evidence.image.close()
+                            orig_name = os.path.basename(evidence.image.name)
+                            InspectionEvidence.objects.create(
+                                content_type=item_ct,
+                                object_id=new_item.pk,
+                                description=evidence.description,
+                                uploaded_by=evidence.uploaded_by,
+                                image=ContentFile(file_content, name=orig_name)
+                            )
+                        except Exception:
+                            pass  # Si la imagen no se puede copiar, continuar sin bloquear
                 
                 try:
                     jefes_group = NotificationGroup.objects.get(name="Jefes", is_active=True)
@@ -1324,7 +1345,7 @@ class SignFirstAidInspectionView(LoginRequiredMixin, View):
                     status='Programada',
                 )
                 for item in missing_items:
-                    FirstAidItem.objects.create(
+                    new_item = FirstAidItem.objects.create(
                         inspection=follow_up,
                         element_name=item.element_name,
                         quantity=item.quantity,
@@ -1332,6 +1353,15 @@ class SignFirstAidInspectionView(LoginRequiredMixin, View):
                         status='No Existe',
                         observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento"
                     )
+                    # Copy evidences from the parent item to the new follow-up item
+                    for evidence in item.evidences.all():
+                        InspectionEvidence.objects.create(
+                            content_type=evidence.content_type,
+                            object_id=new_item.pk,
+                            image=evidence.image,
+                            description=evidence.description,
+                            uploaded_by=evidence.uploaded_by,
+                        )
                 messages.info(request, f"Inspección finalizada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
             else:
                 inspection.status = 'Cerrada'
@@ -1374,6 +1404,14 @@ class SignFirstAidInspectionView(LoginRequiredMixin, View):
 class FirstAidReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
     model = FirstAidInspection
     template_name = 'inspections/first_aid_report.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        items = self.object.items.all()
+        context['items_exist_count'] = items.filter(status='Existe').count()
+        context['items_missing_count'] = items.filter(status='No Existe').count()
+        context['any_item_has_evidence'] = any(item.evidences.exists() for item in items)
+        return context
 
 class FirstAidItemCreateView(LoginRequiredMixin, EvidenceMixin, CreateView):
     model = FirstAidItem; form_class = FirstAidItemForm; template_name = 'inspections/first_aid_item_form.html'
@@ -2588,16 +2626,23 @@ class EvidenceDeleteView(LoginRequiredMixin, View):
     def post(self, request, pk, *args, **kwargs):
         evidence = get_object_or_404(InspectionEvidence, pk=pk)
         
-        # Check status
+        # Check status:
+        # IMPORTANT: check 'inspection' FK FIRST, because item models (e.g. ExtinguisherItem)
+        # also have a 'status' field ('Bueno','Malo','Recargar') which would be mistaken for
+        # the inspection status if we checked hasattr(status) first.
         target_obj = evidence.content_object
         inspection = None
-        if hasattr(target_obj, 'status'):
-            inspection = target_obj
-        elif hasattr(target_obj, 'inspection'):
+        if hasattr(target_obj, 'inspection'):
+            # target_obj is an item (ExtinguisherItem, FirstAidItem, etc.)
             inspection = target_obj.inspection
-            
-        if inspection and hasattr(inspection, 'status') and inspection.status not in ['En proceso', 'Programada']:
-             return JsonResponse({'error': 'Solo se pueden eliminar evidencias en inspecciones "En proceso"'}, status=403)
+        elif hasattr(target_obj, 'status'):
+            # target_obj is the inspection itself
+            inspection = target_obj
+
+        # Block only if inspection is in a definitively closed state
+        CLOSED_STATUSES = ['Cerrada', 'Cerrada con seguimientos', 'Cerrada con Hallazgos']
+        if inspection and hasattr(inspection, 'status') and inspection.status in CLOSED_STATUSES:
+             return JsonResponse({'error': 'No se pueden eliminar evidencias de una inspección cerrada'}, status=403)
 
         evidence.image.delete() # Remove file
         evidence.delete()

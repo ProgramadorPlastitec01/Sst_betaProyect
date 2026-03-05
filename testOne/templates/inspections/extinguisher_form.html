@@ -363,7 +363,7 @@
         <a href="{% url 'extinguisher_list' %}" class="btn-link"><i class="fas fa-arrow-left"></i> Volver</a>
     </div>
 
-    <form method="post" novalidate id="inspection-form">
+    <form method="post" novalidate id="inspection-form" enctype="multipart/form-data">
         {% csrf_token %}
 
         <!-- DATOS GENERALES -->
@@ -628,9 +628,17 @@
             </div>
 
             <div style="margin-top: 15px; border-top: 1px dashed #e2ede8; padding-top: 10px;">
-                <p style="font-size: 0.72rem; color: #6b7280; background: #f9fafb; padding: 6px; border-radius: 4px; border: 1px solid #f3f4f6; margin: 0;">
-                    <i class="fas fa-info-circle"></i> Debe guardar para adjuntar evidencia a este ítem.
-                </p>
+                <label style="font-size:0.78rem; font-weight:600; color:#374151; margin-bottom:5px; display:block;">
+                    <i class="fas fa-camera"></i> Evidencia Fotográfica
+                </label>
+                <div class="evidence-container" id="evidence-container-{{ item_content_type_id }}-items-__PREFIX__">
+                    <div class="evidence-add-btn" onclick="this.querySelector('input').click()">
+                        <input type="file" accept="image/*" style="display:none;"
+                            onchange="uploadEvidence(this, '{{ item_content_type_id }}', 'items-__PREFIX__')">
+                        <i class="fas fa-camera"></i>
+                        <span>Agregar foto</span>
+                    </div>
+                </div>
             </div>
         </div>
 

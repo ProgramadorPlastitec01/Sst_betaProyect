@@ -102,7 +102,7 @@
         </a>
     </div>
 
-    <form method="post" novalidate>
+    <form method="post" novalidate enctype="multipart/form-data">
         {% csrf_token %}
 
         <!-- Render hidden fields (like area) -->

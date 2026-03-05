@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-
+{% load static %}
 {% block title %}SST - {% if form.instance.pk %}Editar{% else %}Agregar{% endif %} Elemento{% endblock %}
 
 {% block header_title %}Registro de Elementos del Botiquín{% endblock %}
@@ -36,8 +36,7 @@
                 <label style="font-weight: 600; display: block; margin-bottom: 12px;">
                     <i class="fas fa-camera"></i> Evidencia Fotográfica
                 </label>
-                {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id
-                object_id=form.instance.pk evidences=form.instance.evidences.all can_edit=True %}
+                {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=form.instance.pk evidences=form.instance.evidences.all can_edit=True %}
             </div>
 
             <div
