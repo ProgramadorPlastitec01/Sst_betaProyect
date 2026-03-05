@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static l10n %}
 
 {% block title %}Reporte Ejecutivo de Inventario - SST{% endblock %}
 
@@ -238,15 +238,127 @@
         vertical-align: middle;
     }
 
-    /* Compliance Card */
-    .compliance-card {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        padding: 20px;
-        border-radius: 12px;
-        text-align: center;
+    /* Compliance Card - Liquid Effect */
+    .compliance-card-wrapper {
+        position: relative;
+        width: 100%;
         margin-bottom: 25px;
-        box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+    }
+
+    .compliance-card {
+        position: relative;
+        background: transparent;
+        border-radius: 16px;
+        overflow: hidden;
+        min-height: 180px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 30px 20px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        z-index: 1;
+    }
+
+    /* Fondo base */
+    .compliance-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: #f3f4f6;
+        z-index: -2;
+    }
+
+    .compliance-card.liquid-filling {
+        --fill-pct: 0;
+        --main-color: #10b981;
+        /* Fallback green */
+    }
+
+    .liquid-bg {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: calc(var(--fill-pct) * 1%);
+        background-color: var(--main-color);
+        transition: height 2s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: -1;
+    }
+
+    /* Wave effect */
+    .liquid-bg::before,
+    .liquid-bg::after {
+        content: "";
+        position: absolute;
+        width: 200%;
+        height: 200%;
+        top: 0;
+        left: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transform: translate(-50%, -96%) rotate(0deg);
+        border-radius: 40%;
+        animation: rotate-liquid 7s infinite linear;
+    }
+
+    .liquid-bg::after {
+        border-radius: 35%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translate(-50%, -94%) rotate(0deg);
+        animation: rotate-liquid 10s infinite linear;
+    }
+
+    @keyframes rotate-liquid {
+        from {
+            transform: translate(-50%, -96%) rotate(0deg);
+        }
+
+        to {
+            transform: translate(-50%, -96%) rotate(360deg);
+        }
+    }
+
+    .compliance-card h3 {
+        position: relative;
+        margin: 0 0 10px 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #111827;
+        z-index: 2;
+        transition: color 0.4s;
+        text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
+    }
+
+    .compliance-card .compliance-val {
+        position: relative;
+        font-size: 3.5rem;
+        font-weight: 800;
+        margin: 5px 0;
+        color: var(--main-color);
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 2px white;
+        /* Borde blanquecino para contraste */
+        z-index: 2;
+        transition: color 0.5s;
+    }
+
+    .compliance-card .compliance-desc {
+        position: relative;
+        font-size: 0.9rem;
+        color: #111827 !important;
+        max-width: 550px;
+        margin: 0;
+        font-weight: 500;
+        z-index: 2;
+        transition: color 0.4s;
+        text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
+    }
+
+    /* La adaptación de colores se maneja por JS en updateComplianceContrast() */
+
+    /* Control de contraste dinámico simple */
+    .status-white-text {
+        color: white !important;
     }
 
     .compliance-card h3 {
@@ -412,11 +524,14 @@
         </form>
     </div>
 
-    <!-- Indicador de Cumplimiento General -->
-    <div class="compliance-card">
-        <h3>Índice de Cumplimiento Operativo (Activos Fijos)</h3>
-        <p class="compliance-val"> {{ kpis.cumplimiento }}% </p>
-        <p class="compliance-desc"> Porcentaje de activos fijos en estado óptimo sobre el total de activos fijos. </p>
+    <!-- Indicador de Cumplimiento General con Efecto Líquido -->
+    <div class="compliance-card-wrapper">
+        <div class="compliance-card liquid-filling" id="compliance-card">
+            <div class="liquid-bg" id="liquid-bg"></div>
+            <h3>Índice de Cumplimiento Operativo (Activos Fijos)</h3>
+            <p class="compliance-val" id="compliance-val-text">--%</p>
+            <p class="compliance-desc">Porcentaje de activos fijos en estado óptimo sobre el total de activos fijos.</p>
+        </div>
     </div>
 
     <!-- KPIs -->
@@ -608,24 +723,24 @@
                 const rowValue = row.getAttribute(`data-${currentFilterType}`);
 
                 // Mapeos especiales o coincidencias directas
-                if (currentFilterType == 'temporales') {
-                    show = (currentFilterValue == 'si' && row.getAttribute('data-temporal') == 'si');
-                } else if (currentFilterType == 'vencidos') {
-                    show = (rowValue == currentFilterValue);
-                } else if (currentFilterType == 'estado_multiple') {
+                if (currentFilterType  ==  'temporales') {
+                    show = (currentFilterValue  ==  'si' && row.getAttribute('data-temporal')  ==  'si');
+                } else if (currentFilterType  ==  'vencidos') {
+                    show = (rowValue  ==  currentFilterValue);
+                } else if (currentFilterType  ==  'estado_multiple') {
                     // Para el KPI de Vencidos (incluye extintores y montacargas)
                     const st = row.getAttribute('data-estado');
-                    show = (st == 'VENCIDO' || st == 'MANTENIMIENTO_VENCIDO' || st == 'Vencido' || st == 'Mantenimiento Vencido');
-                } else if (currentFilterType == 'fueraservicio') {
-                    show = (row.getAttribute('data-estado') == 'FUERA_DE_SERVICIO');
-                } else if (currentFilterType == 'optimo') {
+                    show = (st  ==  'VENCIDO' || st  ==  'MANTENIMIENTO_VENCIDO' || st  ==  'Vencido' || st  ==  'Mantenimiento Vencido');
+                } else if (currentFilterType  ==  'fueraservicio') {
+                    show = (row.getAttribute('data-estado')  ==  'FUERA_DE_SERVICIO');
+                } else if (currentFilterType  ==  'optimo') {
                     // Soporte para ambos tipos de activos
                     const st = row.getAttribute('data-estado');
-                    show = (st == 'ACTIVO' || st == 'OPERATIVO' || st == 'Activo' || st == 'Operativo');
-                } else if (currentFilterType == 'reemplazado') {
-                    show = (row.getAttribute('data-estado') == 'REEMPLAZADO');
+                    show = (st  ==  'ACTIVO' || st  ==  'OPERATIVO' || st  ==  'Activo' || st  ==  'Operativo');
+                } else if (currentFilterType  ==  'reemplazado') {
+                    show = (row.getAttribute('data-estado')  ==  'REEMPLAZADO');
                 } else {
-                    show = (rowValue == currentFilterValue);
+                    show = (rowValue  ==  currentFilterValue);
                 }
             }
 
@@ -639,19 +754,21 @@
         const emptyRow = document.getElementById('empty-row');
 
         if (noResultsRow) {
-            noResultsRow.style.display = (visibleCount == 0 && rows.length > 0) ? '' : 'none';
+            noResultsRow.style.display = (visibleCount  ==  0 && rows.length > 0) ? '' : 'none';
         }
-        if (emptyRow && rows.length == 0) {
+        if (emptyRow && rows.length  ==  0) {
             emptyRow.style.display = '';
         }
     }
 
     document.addEventListener("DOMContentLoaded", function () {
         const d = new Date();
-        document.getElementById('print-date').textContent = "Fecha de Emisión: " + d.toLocaleString('es-ES');
+        const printDateElem = document.getElementById('print-date');
+        if (printDateElem) printDateElem.textContent = "Fecha de Emisión: " + d.toLocaleString('es-ES');
 
         // Esconder contenedor de filtro inicial
-        document.getElementById('active-filter-container').style.display = 'none';
+        const filterContainer = document.getElementById('active-filter-container');
+        if (filterContainer) filterContainer.style.display = 'none';
 
         const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
 
@@ -663,8 +780,7 @@
                 let filterType = chartMap;
                 let filterVal = label;
 
-                // Mapeo especial para estados a sus values internos
-                if (filterType == 'estado') {
+                if (filterType  ==  'estado') {
                     const statusMap = {
                         'Activo': 'ACTIVO',
                         'Operativo': 'OPERATIVO',
@@ -678,8 +794,8 @@
                         'Baja': 'BAJA'
                     };
                     filterVal = statusMap[label] || label;
-                } else if (filterType == 'temporal') {
-                    filterVal = (label == 'Temporales') ? 'si' : 'no';
+                } else if (filterType  ==  'temporal') {
+                    filterVal = (label  ==  'Temporales') ? 'si' : 'no';
                 }
 
                 applyInteractiveFilter(filterType, filterVal, `${chart.canvas.id.replace('chart', '')}: ${label}`);
@@ -693,67 +809,108 @@
         };
 
         // Data desde servidor
-        const dataStatus = {{ charts.status| safe }};
-    const dataType = {{ charts.type| safe }};
-    const dataArea = {{ charts.area| safe }};
-    const dataTemp = {{ charts.temp| safe }};
+        const dataStatus = JSON.parse('{{ charts.status|safe }}');
+        const dataType = JSON.parse('{{ charts.type|safe }}');
+        const dataArea = JSON.parse('{{ charts.area|safe }}');
+        const dataTemp = JSON.parse('{{ charts.temp|safe }}');
 
-    new Chart(document.getElementById('chartStatus').getContext('2d'), {
-        type: 'doughnut',
-        data: { labels: dataStatus.labels, datasets: [{ data: dataStatus.data, backgroundColor: colors, borderWidth: 1 }] },
-        options: { ...commonOptions, onClick: handleChartClick('status', 'estado') }
-    });
+        new Chart(document.getElementById('chartStatus').getContext('2d'), {
+            type: 'doughnut',
+            data: { labels: dataStatus.labels, datasets: [{ data: dataStatus.data, backgroundColor: colors, borderWidth: 1 }] },
+            options: { ...commonOptions, onClick: handleChartClick('status', 'estado') }
+        });
 
-    new Chart(document.getElementById('chartType').getContext('2d'), {
-        type: 'pie',
-        data: { labels: dataType.labels, datasets: [{ data: dataType.data, backgroundColor: colors, borderWidth: 1 }] },
-        options: { ...commonOptions, onClick: handleChartClick('type', 'tipo') }
-    });
+        new Chart(document.getElementById('chartType').getContext('2d'), {
+            type: 'pie',
+            data: { labels: dataType.labels, datasets: [{ data: dataType.data, backgroundColor: colors, borderWidth: 1 }] },
+            options: { ...commonOptions, onClick: handleChartClick('type', 'tipo') }
+        });
 
-    new Chart(document.getElementById('chartTemp').getContext('2d'), {
-        type: 'pie',
-        data: { labels: dataTemp.labels, datasets: [{ data: dataTemp.data, backgroundColor: ['#10b981', '#f59e0b'], borderWidth: 1 }] },
-        options: { ...commonOptions, onClick: handleChartClick('temp', 'temporal') }
-    });
+        new Chart(document.getElementById('chartTemp').getContext('2d'), {
+            type: 'pie',
+            data: { labels: dataTemp.labels, datasets: [{ data: dataTemp.data, backgroundColor: ['#10b981', '#f59e0b'], borderWidth: 1 }] },
+            options: { ...commonOptions, onClick: handleChartClick('temp', 'temporal') }
+        });
 
-    new Chart(document.getElementById('chartArea').getContext('2d'), {
-        type: 'bar',
-        data: { labels: dataArea.labels, datasets: [{ label: 'Activos', data: dataArea.data, backgroundColor: '#3b82f6', borderRadius: 4 }] },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-            onClick: handleChartClick('area', 'area')
-        }
-    });
-
-    // KPI Interactivity
-    const kpiCards = document.querySelectorAll('.report-stat-card, .compliance-card');
-    kpiCards.forEach(card => {
-        card.style.cursor = 'pointer';
-        card.addEventListener('click', function () {
-            const h3 = this.querySelector('h3');
-            const pLabel = this.querySelector('.stat-label');
-            const label = h3 ? h3.innerText : (pLabel ? pLabel.innerText : '');
-
-            if (label.includes('Total Activos')) {
-                clearInteractiveFilter();
-            } else if (label.includes('Estado Óptimo')) {
-                applyInteractiveFilter('optimo', 'ACTIVO', 'Estado Óptimo');
-            } else if (label.includes('Vencidos')) {
-                applyInteractiveFilter('estado_multiple', 'VENCIDOS', 'Vencidos / Mantenimiento');
-            } else if (label.includes('Reemplazados')) {
-                applyInteractiveFilter('reemplazado', 'REEMPLAZADO', 'Reemplazados');
-            } else if (label.includes('Fuera de Servicio')) {
-                applyInteractiveFilter('fueraservicio', 'FUERA_DE_SERVICIO', 'Fuera de Servicio');
-            } else if (label.includes('Temporales')) {
-                applyInteractiveFilter('temporales', 'si', 'Equipos Temporales');
-            } else if (label.includes('Cumplimiento')) {
-                clearInteractiveFilter(); // Opcion default para card grande
+        new Chart(document.getElementById('chartArea').getContext('2d'), {
+            type: 'bar',
+            data: { labels: dataArea.labels, datasets: [{ label: 'Activos', data: dataArea.data, backgroundColor: '#3b82f6', borderRadius: 4 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                onClick: handleChartClick('area', 'area')
             }
         });
-    });
 
+        // KPI Interactivity
+        const kpiCards = document.querySelectorAll('.report-stat-card, .compliance-card');
+        kpiCards.forEach(card => {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', function () {
+                const h3 = this.querySelector('h3');
+                const pLabel = this.querySelector('.stat-label');
+                const label = h3 ? h3.innerText : (pLabel ? pLabel.innerText : '');
+
+                if (label.includes('Total Activos')) {
+                    clearInteractiveFilter();
+                } else if (label.includes('Estado Óptimo')) {
+                    applyInteractiveFilter('optimo', 'ACTIVO', 'Estado Óptimo');
+                } else if (label.includes('Vencidos')) {
+                    applyInteractiveFilter('estado_multiple', 'VENCIDOS', 'Vencidos / Mantenimiento');
+                } else if (label.includes('Reemplazados')) {
+                    applyInteractiveFilter('reemplazado', 'REEMPLAZADO', 'Reemplazados');
+                } else if (label.includes('Fuera de Servicio')) {
+                    applyInteractiveFilter('fueraservicio', 'FUERA_DE_SERVICIO', 'Fuera de Servicio');
+                } else if (label.includes('Temporales')) {
+                    applyInteractiveFilter('temporales', 'si', 'Equipos Temporales');
+                } else if (label.includes('Cumplimiento')) {
+                    clearInteractiveFilter();
+                }
+            });
+        });
+
+        // Ajustar contraste, color y nivel del líquido
+        function updateComplianceContrast() {
+            const card = document.getElementById('compliance-card');
+            const liquid = document.getElementById('liquid-bg');
+            const valElem = document.getElementById('compliance-val-text');
+
+            if (card && liquid) {
+                const pct = parseFloat("{{ kpis.cumplimiento|default:0|unlocalize }}");
+                const hue = pct * 1.4; // 0=rojo, 140=verde
+                const mainColor = `hsl(${hue}, 75%, 45%)`;
+
+                // Aplicar propiedades dinámicas
+                card.style.setProperty('--main-color', mainColor);
+                liquid.style.height = pct + '%';
+                valElem.textContent = pct.toFixed(1) + '%';
+
+                const h3 = card.querySelector('h3');
+                const desc = card.querySelector('.compliance-desc');
+                // Título (Superior): Blanco solo si el líquido llega arriba (> 80%)
+                if (pct > 80) {
+                    if (h3) { h3.style.color = 'white'; h3.style.textShadow = '0 1px 2px rgba(0,0,0,0.2)'; }
+                } else {
+                    if (h3) { h3.style.color = '#111827'; h3.style.textShadow = '0 1px 1px rgba(255,255,255,0.8)'; }
+                }
+
+                // Valor (Medio): Blanco si el líquido lo cubre (> 45%)
+                if (pct > 45) {
+                    if (valElem) { valElem.style.color = 'white'; valElem.style.textShadow = '0 2px 4px rgba(0,0,0,0.2)'; }
+                } else {
+                    if (valElem) { valElem.style.color = mainColor; valElem.style.textShadow = '0 0 2px white, 0 1px 2px rgba(0,0,0,0.1)'; }
+                }
+
+                // Descripción (Inferior): Blanco si el líquido empieza a subir (> 20%)
+                if (pct > 20) {
+                    if (desc) { desc.style.color = 'rgba(255,255,255,0.9)'; desc.style.textShadow = '0 1px 2px rgba(0,0,0,0.1)'; }
+                } else {
+                    if (desc) { desc.style.color = '#111827'; desc.style.textShadow = '0 1px 1px rgba(255,255,255,0.8)'; }
+                }
+            }
+        }
+        updateComplianceContrast();
     });
 
     function generatePDF() {

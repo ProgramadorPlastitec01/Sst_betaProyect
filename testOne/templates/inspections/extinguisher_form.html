@@ -386,6 +386,7 @@
                     {{ form.inspector_role.errors }}
                 </div>
             </div>
+
         </div>
 
         <!-- EXTINTORES INSPECCIONADOS -->
@@ -494,6 +495,12 @@
                                 </div>
                             </div>
 
+                            <div style="margin-top: 15px; border-top: 1px dashed #e2ede8; padding-top: 10px;">
+                                <label class="tech-label" style="margin-bottom: 5px; display: block;">
+                                    <i class="fas fa-camera"></i> Evidencia Fotográfica del Item
+                                </label>
+                                {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=item_form.instance.pk|default:item_form.prefix evidences=item_form.instance.evidences can_edit=True %}
+                            </div>
                         </div>
 
                         <!-- COLUMNA DERECHA: estado + obs + recarga -->
@@ -620,6 +627,11 @@
                 </div>
             </div>
 
+            <div style="margin-top: 15px; border-top: 1px dashed #e2ede8; padding-top: 10px;">
+                <p style="font-size: 0.72rem; color: #6b7280; background: #f9fafb; padding: 6px; border-radius: 4px; border: 1px solid #f3f4f6; margin: 0;">
+                    <i class="fas fa-info-circle"></i> Debe guardar para adjuntar evidencia a este ítem.
+                </p>
+            </div>
         </div>
 
         <!-- COLUMNA DERECHA: estado + obs + recarga -->

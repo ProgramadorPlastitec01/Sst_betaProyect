@@ -36,6 +36,7 @@
                 </div>
                 {% endfor %}
             </div>
+
         </div>
 
         <div class="card">
@@ -75,6 +76,18 @@
                                 <button type="button" class="btn-link" style="color: #dc3545;"
                                     onclick="removeRow(this)"><i class="fas fa-times"></i></button>
                                 {% endif %}
+                            </td>
+                        </tr>
+                        <tr class="evidence-row" style="background: #fdfdfd;">
+                            <div style="padding: 10px; border-top: 1px dashed #eee;">
+                                <label style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 5px;">
+                                    <i class="fas fa-camera"></i> Evidencia del Item
+                                </label>
+                                {% include 'inspections/includes/evidence_manager.html' with
+                                content_type_id=item_content_type_id
+                                object_id=item_form.instance.pk|default:item_form.prefix
+                                evidences=item_form.instance.evidences can_edit=True %}
+                            </div>
                             </td>
                         </tr>
                         {% if item_form.errors %}
@@ -123,6 +136,13 @@
             <button type="button" class="btn-link" style="color: #dc3545;" onclick="removeRow(this)"><i class="fas fa-times"></i></button>
         </td>
     </tr>
+    <tr class="evidence-row" style="background: #fdfdfd;">
+        <td colspan="7">
+            <div style="padding: 8px; font-size: 0.75rem; color: #6c757d;">
+                <i class="fas fa-info-circle"></i> Debe guardar para adjuntar evidencia a este elemento.
+            </div>
+        </td>
+    </tr>
 </script>
 
 <script>
@@ -134,27 +154,42 @@
 
         addItemBtn.addEventListener('click', function () {
             const formIdx = parseInt(totalForms.value);
-            const newRow = template.replace(/__prefix__/g, formIdx).replace(/empty_form/g, formIdx);
+            const newHtml = template.replace(/__prefix__/g, formIdx).replace(/empty_form/g, formIdx);
 
             const parser = new DOMParser();
-            const doc = parser.parseFromString(`<table>${newRow}</table>`, 'text/html');
-            const row = doc.querySelector('tr');
-            row.querySelector('.row-number').textContent = itemsTbody.querySelectorAll('.item-row:not(.deleted)').length + 1;
+            const doc = parser.parseFromString(`<table>${newHtml}</table>`, 'text/html');
+            const rows = doc.querySelectorAll('tr');
 
-            itemsTbody.appendChild(row);
+            let insertedRow = null;
+            rows.forEach(row => {
+                const rowNum = row.querySelector('.row-number');
+                if (rowNum) {
+                    rowNum.textContent = itemsTbody.querySelectorAll('.item-row:not(.deleted)').length + 1;
+                    insertedRow = row;
+                }
+                itemsTbody.appendChild(row);
+            });
+
             totalForms.value = formIdx + 1;
         });
     });
 
     function removeRow(btn) {
         const row = btn.closest('.item-row');
+        const evidenceRow = row.nextElementSibling;
         const deleteInput = row.querySelector('input[name$="-DELETE"]');
 
         if (deleteInput) {
             deleteInput.checked = true;
             row.classList.add('deleted');
             row.style.display = 'none';
+            if (evidenceRow && evidenceRow.classList.contains('evidence-row')) {
+                evidenceRow.style.display = 'none';
+            }
         } else {
+            if (evidenceRow && evidenceRow.classList.contains('evidence-row')) {
+                evidenceRow.remove();
+            }
             row.remove();
         }
         updateRowNumbers();

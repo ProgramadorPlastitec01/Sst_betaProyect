@@ -26,7 +26,10 @@ from .views import (
     SignForkliftInspectionView, ForkliftReportView,
 
     # Reports
-    InspectionReportView, InspectionReportExportView
+    InspectionReportView, InspectionReportExportView,
+
+    # Evidence
+    EvidenceUploadView, EvidenceDeleteView
 )
 
 # Area Management Views
@@ -98,4 +101,8 @@ urlpatterns = [
     # 7. Reports
     path('reports/', InspectionReportView.as_view(), name='inspection_reports'),
     path('reports/export/', InspectionReportExportView.as_view(), name='inspection_reports_export'),
+
+    # 8. Evidence management
+    path('evidence/upload/', EvidenceUploadView.as_view(), name='evidence_upload'),
+    path('evidence/<int:pk>/delete/', EvidenceDeleteView.as_view(), name='evidence_delete'),
 ]

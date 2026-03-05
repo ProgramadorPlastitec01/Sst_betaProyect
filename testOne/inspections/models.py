@@ -3,6 +3,8 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
 
 # Area Model - Standardized areas for inspections
 class Area(models.Model):
@@ -305,6 +307,9 @@ class BaseInspection(models.Model):
     observations = models.TextField(blank=True, null=True, verbose_name="Observaciones Generales")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # Generic relation for evidence
+    evidences = GenericRelation('InspectionEvidence')
 
     class Meta:
         abstract = True
@@ -312,6 +317,35 @@ class BaseInspection(models.Model):
 
     def __str__(self):
         return f"{self._meta.verbose_name} - {self.area} ({self.inspection_date})"
+
+class InspectionEvidence(models.Model):
+    """
+    Modelo genérico para almacenar evidencias fotográficas de inspecciones,
+    ítems de verificación o seguimientos.
+    """
+    # Relación Genérica
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    
+    image = models.ImageField(upload_to='inspections/evidence/%Y/%m/%d/', verbose_name="Imagen de Evidencia")
+    description = models.CharField(max_length=255, blank=True, null=True, verbose_name="Descripción o Hallazgo")
+    
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Carga")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Cargado por"
+    )
+
+    class Meta:
+        verbose_name = "Evidencia de Inspección"
+        verbose_name_plural = "Evidencias de Inspección"
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"Evidencia {self.id} de {self.content_object}"
 
 # 1. Extinguisher Inspection (R-RH-SST-019)
 class ExtinguisherInspection(BaseInspection):
@@ -439,6 +473,8 @@ class ExtinguisherItem(models.Model):
     )
     registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
 
+    evidences = GenericRelation('InspectionEvidence')
+
 # 2. First Aid Inspection (R-RH-SST-020)
 class FirstAidInspection(BaseInspection):
     ROLE_CHOICES = [
@@ -519,6 +555,8 @@ class FirstAidItem(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Existe', verbose_name="Estado")
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observaciones")
     registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
+
+    evidences = GenericRelation('InspectionEvidence')
 
 class FirstAidSignature(models.Model):
     inspection = models.ForeignKey(FirstAidInspection, related_name='signatures', on_delete=models.CASCADE)
@@ -614,6 +652,8 @@ class ProcessCheckItem(models.Model):
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observaciones")
     registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
 
+    evidences = GenericRelation('InspectionEvidence')
+
 class ProcessSignature(models.Model):
     inspection = models.ForeignKey(ProcessInspection, related_name='signatures', on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Firmante")
@@ -707,6 +747,8 @@ class StorageCheckItem(models.Model):
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observaciones")
     registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
 
+    evidences = GenericRelation('InspectionEvidence')
+
 class StorageSignature(models.Model):
     inspection = models.ForeignKey(StorageInspection, related_name='signatures', on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Firmante")
@@ -718,7 +760,6 @@ class StorageSignature(models.Model):
         verbose_name_plural = "Firmas de Inspección de Almacenamiento"
         unique_together = ('inspection', 'user')
 
-# 5. Forklift Inspection (R-RH-SST-022)
 # 5. Forklift Inspection (R-RH-SST-022)
 class ForkliftInspection(BaseInspection):
     ROLE_CHOICES = [
@@ -741,7 +782,9 @@ class ForkliftInspection(BaseInspection):
         max_length=20, 
         choices=FORKLIFT_TYPE_CHOICES, 
         default='Combustible',
-        verbose_name="Tipo de Montacarga"
+        verbose_name="Tipo de Montacarga",
+        blank=True,
+        null=True
     )
 
     STATUS_CHOICES = [
@@ -752,6 +795,12 @@ class ForkliftInspection(BaseInspection):
         ('Cerrada con seguimientos', 'Cerrada con seguimientos'),
     ]
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Programada', verbose_name="Estado")
+
+    def save(self, *args, **kwargs):
+        # Sync forklift type from asset detail if linked
+        if self.asset and hasattr(self.asset, 'montacargas_detail'):
+            self.forklift_type = self.asset.montacargas_detail.tipo_montacargas
+        super().save(*args, **kwargs)
 
     def get_participants(self):
         from django.contrib.auth import get_user_model
@@ -816,6 +865,8 @@ class ForkliftCheckItem(models.Model):
     item_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Bueno', verbose_name="Estado")
     observations = models.CharField(max_length=255, blank=True, verbose_name="Observación")
     registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
+    
+    evidences = GenericRelation('InspectionEvidence')
 
 class ForkliftSignature(models.Model):
     inspection = models.ForeignKey(ForkliftInspection, related_name='signatures', on_delete=models.CASCADE)

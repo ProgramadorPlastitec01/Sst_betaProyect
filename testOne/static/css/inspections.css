@@ -69,3 +69,107 @@
     height: 16px;
     cursor: pointer;
 }
+
+/* Labels */
+.tech-label {
+    font-size: 0.65rem;
+    color: var(--text-light);
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+    letter-spacing: 0.3px;
+    display: block;
+}
+
+/* Evidence Management Styles */
+.evidence-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 5px;
+    min-height: 40px;
+}
+
+.evidence-wrapper {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.evidence-wrapper:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.evidence-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.evidence-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: #ef4444;
+    color: white !important;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    border: 1.5px solid white;
+    cursor: pointer;
+    z-index: 10;
+    line-height: 1;
+    padding: 0;
+}
+
+.evidence-add-btn {
+    width: 60px;
+    height: 60px;
+    border: 2px dashed #49baa0;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #49baa0;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.65rem;
+    gap: 2px;
+}
+
+.evidence-add-btn:hover {
+    background: #f1f5f9;
+    border-color: #3aa88e;
+    color: #3aa88e;
+}
+
+.evidence-add-btn i {
+    font-size: 0.9rem;
+}
+
+.evidence-loading {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    border-radius: 8px;
+    font-size: 0.6rem;
+    color: #64748b;
+}

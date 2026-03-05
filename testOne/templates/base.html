@@ -250,6 +250,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <!-- Custom Notifications System -->
     <script src="{% static 'js/notifications.js' %}"></script>
+    <script src="{% static 'js/evidence_manager.js' %}"></script>
 
     <!-- Cleanup script to prevent modal overlay issues -->
     <script>
@@ -285,12 +286,38 @@
         });
     </script>
 
+    <!-- Custom Modal for Evidence Preview -->
+    <div id="evidencePreviewModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; align-items: center; justify-content: center; padding: 20px;">
+        <div
+            style="position: relative; max-width: 95%; max-height: 95%; background: white; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; animation: modalFadeIn 0.3s ease;">
+            <span onclick="closeEvidencePreview()"
+                style="position: absolute; top: 12px; right: 20px; font-size: 32px; font-weight: bold; cursor: pointer; color: #333; z-index: 5001; text-shadow: 0 0 10px rgba(255,255,255,0.8);">&times;</span>
+            <div
+                style="flex: 1; overflow: hidden; text-align: center; background: #000; display: flex; align-items: center; justify-content: center; min-height: 200px;">
+                <img id="evidencePreviewImage" src="" style="max-width: 100%; max-height: 85vh; object-fit: contain;">
+            </div>
+            <div id="evidencePreviewDesc"
+                style="padding: 15px 25px; background: white; font-size: 0.95rem; color: #4b5563; border-top: 1px solid #f3f4f6; font-weight: 500; text-align: center;">
+            </div>
+        </div>
+    </div>
+
     <!-- Dropdown hover styles -->
     <style>
-        #userDropdown a:hover {
-            background: #f8f9fa;
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
+        #userDropdown a:hover,
         #userDropdown button:hover {
             background: #f8f9fa;
         }

@@ -211,6 +211,11 @@ class ExtintorDetail(models.Model):
 
 class MontacargasDetail(models.Model):
     """Datos especificos de un activo tipo Montacargas."""
+    TIPO_MONTACARGAS_CHOICES = [
+        ('Combustible', 'Combustible'),
+        ('Electrico', 'Eléctrico'),
+    ]
+
     asset = models.OneToOneField(
         Asset,
         on_delete=models.CASCADE,
@@ -220,6 +225,12 @@ class MontacargasDetail(models.Model):
     marca = models.CharField(max_length=100, verbose_name="Marca")
     modelo = models.CharField(max_length=100, verbose_name="Modelo")
     numero_serie = models.CharField(max_length=100, verbose_name="Numero de Serie")
+    tipo_montacargas = models.CharField(
+        max_length=50,
+        choices=TIPO_MONTACARGAS_CHOICES,
+        default='Combustible',
+        verbose_name="Tipo de Montacargas"
+    )
     capacidad_carga_kg = models.DecimalField(
         max_digits=8, decimal_places=2,
         verbose_name="Capacidad de Carga (kg)"

@@ -1,22 +1,29 @@
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView, View, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.urls import reverse_lazy, reverse
 from django.db import transaction, models
 from django.db.models import Q, Count
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
+from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
+from django.contrib.auth import get_user_model
+
+from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill
+
 from .models import (
     Area, InspectionSchedule, InspectionSignature,
-    ExtinguisherInspection, ExtinguisherItem, 
+    ExtinguisherInspection, ExtinguisherItem,
     FirstAidInspection, FirstAidItem, FirstAidSignature,
     ProcessInspection, ProcessSignature, ProcessCheckItem,
     StorageInspection, StorageCheckItem, StorageSignature,
-    ForkliftInspection, ForkliftCheckItem, ForkliftSignature
+    ForkliftInspection, ForkliftCheckItem, ForkliftSignature,
+    InspectionEvidence
 )
-from datetime import date, timedelta
-from django.utils import timezone
-from dateutil.relativedelta import relativedelta
 from .forms import (
     InspectionScheduleForm, InspectionUpdateForm,
     ExtinguisherInspectionForm, ExtinguisherItemFormSet, ExtinguisherItemForm,
@@ -34,6 +41,60 @@ class InspectionFormUserMixin:
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
         return kwargs
+
+def handle_pending_evidences(request, instance, prefix=None):
+    from django.contrib.contenttypes.models import ContentType
+    from .models import InspectionEvidence
+    content_type = ContentType.objects.get_for_model(instance)
+    key = f'pending_evidences_{content_type.id}'
+    if prefix:
+        key = f'{key}_{prefix}'
+    
+    files = request.FILES.getlist(key)
+    for f in files:
+        InspectionEvidence.objects.create(
+            content_type=content_type,
+            object_id=instance.pk,
+            image=f,
+            description='',
+            uploaded_by=request.user
+        )
+
+# --- Mixin to provide evidence context ---
+class EvidenceMixin:
+    """
+    Mixin to provide ContentType IDs for evidence management in templates.
+    Handles mapping from Inspection models to their Item models.
+    """
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Determine the primary model for this view
+        model_to_use = getattr(self, 'model', None)
+        if not model_to_use and hasattr(self, 'object') and self.object:
+            model_to_use = self.object.__class__
+        elif not model_to_use and hasattr(self, 'get_queryset'):
+            model_to_use = self.get_queryset().model
+            
+        if model_to_use:
+            # Map inspection models to their respective item models
+            inspection_item_map = [
+                (ExtinguisherInspection, ExtinguisherItem),
+                (FirstAidInspection, FirstAidItem),
+                (ProcessInspection, ProcessCheckItem),
+                (StorageInspection, StorageCheckItem),
+                (ForkliftInspection, ForkliftCheckItem),
+            ]
+            
+            # Legacy/Primary content type for the object being handled
+            context['inspection_content_type_id'] = ContentType.objects.get_for_model(model_to_use).id
+            
+            # Find the item model if the current model is an inspection
+            for insp, item in inspection_item_map:
+                if model_to_use == insp:
+                    context['item_content_type_id'] = ContentType.objects.get_for_model(item).id
+                    break
+        return context
 
 # --- Mixin to provide matrix context to any view ---
 class MatrixContextMixin:
@@ -636,6 +697,7 @@ class FormsetMixin:
         items = context['items']
         with transaction.atomic():
             self.object = form.save()
+            handle_pending_evidences(self.request, self.object)
             link_to_schedule(self.request, self.object)
             if items.is_valid():
                 # Set registered_by for each item
@@ -644,6 +706,16 @@ class FormsetMixin:
                     instance.inspection = self.object
                     instance.registered_by = self.request.user
                     instance.save()
+                    
+                    # Find form prefix for this instance
+                    form_prefix = None
+                    for item_form in items.forms:
+                        if item_form.instance == instance:
+                            form_prefix = item_form.prefix
+                            break
+                    
+                    if form_prefix:
+                        handle_pending_evidences(self.request, instance, prefix=form_prefix)
                 
                 # Handle deletions
                 for obj in items.deleted_objects:
@@ -686,7 +758,7 @@ class ExtinguisherListView(LoginRequiredMixin, RolePermissionRequiredMixin, Sche
             
         return context
 
-class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, CreateView):
+class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, EvidenceMixin, CreateView):
     permission_required = ('extinguisher', 'create')
     model = ExtinguisherInspection
     form_class = ExtinguisherInspectionForm
@@ -777,7 +849,7 @@ class ExtinguisherCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
     def get_success_url(self):
         return reverse('extinguisher_detail', kwargs={'pk': self.object.pk})
 
-class ExtinguisherUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, UpdateView):
+class ExtinguisherUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, EvidenceMixin, UpdateView):
     permission_required = ('extinguisher', 'edit')
     model = ExtinguisherInspection
     form_class = ExtinguisherInspectionForm
@@ -845,7 +917,7 @@ class ExtinguisherUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
     def get_success_url(self):
         return reverse('extinguisher_detail', kwargs={'pk': self.object.pk})
 
-class ExtinguisherDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
+class ExtinguisherDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
     permission_required = ('extinguisher', 'view')
     model = ExtinguisherInspection
     template_name = 'inspections/extinguisher_detail.html'
@@ -1010,7 +1082,7 @@ class SignExtinguisherInspectionView(LoginRequiredMixin, View):
             
         return redirect('extinguisher_detail', pk=pk)
 
-class ExtinguisherReportView(LoginRequiredMixin, DetailView):
+class ExtinguisherReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
     model = ExtinguisherInspection
     template_name = 'inspections/extinguisher_report.html'
     
@@ -1021,9 +1093,10 @@ class ExtinguisherReportView(LoginRequiredMixin, DetailView):
         context['total_inspected'] = items.count()
         context['total_good'] = items.filter(status='Bueno').count()
         context['total_bad'] = items.filter(status__in=['Malo', 'Recargar']).count()
+        context['any_item_has_evidence'] = any(item.evidences.exists() for item in items)
         return context
 
-class ExtinguisherItemCreateView(LoginRequiredMixin, CreateView):
+class ExtinguisherItemCreateView(LoginRequiredMixin, EvidenceMixin, CreateView):
     model = ExtinguisherItem; form_class = ExtinguisherItemForm; template_name = 'inspections/extinguisher_item_form.html'
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1034,10 +1107,11 @@ class ExtinguisherItemCreateView(LoginRequiredMixin, CreateView):
         form.instance.inspection = insp
         form.instance.registered_by = self.request.user
         form.save()
+        handle_pending_evidences(self.request, form.instance)
         if 'save_and_add' in self.request.POST: return redirect('extinguisher_item_create', pk=insp.pk)
         return redirect('extinguisher_detail', pk=insp.pk)
 
-class ExtinguisherItemUpdateView(LoginRequiredMixin, UpdateView):
+class ExtinguisherItemUpdateView(LoginRequiredMixin, EvidenceMixin, UpdateView):
     model = ExtinguisherItem; form_class = ExtinguisherItemForm; template_name = 'inspections/extinguisher_item_form.html'
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1062,7 +1136,7 @@ class FirstAidListView(LoginRequiredMixin, RolePermissionRequiredMixin, Schedule
         current_year = timezone.now().year
         return qs.filter(inspection_date__year=current_year, parent_inspection__isnull=True)
 
-class FirstAidCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, CreateView):
+class FirstAidCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, EvidenceMixin, CreateView):
     permission_required = ('first_aid', 'create')
     model = FirstAidInspection
     form_class = FirstAidInspectionForm
@@ -1102,7 +1176,7 @@ class FirstAidCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspec
     def get_success_url(self):
         return reverse('first_aid_detail', kwargs={'pk': self.object.pk})
 
-class FirstAidUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, UpdateView):
+class FirstAidUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, EvidenceMixin, UpdateView):
     permission_required = ('first_aid', 'edit')
     model = FirstAidInspection
     form_class = FirstAidInspectionForm
@@ -1143,7 +1217,7 @@ class FirstAidUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspec
     def get_success_url(self):
         return reverse('first_aid_detail', kwargs={'pk': self.object.pk})
 
-class FirstAidDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
+class FirstAidDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
     permission_required = ('first_aid', 'view')
     model = FirstAidInspection
     template_name = 'inspections/first_aid_detail.html'
@@ -1297,21 +1371,22 @@ class SignFirstAidInspectionView(LoginRequiredMixin, View):
         
         return redirect('first_aid_detail', pk=pk)
 
-class FirstAidReportView(LoginRequiredMixin, DetailView):
+class FirstAidReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
     model = FirstAidInspection
     template_name = 'inspections/first_aid_report.html'
 
-class FirstAidItemCreateView(LoginRequiredMixin, CreateView):
+class FirstAidItemCreateView(LoginRequiredMixin, EvidenceMixin, CreateView):
     model = FirstAidItem; form_class = FirstAidItemForm; template_name = 'inspections/first_aid_item_form.html'
     def form_valid(self, form):
         insp = get_object_or_404(FirstAidInspection, pk=self.kwargs['pk'])
         form.instance.inspection = insp
         form.instance.registered_by = self.request.user
         form.save()
+        handle_pending_evidences(self.request, form.instance)
         if 'save_and_add' in self.request.POST: return redirect('first_aid_item_create', pk=insp.pk)
         return redirect('first_aid_detail', pk=insp.pk)
 
-class FirstAidItemUpdateView(LoginRequiredMixin, UpdateView):
+class FirstAidItemUpdateView(LoginRequiredMixin, EvidenceMixin, UpdateView):
     model = FirstAidItem; form_class = FirstAidItemForm; template_name = 'inspections/first_aid_item_form.html'
     def form_valid(self, form):
         form.instance.registered_by = self.request.user
@@ -1345,7 +1420,7 @@ class ProcessListView(LoginRequiredMixin, RolePermissionRequiredMixin, Scheduled
             
         return context
 
-class ProcessCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, CreateView):
+class ProcessCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, EvidenceMixin, CreateView):
     permission_required = ('process', 'create')
     model = ProcessInspection
     form_class = ProcessInspectionForm
@@ -1411,7 +1486,7 @@ class ProcessCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspect
     def get_success_url(self):
         return reverse('process_detail', kwargs={'pk': self.object.pk})
 
-class ProcessUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, UpdateView):
+class ProcessUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, EvidenceMixin, UpdateView):
     permission_required = ('process', 'edit')
     model = ProcessInspection
     form_class = ProcessInspectionForm
@@ -1433,7 +1508,7 @@ class ProcessUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspect
     def get_success_url(self):
         return reverse('process_detail', kwargs={'pk': self.object.pk})
 
-class ProcessItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView):
+class ProcessItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, UpdateView):
     permission_required = ('process', 'edit')
     model = ProcessCheckItem
     form_class = ProcessCheckItemForm
@@ -1446,7 +1521,7 @@ class ProcessItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Upd
     def get_success_url(self):
         return reverse('process_detail', kwargs={'pk': self.object.inspection.pk})
 
-class ProcessDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
+class ProcessDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
     permission_required = ('process', 'view')
     model = ProcessInspection
     template_name = 'inspections/process_detail.html'
@@ -1594,7 +1669,7 @@ class SignProcessInspectionView(LoginRequiredMixin, View):
         
         return redirect('process_detail', pk=pk)
 
-class ProcessReportView(LoginRequiredMixin, DetailView):
+class ProcessReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
     model = ProcessInspection
     template_name = 'inspections/process_report.html'
 
@@ -1625,7 +1700,7 @@ class StorageListView(LoginRequiredMixin, RolePermissionRequiredMixin, Scheduled
             
         return context
 
-class StorageCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, CreateView):
+class StorageCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, EvidenceMixin, CreateView):
     permission_required = ('storage', 'create')
     model = StorageInspection
     form_class = StorageInspectionForm
@@ -1690,7 +1765,7 @@ class StorageCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspect
     def get_success_url(self):
         return reverse('storage_detail', kwargs={'pk': self.object.pk})
 
-class StorageUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, UpdateView):
+class StorageUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, EvidenceMixin, UpdateView):
     permission_required = ('storage', 'edit')
     model = StorageInspection
     form_class = StorageInspectionForm
@@ -1712,7 +1787,7 @@ class StorageUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspect
     def get_success_url(self):
         return reverse('storage_detail', kwargs={'pk': self.object.pk})
 
-class StorageItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView):
+class StorageItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, UpdateView):
     permission_required = ('storage', 'edit')
     model = StorageCheckItem
     form_class = StorageCheckItemForm
@@ -1725,7 +1800,7 @@ class StorageItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Upd
     def get_success_url(self):
         return reverse('storage_detail', kwargs={'pk': self.object.inspection.pk})
 
-class StorageDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
+class StorageDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
     permission_required = ('storage', 'view')
     model = StorageInspection
     template_name = 'inspections/storage_detail.html'
@@ -1873,7 +1948,7 @@ class SignStorageInspectionView(LoginRequiredMixin, View):
         
         return redirect('storage_detail', pk=pk)
 
-class StorageReportView(LoginRequiredMixin, DetailView):
+class StorageReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
     model = StorageInspection
     template_name = 'inspections/storage_report.html'
     
@@ -1896,7 +1971,7 @@ class ForkliftListView(LoginRequiredMixin, RolePermissionRequiredMixin, Schedule
         current_year = timezone.now().year
         return qs.filter(inspection_date__year=current_year, parent_inspection__isnull=True)
 
-class ForkliftCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, CreateView):
+class ForkliftCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, EvidenceMixin, CreateView):
     permission_required = ('forklift', 'create')
     model = ForkliftInspection
     form_class = ForkliftInspectionForm
@@ -1963,7 +2038,7 @@ class ForkliftCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspec
     def get_success_url(self):
         return reverse('forklift_detail', kwargs={'pk': self.object.pk})
 
-class ForkliftUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, UpdateView):
+class ForkliftUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, InspectionFormUserMixin, FormsetMixin, EvidenceMixin, UpdateView):
     permission_required = ('forklift', 'edit')
     model = ForkliftInspection
     form_class = ForkliftInspectionForm
@@ -1985,7 +2060,7 @@ class ForkliftUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspec
     def get_success_url(self):
         return reverse('forklift_detail', kwargs={'pk': self.object.pk})
 
-class ForkliftItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView):
+class ForkliftItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, UpdateView):
     permission_required = ('forklift', 'edit')
     model = ForkliftCheckItem
     form_class = ForkliftCheckItemForm
@@ -1998,7 +2073,7 @@ class ForkliftItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Up
     def get_success_url(self):
         return reverse('forklift_detail', kwargs={'pk': self.object.inspection.pk})
 
-class ForkliftDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
+class ForkliftDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
     permission_required = ('forklift', 'view')
     model = ForkliftInspection
     template_name = 'inspections/forklift_detail.html'
@@ -2147,7 +2222,7 @@ class SignForkliftInspectionView(LoginRequiredMixin, View):
         
         return redirect('forklift_detail', pk=pk)
 
-class ForkliftReportView(LoginRequiredMixin, DetailView):
+class ForkliftReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
     model = ForkliftInspection
     template_name = 'inspections/forklift_report.html'
     
@@ -2158,6 +2233,7 @@ class ForkliftReportView(LoginRequiredMixin, DetailView):
         context['total_inspected'] = items.count()
         context['total_good'] = items.filter(item_status='Bueno').count()
         context['total_bad'] = items.filter(item_status='Malo').count()
+        context['any_item_has_evidence'] = any(item.evidences.exists() for item in items)
         return context
 
 # --- REPORT MODULE VIEWS ---
@@ -2361,9 +2437,6 @@ class InspectionReportExportView(RolePermissionRequiredMixin, View):
     permission_required = ('reports', 'view')
 
     def get(self, request):
-        import openpyxl
-        from openpyxl.styles import Font, Alignment, PatternFill
-        
         f_year = request.GET.get('year', '')
         f_start = request.GET.get('start_date', '')
         f_end = request.GET.get('end_date', '')
@@ -2428,9 +2501,6 @@ class InspectionReportExportView(RolePermissionRequiredMixin, View):
                     participants
                 ])
 
-        # Sort by date
-        # (Internal sorting omitted for performance in export, relies on fetch order)
-
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Historial de Inspecciones"
@@ -2451,13 +2521,84 @@ class InspectionReportExportView(RolePermissionRequiredMixin, View):
             column = col[0].column_letter
             for cell in col:
                 try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
+                    if cell.value:
+                        cell_len = len(str(cell.value))
+                        if cell_len > max_length:
+                            max_length = cell_len
                 except: pass
-            adjusted_width = (max_length + 2)
+            adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[column].width = adjusted_width
 
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = f'attachment; filename=Reporte_Inspecciones_{date.today()}.xlsx'
         wb.save(response)
         return response
+# --- Evidence Views ---
+class EvidenceUploadView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        content_type_id = request.POST.get('content_type_id')
+        object_id = request.POST.get('object_id')
+        image = request.FILES.get('image')
+        description = request.POST.get('description', '')
+
+        if not content_type_id or not object_id or not image:
+            return JsonResponse({'error': 'Faltan datos requeridos'}, status=400)
+
+        # Basic validation
+        if image.size > 5 * 1024 * 1024:
+            return JsonResponse({'error': 'La imagen excede los 5MB'}, status=400)
+        
+        allowed_types = ['image/jpeg', 'image/png', 'image/webp']
+        if image.content_type not in allowed_types:
+             return JsonResponse({'error': 'Formato no permitido. Solo JPG, PNG o WEBP'}, status=400)
+
+        try:
+            content_type = ContentType.objects.get_for_id(content_type_id)
+            target_obj = content_type.get_object_for_this_type(pk=object_id)
+            
+            # Authorization check
+            inspection = None
+            if hasattr(target_obj, 'status'):
+                inspection = target_obj
+            elif hasattr(target_obj, 'inspection'):
+                inspection = target_obj.inspection
+            
+            if inspection and hasattr(inspection, 'status'):
+                if inspection.status in ['Cerrada', 'Cerrada con seguimientos']:
+                    return JsonResponse({'error': 'No se pueden agregar evidencias a una inspección cerrada'}, status=403)
+
+            evidence = InspectionEvidence.objects.create(
+                content_type=content_type,
+                object_id=object_id,
+                image=image,
+                description=description,
+                uploaded_by=request.user
+            )
+
+            return JsonResponse({
+                'id': evidence.id,
+                'url': evidence.image.url,
+                'description': evidence.description,
+                'uploaded_at': evidence.uploaded_at.strftime('%d/%m/%Y %H:%M')
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+class EvidenceDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk, *args, **kwargs):
+        evidence = get_object_or_404(InspectionEvidence, pk=pk)
+        
+        # Check status
+        target_obj = evidence.content_object
+        inspection = None
+        if hasattr(target_obj, 'status'):
+            inspection = target_obj
+        elif hasattr(target_obj, 'inspection'):
+            inspection = target_obj.inspection
+            
+        if inspection and hasattr(inspection, 'status') and inspection.status not in ['En proceso', 'Programada']:
+             return JsonResponse({'error': 'Solo se pueden eliminar evidencias en inspecciones "En proceso"'}, status=403)
+
+        evidence.image.delete() # Remove file
+        evidence.delete()
+        return JsonResponse({'success': True})

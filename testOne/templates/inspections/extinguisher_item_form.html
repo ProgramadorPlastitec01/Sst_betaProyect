@@ -4,6 +4,8 @@
 {% block title %}SST - {% if form.instance.pk %}Editar{% else %}Agregar{% endif %} Extintor{% endblock %}
 
 {% block extra_head %}
+<!-- CSS para evidencias -->
+<link rel="stylesheet" href="{% static 'css/inspections.css' %}">
 <!-- Tom Select para búsqueda de activos -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
@@ -133,6 +135,13 @@
                     <label style="font-weight: 600;">{{ form.observations.label }}</label>
                     {{ form.observations }}
                 </div>
+            </div>
+
+            <div style="margin-top: 24px; border-top: 1px solid #f0f2f5; padding-top: 20px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 12px;">
+                    <i class="fas fa-camera"></i> Evidencia Fotográfica
+                </label>
+                {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=form.instance.pk evidences=form.instance.evidences.all can_edit=True %}
             </div>
 
             <div

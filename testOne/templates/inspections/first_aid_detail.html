@@ -5,6 +5,12 @@
 
 {% block header_title %}Detalle de Inspección de Botiquín{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+<script src="{% static 'js/evidence_manager.js' %}"></script>
+{% endblock %}
+
+
 {% block content %}
 <div class="inspection-form-container">
     <div class="dashboard-header">
@@ -175,6 +181,8 @@
             </div>
         </div>
         {% endif %}
+
+        {% if object.observations %}
     </div>
 
     <!-- Timeline Section (MOVIDO ABAJO) -->
@@ -273,6 +281,21 @@
                         </td>
                         {% endif %}
                     </tr>
+                    {% if item.evidences.exists %}
+                    <tr style="background: #fdfdfd;">
+                        <td
+                            colspan="{% if object.status == 'En proceso' or object.status == 'Programada' %}6{% else %}5{% endif %}">
+                            <div style="padding: 10px; border-top: 1px dashed #eee;">
+                                <label
+                                    style="display: block; font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Evidencia
+                                    del Item:</label>
+                                {% include 'inspections/includes/evidence_manager.html' with
+                                content_type_id=item_content_type_id object_id=item.pk evidences=item.evidences.all
+                                can_edit=False %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
                     {% empty %}
                     <tr>
                         <td colspan="{% if object.status == 'En proceso' %}6{% else %}5{% endif %}"

@@ -218,6 +218,40 @@
     </div>
     {% endif %}
 
+    <!-- Evidencia Fotográfica -->
+    {% if object.evidences.exists or any_item_has_evidence %}
+    <div class="page-break"></div>
+    <h3><i class="fas fa-camera"></i> Evidencia Fotográfica</h3>
+
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px;">
+        <!-- Evidencias Generales -->
+        {% for evidence in object.evidences.all %}
+        <div style="border: 1px solid #dee2e6; padding: 10px; background: #fff; border-radius: 4px;">
+            <img src="{{ evidence.image.url }}"
+                style="width: 100%; height: 250px; object-fit: cover; border-radius: 2px; margin-bottom: 8px;">
+            <div style="font-size: 0.8rem; color: #555;">
+                <strong style="color: var(--primary-color);">General:</strong> {{ evidence.description|default:"Sin
+                descripción" }}
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- Evidencias de Ítems -->
+        {% for item in object.items.all %}
+        {% for evidence in item.evidences.all %}
+        <div style="border: 1px solid #dee2e6; padding: 10px; background: #fff; border-radius: 4px;">
+            <img src="{{ evidence.image.url }}"
+                style="width: 100%; height: 250px; object-fit: cover; border-radius: 2px; margin-bottom: 8px;">
+            <div style="font-size: 0.8rem; color: #555;">
+                <strong style="color: var(--primary-color);">{{ item.question|truncatechars:40 }}:</strong> {{
+                evidence.description|default:"Sin descripción" }}
+            </div>
+        </div>
+        {% endfor %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Signatures (Only in Report) -->
     <div class="page-break"></div>
     <div class="signatures-section">

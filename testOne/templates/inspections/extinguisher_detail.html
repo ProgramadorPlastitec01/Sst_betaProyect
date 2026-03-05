@@ -5,6 +5,12 @@
 
 {% block header_title %}Detalle de Inspección de Extintores{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+<script src="{% static 'js/evidence_manager.js' %}"></script>
+{% endblock %}
+
+
 {% block content %}
 <div class="inspection-form-container" style="max-width: 100%;">
     <div class="dashboard-header">
@@ -97,7 +103,6 @@
             </div>
         </div>
         {% endif %}
-
         {% if object.asset %}
         <!-- Información del Activo Relacionado (inspecciones antiguas) -->
         <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #eee;">
@@ -228,6 +233,14 @@
                             <div
                                 style="font-size: 0.78rem; color: #856404; background: #fff3cd; border-radius: 4px; padding: 4px 8px; margin-top: 6px;">
                                 {{ item.observations }}
+                            </div>
+                            {% endif %}
+
+                            {% if item.evidences.exists %}
+                            <div style="margin-top: 10px;">
+                                <label
+                                    style="display: block; font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Evidencia:</label>
+                                {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=item.pk evidences=item.evidences.all can_edit=False %}
                             </div>
                             {% endif %}
                         </td>

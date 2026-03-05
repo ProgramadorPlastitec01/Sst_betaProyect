@@ -112,41 +112,100 @@
 
         <!-- General Data Card -->
         <div class="inspection-card">
-            <h3 class="section-title"><i class="fas fa-info-circle"></i> Datos Generales</h3>
+            <h3 class="section-title"><i class="fas fa-info-circle"></i> Selección de Equipo y Datos Generales</h3>
 
             <div class="form-grid">
-                <!-- Inspection Date -->
                 <div class="form-group">
                     <label>Fecha de Inspección</label>
                     {{ form.inspection_date }}
-                    {% if form.inspection_date.errors %}
-                    <div class="text-danger small">{{ form.inspection_date.errors }}</div>
-                    {% endif %}
                 </div>
 
-                <!-- Forklift Type -->
-                <div class="form-group">
-                    <label>Tipo de Montacarga</label>
-                    {{ form.forklift_type }}
-                    {% if form.forklift_type.errors %}
-                    <div class="text-danger small">{{ form.forklift_type.errors }}</div>
-                    {% endif %}
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Seleccionar Montacargas (Inventario)</label>
+                    {{ form.asset }}
+                    <small class="text-muted">Busque por código, marca o modelo.</small>
                 </div>
-
-                <!-- Render other visible fields dynamically -->
-                {% for field in form.visible_fields %}
-                {% if field.name != 'inspection_date' and field.name != 'forklift_type' and field.name != 'additional_observations' %}
-                <div class="form-group">
-                    <label>{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.errors %}
-                    <div class="text-danger small">{{ field.errors }}</div>
-                    {% endif %}
-                </div>
-                {% endif %}
-                {% endfor %}
             </div>
+
+            <!-- Previsualización del Activo (Dinámico) -->
+            <div id="asset-preview-panel" class="mt-4 p-3"
+                style="background: #f8f9fa; border-radius: 8px; border-left: 4px solid #49BAA0; display: none; margin-top: 20px;">
+                <div class="row">
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Marca / Modelo</small>
+                        <strong id="preview-marca-modelo">-</strong>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Tipo de Energía</small>
+                        <strong id="preview-fuel">-</strong>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Ubicación / Área</small>
+                        <strong id="preview-area">-</strong>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Estado Actual</small>
+                        <span id="preview-estado" class="badge">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-grid mt-4">
+                <div class="form-group">
+                    <label>Rol del Inspector</label>
+                    {{ form.inspector_role }}
+                </div>
+
+                <div class="form-group">
+                    <label>Área de Registro</label>
+                    {{ form.area }}
+                </div>
+            </div>
+
         </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const assetSelect = document.getElementById('id_asset_forklift');
+                const previewPanel = document.getElementById('asset-preview-panel');
+                const areaSelect = document.getElementById('id_area');
+
+                function updatePreview() {
+                    if (!assetSelect) return;
+                    const selected = assetSelect.options[assetSelect.selectedIndex];
+                    if (selected && selected.value) {
+                        previewPanel.style.display = 'block';
+                        document.getElementById('preview-marca-modelo').textContent =
+                            (selected.getAttribute('data-marca') || '') + ' ' + (selected.getAttribute('data-modelo') || '');
+                        document.getElementById('preview-fuel').textContent = selected.getAttribute('data-fuel') || '-';
+                        document.getElementById('preview-area').textContent = selected.getAttribute('data-area') || '-';
+
+                        const estado = selected.getAttribute('data-estado') || '-';
+                        const elEstado = document.getElementById('preview-estado');
+                        elEstado.textContent = estado;
+
+                        elEstado.className = 'badge ' + (estado.includes('Operativo') || estado.includes('Activo') ? 'badge-success' : 'badge-warning');
+
+                        const assetArea = selected.getAttribute('data-area');
+                        if (assetArea && areaSelect && !areaSelect.readOnly && !areaSelect.style.pointerEvents) {
+                            for (let i = 0; i < areaSelect.options.length; i++) {
+                                if (areaSelect.options[i].text === assetArea) {
+                                    areaSelect.selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        previewPanel.style.display = 'none';
+                    }
+                }
+
+                if (assetSelect) {
+                    assetSelect.addEventListener('change', updatePreview);
+                    updatePreview();
+                }
+            });
+        </script>
 
         <!-- Items Checklist -->
         <div class="inspection-card">
@@ -197,6 +256,20 @@
                                 {% endif %}
                             </td>
                             </tr>
+                            <tr class="evidence-row" style="background: #fdfdfd;">
+                                <td colspan="4">
+                                    <div style="padding: 8px; border-top: 1px dashed #eee;">
+                                        <label
+                                            style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 5px;">
+                                            <i class="fas fa-camera"></i> Evidencia del Item
+                                        </label>
+                                        {% include 'inspections/includes/evidence_manager.html' with
+                                        content_type_id=item_content_type_id
+                                        object_id=item_form.instance.pk|default:item_form.prefix
+                                        evidences=item_form.instance.evidences can_edit=True %}
+                                    </div>
+                                </td>
+                            </tr>
                             {% endif %}
                             {% endfor %}
                     </tbody>
@@ -243,6 +316,20 @@
                                 {% if item_form.observations.errors %}
                                 <div class="text-danger small">{{ item_form.observations.errors }}</div>
                                 {% endif %}
+                            </td>
+                        </tr>
+                        <tr class="evidence-row" style="background: #fdfdfd;">
+                            <td colspan="4">
+                                <div style="padding: 8px; border-top: 1px dashed #eee;">
+                                    <label
+                                        style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 5px;">
+                                        <i class="fas fa-camera"></i> Evidencia del Item
+                                    </label>
+                                    {% include 'inspections/includes/evidence_manager.html' with
+                                    content_type_id=item_content_type_id
+                                    object_id=item_form.instance.pk|default:item_form.prefix
+                                    evidences=item_form.instance.evidences can_edit=True %}
+                                </div>
                             </td>
                         </tr>
                         {% endif %}
