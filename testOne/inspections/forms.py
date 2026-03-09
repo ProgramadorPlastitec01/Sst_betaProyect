@@ -270,12 +270,19 @@ class FirstAidInspectionForm(forms.ModelForm):
             })
 
 class FirstAidItemForm(forms.ModelForm):
+    # Permitir cantidad 0: PositiveIntegerField de Django valida >= 1,
+    # se sobrescribe con IntegerField(min_value=0) para registrar elementos sin stock.
+    quantity = forms.IntegerField(
+        min_value=0,
+        label="Cantidad (Unidad)",
+        widget=forms.NumberInput(attrs={'min': 0})
+    )
+
     class Meta:
         model = FirstAidItem
-        exclude = ['inspection']
+        exclude = ['inspection', 'registered_by']
         widgets = {
             'element_name': forms.TextInput(attrs={'placeholder': 'Nombre del elemento'}),
-            'quantity': forms.NumberInput(attrs={'min': 0}),
             'expiration_date': forms.DateInput(
                 format='%Y-%m-%d',
                 attrs={'type': 'date'}

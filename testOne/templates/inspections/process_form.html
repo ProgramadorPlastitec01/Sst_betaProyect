@@ -144,8 +144,7 @@
 
                 <!-- Render other visible fields dynamically (e.g., area if visible) -->
                 {% for field in form.visible_fields %}
-                {% if field.name != 'inspection_date' and field.name != 'inspector_role' and field.name !=
-                'inspected_process' and field.name != 'additional_observations' %}
+                {% if field.name != 'inspection_date' and field.name != 'inspector_role' and field.name != 'inspected_process' and field.name != 'additional_observations' %}
                 <div class="form-group">
                     <label>{{ field.label }}</label>
                     {{ field }}
@@ -213,10 +212,7 @@
                                         style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 5px;">
                                         <i class="fas fa-camera"></i> Evidencia del Item
                                     </label>
-                                    {% include 'inspections/includes/evidence_manager.html' with
-                                    content_type_id=item_content_type_id
-                                    object_id=item_form.instance.pk|default:item_form.prefix
-                                    evidences=item_form.instance.evidences can_edit=True %}
+                                    {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=item_form.instance.pk|default:item_form.prefix evidences=item_form.instance.evidences can_edit=True %}
                                 </div>
                             </td>
                         </tr>

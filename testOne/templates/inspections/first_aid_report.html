@@ -129,35 +129,6 @@
         padding-top: 5px;
         margin-top: 5px;
     }
-
-    /* Galería de evidencias */
-    .evidence-gallery {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-        margin-bottom: 30px;
-    }
-
-    .evidence-card {
-        border: 1px solid #dee2e6;
-        padding: 10px;
-        background: #fff;
-        border-radius: 4px;
-    }
-
-    .evidence-card img {
-        width: 100%;
-        height: 220px;
-        object-fit: cover;
-        border-radius: 2px;
-        margin-bottom: 8px;
-        display: block;
-    }
-
-    .evidence-caption {
-        font-size: 0.8rem;
-        color: #555;
-    }
 </style>
 {% endblock %}
 
@@ -284,31 +255,49 @@
     <div class="page-break"></div>
     <h3><i class="fas fa-camera"></i> Evidencia Fotográfica</h3>
 
-    <div class="evidence-gallery">
-        <!-- Evidencias Generales de la Inspección -->
+    <!-- Evidencias Generales de la Inspección -->
+    {% if object.evidences.exists %}
+    <h4 style="font-size:0.9rem; color:#555; margin:0 0 10px 0; text-transform:uppercase; letter-spacing:0.5px;">General
+    </h4>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
         {% for evidence in object.evidences.all %}
-        <div class="evidence-card">
-            <img src="{{ evidence.image.url }}" alt="Evidencia general">
-            <div class="evidence-caption">
-                <strong style="color: #49BAA0;">General:</strong>
+        <div style="border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden; background: #fff;">
+            <img src="{{ evidence.image.url }}"
+                style="width: 100%; max-height: 200px; object-fit: contain; display: block; background: #f8f9fa;">
+            <div style="padding: 6px 8px; font-size: 0.75rem; color: #555; border-top: 1px solid #eee;">
                 {{ evidence.description|default:"Sin descripción" }}
             </div>
         </div>
-        {% endfor %}
-
-        <!-- Evidencias por Ítem -->
-        {% for item in object.items.all %}
-        {% for evidence in item.evidences.all %}
-        <div class="evidence-card">
-            <img src="{{ evidence.image.url }}" alt="Evidencia {{ item.element_name }}">
-            <div class="evidence-caption">
-                <strong style="color: #49BAA0;">{{ item.element_name }}:</strong>
-                {{ evidence.description|default:"Sin descripción" }}
-            </div>
-        </div>
-        {% endfor %}
         {% endfor %}
     </div>
+    {% endif %}
+
+    <!-- Evidencias por Ítem -->
+    {% for item in object.items.all %}
+    {% if item.evidences.exists %}
+    <h4
+        style="font-size:0.9rem; color:#49BAA0; margin:16px 0 8px 0; padding:6px 10px; background:#f0faf8; border-left:3px solid #49BAA0;">
+        <i class="fas fa-medkit" style="margin-right:6px;"></i>
+        Elemento: {{ item.element_name }}
+        <span
+            style="margin-left:10px; padding:2px 8px; border-radius:4px; font-size:0.75rem; background:{% if item.status == 'Existe' %}#28a745{% else %}#dc3545{% endif %}; color:white;">
+            {{ item.status }}</span>
+    </h4>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px;">
+        {% for evidence in item.evidences.all %}
+        <div style="border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden; background: #fff;">
+            <img src="{{ evidence.image.url }}"
+                style="width: 100%; max-height: 200px; object-fit: contain; display: block; background: #f8f9fa;">
+            {% if evidence.description %}
+            <div style="padding: 5px 8px; font-size: 0.75rem; color: #555; border-top: 1px solid #eee;">{{
+                evidence.description }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+
     {% endif %}
 
     <!-- Firmas -->
