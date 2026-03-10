@@ -24,14 +24,15 @@ Se usa tanto en carga inicial como en respuesta AJAX.
         <div class="form-group">
             <label>{{ detail_form.fecha_recarga.label }} <span style="color:#dc3545;">*</span></label>
             {{ detail_form.fecha_recarga }}
-            {% if detail_form.fecha_recarga.errors %}<div class="text-danger small">{{ detail_form.fecha_recarga.errors}}
-			</div>{% endif %}
+            {% if detail_form.fecha_recarga.errors %}<div class="text-danger small">{{
+                detail_form.fecha_recarga.errors}}
+            </div>{% endif %}
         </div>
         <div class="form-group">
             <label>{{ detail_form.fecha_vencimiento.label }} <span style="color:#dc3545;">*</span></label>
             {{ detail_form.fecha_vencimiento }}
             {% if detail_form.fecha_vencimiento.errors %}<div class="text-danger small">
-			{{ detail_form.fecha_vencimiento.errors }}</div>{% endif %}
+                {{ detail_form.fecha_vencimiento.errors }}</div>{% endif %}
         </div>
     </div>
 </div>
@@ -46,13 +47,13 @@ Se usa tanto en carga inicial como en respuesta AJAX.
             <label>{{ detail_form.marca.label }} <span style="color:#dc3545;">*</span></label>
             {{ detail_form.marca }}
             {% if detail_form.marca.errors %}<div class="text-danger small">{{ detail_form.marca.errors }}</div>
-			{% endif %}
+            {% endif %}
         </div>
         <div class="form-group">
             <label>{{ detail_form.modelo.label }} <span style="color:#dc3545;">*</span></label>
             {{ detail_form.modelo }}
             {% if detail_form.modelo.errors %}<div class="text-danger small">{{ detail_form.modelo.errors }}</div>
-			{% endif %}
+            {% endif %}
         </div>
         <div class="form-group">
             <label>{{ detail_form.numero_serie.label }} <span style="color:#dc3545;">*</span></label>
@@ -61,24 +62,75 @@ Se usa tanto en carga inicial como en respuesta AJAX.
             </div>{% endif %}
         </div>
         <div class="form-group">
+            <label>{{ detail_form.tipo_montacargas.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.tipo_montacargas }}
+            {% if detail_form.tipo_montacargas.errors %}<div class="text-danger small">{{
+                detail_form.tipo_montacargas.errors }}</div>{% endif %}
+        </div>
+        <div class="form-group">
             <label>{{ detail_form.capacidad_carga_kg.label }} <span style="color:#dc3545;">*</span></label>
             {{ detail_form.capacidad_carga_kg }}
             {% if detail_form.capacidad_carga_kg.errors %}<div class="text-danger small">
-			{{detail_form.capacidad_carga_kg.errors }}
-			</div>{% endif %}
+                {{detail_form.capacidad_carga_kg.errors }}
+            </div>{% endif %}
         </div>
         <div class="form-group">
             <label>{{ detail_form.fecha_ultimo_mantenimiento.label }} <span style="color:#dc3545;">*</span></label>
             {{ detail_form.fecha_ultimo_mantenimiento }}
             {% if detail_form.fecha_ultimo_mantenimiento.errors %}<div class="text-danger small">
-			{{ detail_form.fecha_ultimo_mantenimiento.errors }}</div>{% endif %}
+                {{ detail_form.fecha_ultimo_mantenimiento.errors }}</div>{% endif %}
         </div>
         <div class="form-group">
             <label>{{ detail_form.fecha_proximo_mantenimiento.label }} <span style="color:#dc3545;">*</span></label>
             {{ detail_form.fecha_proximo_mantenimiento }}
             {% if detail_form.fecha_proximo_mantenimiento.errors %}<div class="text-danger small">
-			{{ detail_form.fecha_proximo_mantenimiento.errors }}</div>{% endif %}
+                {{ detail_form.fecha_proximo_mantenimiento.errors }}</div>{% endif %}
         </div>
     </div>
 </div>
+{% elif detail_type == 'botiquin' %}
+<div class="inspection-card">
+    <h3 class="section-title">
+        <i class="fas fa-first-aid"></i> Datos del Botiquín
+    </h3>
+    <div class="form-grid">
+        <div class="form-group">
+            <label>{{ detail_form.fecha_ultima_revision.label }} <span style="color:#dc3545;">*</span></label>
+            {{ detail_form.fecha_ultima_revision }}
+            {% if detail_form.fecha_ultima_revision.errors %}
+            <div class="text-danger small">{{ detail_form.fecha_ultima_revision.errors }}</div>
+            {% endif %}
+            <small class="text-muted">La próxima revisión se calculará automáticamente (+1 año).</small>
+        </div>
+        <div class="form-group">
+            <label style="color: var(--text-light);">Próxima Revisión / Recarga</label>
+            <input type="text" class="form-control" id="preview-proxima-revision" value="---" readonly
+                style="background: #f8f9fa; color: var(--text-light); cursor: default;">
+            <small class="text-muted">Calculado automáticamente.</small>
+        </div>
+    </div>
+</div>
+<script>
+    (function () {
+        var ultimaRev = document.getElementById('id_fecha_ultima_revision');
+        var proximaDisplay = document.getElementById('preview-proxima-revision');
+        if (ultimaRev && proximaDisplay) {
+            function actualizarProxima() {
+                var val = ultimaRev.value;
+                if (val) {
+                    var d = new Date(val + 'T00:00:00');
+                    d.setFullYear(d.getFullYear() + 1);
+                    var dd = String(d.getDate()).padStart(2, '0');
+                    var mm = String(d.getMonth() + 1).padStart(2, '0');
+                    var yyyy = d.getFullYear();
+                    proximaDisplay.value = dd + '/' + mm + '/' + yyyy;
+                } else {
+                    proximaDisplay.value = '---';
+                }
+            }
+            ultimaRev.addEventListener('change', actualizarProxima);
+            actualizarProxima();
+        }
+    })();
+</script>
 {% endif %}

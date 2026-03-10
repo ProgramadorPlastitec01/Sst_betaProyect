@@ -150,7 +150,7 @@
     </div>
 
     <!-- Información General -->
-    <div class="info-grid">
+    <div class="info-grid" style="grid-template-columns: repeat(3, 1fr);">
         <div class="info-item">
             <label>Fecha de Inspección:</label>
             <div>{{ object.inspection_date|date:"d/m/Y" }}</div>
@@ -175,11 +175,22 @@
             <label>Estado General:</label>
             <div>
                 <span class="status-badge"
-                    style="background-color:{% if object.status == 'Cerrada' %}#28a745{% elif object.status == 'Cerrada con Hallazgos' %}#ffc107{% else %}#007bff{% endif %};">
+                    style="background-color:{% if object.status == 'Cerrada' %}#28a745{% elif object.status == 'Cerrada con Hallazgos' %}#ffc107{% elif object.status == 'Seguimiento en proceso' %}#fd7e14{% else %}#007bff{% endif %};">
                     {{ object.status }}
                 </span>
             </div>
         </div>
+        {% if object.asset %}
+        <div class="info-item"
+            style="grid-column: span 3; background: #f0faf7; border: 1px solid #a8d5c2; border-left: 3px solid #49BAA0; padding: 10px 14px; border-radius: 6px;">
+            <label style="color: #155724;"><i class="fas fa-first-aid"></i> Botiquín Inspeccionado:</label>
+            <div style="font-weight: 700; font-size: 1rem; color: #155724;">{{ object.asset.code }}
+                <span style="font-weight: 400; font-size: 0.85rem; color: #5a8a72; margin-left: 10px;">
+                    Área: {{ object.asset.area }} &nbsp;·&nbsp; Estado: {{ object.asset.estado_label }}
+                </span>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Resumen -->
@@ -298,6 +309,39 @@
     {% endif %}
     {% endfor %}
 
+    {% endif %}
+
+    <!-- Seguimientos -->
+    {% if timeline_inspections %}
+    <div class="page-break"></div>
+    <h3><i class="fas fa-history"></i> Historial de Seguimientos</h3>
+    <table class="table-report" style="margin-bottom: 24px;">
+        <thead>
+            <tr>
+                <th style="width: 10%;">N°</th>
+                <th style="width: 18%;">Fecha</th>
+                <th style="width: 20%;">Tipo</th>
+                <th style="width: 20%;">Estado</th>
+                <th style="width: 32%;">Inspector</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for insp in timeline_inspections %}
+            <tr {% if insp.pk == object.pk %}style="background: #f0faf7; font-weight: 600;" {% endif %}>
+                <td>#{{ insp.pk }}</td>
+                <td>{{ insp.inspection_date|date:"d/m/Y" }}</td>
+                <td>{% if insp.parent_inspection %}Seguimiento{% else %}Inicial{% endif %}</td>
+                <td>
+                    <span
+                        style="font-weight: bold; color: {% if insp.status == 'Cerrada' or insp.status == 'Cerrada con seguimientos' %}#28a745{% elif insp.status == 'Seguimiento en proceso' %}#fd7e14{% else %}#007bff{% endif %};">
+                        {{ insp.status }}
+                    </span>
+                </td>
+                <td>{{ insp.inspector.get_full_name|default:insp.inspector.username }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     {% endif %}
 
     <!-- Firmas -->

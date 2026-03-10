@@ -119,9 +119,15 @@
 }
 
 .compliance-badge {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.76rem;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
 }
 
 .badge-success {

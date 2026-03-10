@@ -6,6 +6,159 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/inspections.css' %}">
 <script src="{% static 'js/evidence_manager.js' %}"></script>
+<!-- Tom Select (searchable dropdown) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<style>
+    /* Tom Select - botiquín selector */
+    .ts-wrapper.form-control,
+    .ts-wrapper {
+        padding: 0 !important;
+        border: none !important;
+        background: #ffffff !important;
+    }
+
+    .ts-control,
+    .ts-control.has-items,
+    .ts-control.focus {
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 6px !important;
+        font-size: 0.9rem !important;
+        min-height: 42px !important;
+        box-shadow: none !important;
+        color: var(--text-color, #333) !important;
+    }
+
+    .ts-control input,
+    .ts-control input:focus {
+        background: #ffffff !important;
+        color: var(--text-color, #333) !important;
+        opacity: 1 !important;
+    }
+
+    .ts-control:focus-within,
+    .ts-wrapper.focus .ts-control {
+        border-color: var(--primary-color) !important;
+        box-shadow: 0 0 0 3px rgba(73, 186, 160, 0.15) !important;
+        background: #ffffff !important;
+    }
+
+    .ts-dropdown,
+    .ts-dropdown-content {
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12) !important;
+        font-size: 0.88rem !important;
+        z-index: 9999 !important;
+    }
+
+    .ts-dropdown-content {
+        max-height: 280px;
+        overflow-y: auto;
+    }
+
+    .ts-dropdown .option {
+        background: #ffffff !important;
+        color: var(--text-color, #333) !important;
+        padding: 9px 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .ts-dropdown .option:hover,
+    .ts-dropdown .option.active {
+        background: #f0faf7 !important;
+        color: #0f5132 !important;
+    }
+
+    .bot-opt-code {
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: #155724;
+    }
+
+    .bot-opt-meta {
+        font-size: 0.76rem;
+        color: #888;
+        margin-top: 2px;
+    }
+
+    /* Preview card */
+    .asset-preview-card {
+        display: none;
+        background: linear-gradient(135deg, #f0faf7 0%, #e6f7f1 100%);
+        border: 1px solid #a8d5c2;
+        border-left: 4px solid var(--primary-color);
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-top: 16px;
+        animation: fadeInCard 0.25s ease;
+    }
+
+    @keyframes fadeInCard {
+        from {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .asset-preview-card.visible {
+        display: block;
+    }
+
+    .preview-card-header {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--primary-color);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .preview-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px 16px;
+    }
+
+    @media(max-width:768px) {
+        .preview-card-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .preview-card-field {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .preview-card-lbl {
+        font-size: 0.60rem;
+        color: #2d8a6a;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .preview-card-val {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #155724;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
 {% endblock %}
 
 {% block header_title %}Inspecciones de Seguridad - Botiquines{% endblock %}
@@ -25,20 +178,135 @@
         {% csrf_token %}
 
         <div class="card">
-            <h3 class="inspection-section-title"><i class="fas fa-info-circle"></i> Datos Generales</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
-                {% for field in form %}
+            <h3 class="inspection-section-title"><i class="fas fa-info-circle"></i> Selección de Botiquín y Datos
+                Generales</h3>
+
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: start;">
                 <div class="form-group">
-                    <label style="font-weight: 600;">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.errors %}
-                    <div style="color: #dc3545; font-size: 0.8rem; margin-top: 5px;">{{ field.errors }}</div>
-                    {% endif %}
+                    <label style="font-weight: 600;">Fecha de Inspección</label>
+                    {{ form.inspection_date }}
                 </div>
-                {% endfor %}
+                <div class="form-group">
+                    <label style="font-weight: 600;">Seleccionar Botiquín (Inventario)</label>
+                    {{ form.asset }}
+                    <small style="color: var(--text-light);">Busque por código o área.</small>
+                </div>
             </div>
 
+            <!-- Preview card del botiquín seleccionado -->
+            <div id="asset-preview-panel" class="asset-preview-card">
+                <div class="preview-card-header">
+                    <i class="fas fa-first-aid"></i> Información del botiquín seleccionado
+                </div>
+                <div class="preview-card-grid">
+                    <div class="preview-card-field">
+                        <span class="preview-card-lbl">Código</span>
+                        <span class="preview-card-val" id="preview-codigo">—</span>
+                    </div>
+                    <div class="preview-card-field">
+                        <span class="preview-card-lbl">Área / Ubicación</span>
+                        <span class="preview-card-val" id="preview-area-bot">—</span>
+                    </div>
+                    <div class="preview-card-field">
+                        <span class="preview-card-lbl">Estado Actual</span>
+                        <span class="preview-card-val" id="preview-estado-bot">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <div class="form-group" style="max-width: 320px;">
+                    <label style="font-weight: 600;">Área de Registro</label>
+                    {{ form.area }}
+                </div>
+            </div>
         </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const assetSelect = document.getElementById('id_asset_botiquin');
+                const previewPanel = document.getElementById('asset-preview-panel');
+                const areaSelect = document.getElementById('id_area');
+
+                if (!assetSelect) return;
+
+                const rawOptions = [];
+                Array.from(assetSelect.options).forEach(function (opt) {
+                    rawOptions.push({
+                        value: opt.value,
+                        text: opt.text,
+                        code: opt.getAttribute('data-code') || '',
+                        area: opt.getAttribute('data-area') || '',
+                        estado: opt.getAttribute('data-estado') || '',
+                        search: opt.getAttribute('data-search') || opt.text,
+                    });
+                });
+
+                function showPreview(item) {
+                    if (!item || !item.value) {
+                        previewPanel.classList.remove('visible');
+                        return;
+                    }
+                    document.getElementById('preview-codigo').textContent = item.code || '—';
+                    document.getElementById('preview-area-bot').textContent = item.area || '—';
+
+                    const estadoEl = document.getElementById('preview-estado-bot');
+                    const isOk = (item.estado || '').includes('Al Día') || (item.estado || '').includes('Activo');
+                    estadoEl.innerHTML = '<span style="font-weight:700;color:' + (isOk ? '#28a745' : '#fd7e14') + ';">' + (item.estado || '—') + '</span>';
+
+                    if (item.area && areaSelect && !areaSelect.disabled) {
+                        for (var i = 0; i < areaSelect.options.length; i++) {
+                            if (areaSelect.options[i].text === item.area) {
+                                areaSelect.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    previewPanel.classList.add('visible');
+                }
+
+                var ts = new TomSelect(assetSelect, {
+                    valueField: 'value',
+                    labelField: 'text',
+                    searchField: ['code', 'area', 'search'],
+                    options: rawOptions,
+                    maxOptions: null,
+                    placeholder: '--- Seleccione un botiquín ---',
+                    allowEmptyOption: true,
+                    plugins: ['clear_button'],
+                    render: {
+                        option: function (data, escape) {
+                            if (!data.value) return '<div class="option" style="color:#aaa;font-style:italic;">' + escape(data.text) + '</div>';
+                            var isOk = (data.estado || '').includes('Al Día') || (data.estado || '').includes('Activo');
+                            var estadoColor = isOk ? '#28a745' : '#fd7e14';
+                            return '<div class="option">' +
+                                '<div class="bot-opt-code">' +
+                                '<i class="fas fa-first-aid" style="color:var(--primary-color);margin-right:5px;"></i>' +
+                                escape(data.code || data.text) +
+                                '<span style="font-size:0.72rem;font-weight:400;color:' + estadoColor + ';margin-left:8px;">' + escape(data.estado) + '</span>' +
+                                '</div>' +
+                                '<div class="bot-opt-meta">' + escape(data.area) + '</div>' +
+                                '</div>';
+                        },
+                        item: function (data, escape) {
+                            if (!data.value) return '<div>' + escape(data.text) + '</div>';
+                            return '<div><strong>' + escape(data.code || data.text) + '</strong><span style="font-size:0.8rem;color:#666;margin-left:8px;">' + escape(data.area) + '</span></div>';
+                        },
+                        no_results: function (data, escape) {
+                            return '<div class="no-results" style="padding:12px;text-align:center;color:#888;"><i class="fas fa-search" style="margin-right:5px;"></i>Sin resultados para "' + escape(data.input) + '"</div>';
+                        }
+                    },
+                    onChange: function (value) {
+                        showPreview(this.options[value]);
+                    }
+                });
+
+                if (assetSelect.value) {
+                    var sel = rawOptions.find(function (o) { return o.value == assetSelect.value; });
+                    if (sel) showPreview(sel);
+                }
+            });
+        </script>
 
         <div class="card">
             <h3 class="inspection-section-title"><i class="fas fa-list-check"></i> Elementos del Botiquín</h3>

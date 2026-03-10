@@ -12,8 +12,14 @@ from django.contrib.auth import get_user_model
 
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
+import os
+import logging
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+
+logger = logging.getLogger(__name__)
 
 from .models import (
     Area, InspectionSchedule, InspectionSignature,
@@ -1286,7 +1292,12 @@ class FirstAidDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, Eviden
         context['is_participant'] = user in participants
         context['has_signature_profile'] = bool(getattr(user, 'digital_signature', None))
         context['can_sign'] = context['is_participant'] and not context['user_has_signed'] and context['has_signature_profile']
-        
+
+        # Content type for evidence manager
+        from django.contrib.contenttypes.models import ContentType
+        from .models import FirstAidItem
+        context['item_content_type_id'] = ContentType.objects.get_for_model(FirstAidItem).id
+
         return context
 
 class SignFirstAidInspectionView(LoginRequiredMixin, View):
@@ -1339,8 +1350,9 @@ class SignFirstAidInspectionView(LoginRequiredMixin, View):
                 follow_up = FirstAidInspection.objects.create(
                     parent_inspection=inspection,
                     area=inspection.area,
-                    inspector=inspection.inspector, 
+                    inspector=inspection.inspector,
                     inspector_role=inspection.inspector_role,
+                    asset=inspection.asset,  # propagar mismo botiquín
                     inspection_date=follow_up_date,
                     status='Programada',
                 )
@@ -1407,10 +1419,25 @@ class FirstAidReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        items = self.object.items.all()
+        inspection = self.object
+        items = inspection.items.all()
         context['items_exist_count'] = items.filter(status='Existe').count()
         context['items_missing_count'] = items.filter(status='No Existe').count()
         context['any_item_has_evidence'] = any(item.evidences.exists() for item in items)
+
+        # Timeline para el reporte
+        root = inspection
+        while root.parent_inspection:
+            root = root.parent_inspection
+        timeline = [root]
+        def get_descendants(parent):
+            for child in parent.follow_ups.all().order_by('inspection_date', 'pk'):
+                timeline.append(child)
+                get_descendants(child)
+        get_descendants(root)
+        if len(timeline) > 1:
+            context['timeline_inspections'] = timeline
+
         return context
 
 class FirstAidItemCreateView(LoginRequiredMixin, EvidenceMixin, CreateView):
@@ -1662,13 +1689,34 @@ class SignProcessInspectionView(LoginRequiredMixin, View):
                     status='Programada',
                 )
                 for item in failed_items:
-                    ProcessCheckItem.objects.create(
+                    new_item = ProcessCheckItem.objects.create(
                         inspection=follow_up,
                         question=item.question,
                         response='No',
                         item_status='Malo',
                         observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento"
                     )
+                    # Copiar evidencias del ítem original al nuevo ítem del seguimiento
+                    from django.core.files.base import ContentFile
+                    from django.contrib.contenttypes.models import ContentType
+                    import os
+                    item_ct = ContentType.objects.get_for_model(ProcessCheckItem)
+                    for evidence in item.evidences.all():
+                        try:
+                            original_name = os.path.basename(evidence.image.name)
+                            evidence.image.open('rb')
+                            file_content = ContentFile(evidence.image.read(), name=original_name)
+                            evidence.image.close()
+                            InspectionEvidence.objects.create(
+                                content_type=item_ct,
+                                object_id=new_item.pk,
+                                image=file_content,
+                                description=evidence.description or '',
+                                uploaded_by=evidence.uploaded_by
+                            )
+                        except Exception as e:
+                            import logging
+                            logging.getLogger(__name__).warning(f"No se pudo copiar evidencia {evidence.pk}: {e}")
                 messages.info(request, f"Inspección finalizada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
             else:
                 inspection.status = 'Cerrada'
@@ -1710,6 +1758,12 @@ class SignProcessInspectionView(LoginRequiredMixin, View):
 class ProcessReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
     model = ProcessInspection
     template_name = 'inspections/process_report.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        items = self.object.items.all()
+        context['any_item_has_evidence'] = any(item.evidences.exists() for item in items)
+        return context
 
 # 4. Storage
 class StorageListView(LoginRequiredMixin, RolePermissionRequiredMixin, ScheduledInspectionsMixin, ListView):
@@ -1941,13 +1995,34 @@ class SignStorageInspectionView(LoginRequiredMixin, View):
                     status='Programada',
                 )
                 for item in failed_items:
-                    StorageCheckItem.objects.create(
+                    new_item = StorageCheckItem.objects.create(
                         inspection=follow_up,
                         question=item.question,
                         response='No',
                         item_status='Malo',
                         observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento"
                     )
+                    # Copiar evidencias del ítem original al nuevo ítem del seguimiento
+                    from django.core.files.base import ContentFile
+                    from django.contrib.contenttypes.models import ContentType
+                    import os
+                    item_ct = ContentType.objects.get_for_model(StorageCheckItem)
+                    for evidence in item.evidences.all():
+                        try:
+                            original_name = os.path.basename(evidence.image.name)
+                            evidence.image.open('rb')
+                            file_content = ContentFile(evidence.image.read(), name=original_name)
+                            evidence.image.close()
+                            InspectionEvidence.objects.create(
+                                content_type=item_ct,
+                                object_id=new_item.pk,
+                                image=file_content,
+                                description=evidence.description or '',
+                                uploaded_by=evidence.uploaded_by
+                            )
+                        except Exception as e:
+                            import logging
+                            logging.getLogger(__name__).warning(f"No se pudo copiar evidencia {evidence.pk}: {e}")
                 messages.info(request, f"Inspección finalizada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
             else:
                 inspection.status = 'Cerrada'
@@ -1993,6 +2068,8 @@ class StorageReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['signatures'] = self.object.signatures.select_related('user').all()
+        items = self.object.items.all()
+        context['any_item_has_evidence'] = any(item.evidences.exists() for item in items)
         return context
 
 # 5. Forklift
@@ -2214,14 +2291,36 @@ class SignForkliftInspectionView(LoginRequiredMixin, View):
                     status='Programada',
                     forklift_type=inspection.forklift_type
                 )
-                for item in failed_items:
-                    ForkliftCheckItem.objects.create(
+                # Evaluar failed_items en lista ANTES de cambiar el estado de la inspección
+                failed_items_list = list(failed_items.select_related().prefetch_related('evidences'))
+                logger.info(f"[ForkliftSign] Inspeccion #{inspection.pk}: {len(failed_items_list)} items Malo encontrados")
+                for item in failed_items_list:
+                    logger.info(f"  - Item pk={item.pk} question='{item.question[:40]}' evidencias={item.evidences.count()}")
+
+                item_ct = ContentType.objects.get_for_model(ForkliftCheckItem)
+                for item in failed_items_list:
+                    new_item = ForkliftCheckItem.objects.create(
                         inspection=follow_up,
                         question=item.question,
                         response=item.response,
                         item_status='Malo',
                         observations=f"Seguimiento: {item.observations}"[:255] if item.observations else "Seguimiento"
                     )
+                    # Copiar evidencias del ítem original al nuevo ítem
+                    for evidence in item.evidences.all():
+                        try:
+                            with default_storage.open(evidence.image.name, 'rb') as f:
+                                file_data = f.read()
+                            original_name = os.path.basename(evidence.image.name)
+                            InspectionEvidence.objects.create(
+                                content_type=item_ct,
+                                object_id=new_item.pk,
+                                image=ContentFile(file_data, name=original_name),
+                                description=evidence.description or ''
+                            )
+                            logger.info(f"    Evidencia {evidence.pk} copiada al nuevo item {new_item.pk}")
+                        except Exception as e:
+                            logger.error(f"    ERROR copiando evidencia {evidence.pk}: {e}", exc_info=True)
                 messages.info(request, f"Inspección finalizada con hallazgos. Seguimiento generado para {follow_up_date.strftime('%d/%m/%Y')}")
             else:
                 inspection.status = 'Cerrada'

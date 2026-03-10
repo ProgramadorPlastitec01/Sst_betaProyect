@@ -40,3 +40,17 @@ class SystemConfig(models.Model):
             return cls.objects.get(key=key).get_typed_value()
         except cls.DoesNotExist:
             return default
+
+class Plano(models.Model):
+    nombre = models.CharField(max_length=50, unique=True, verbose_name="Nombre del Plano")
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.nombre
+
+    class Meta:
+        verbose_name = "Plano"
+        verbose_name_plural = "Planos"
+        ordering = ['nombre']

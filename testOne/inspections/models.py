@@ -483,10 +483,18 @@ class FirstAidInspection(BaseInspection):
         ('Copasst', 'Copasst'),
     ]
     inspector_role = models.CharField(
-        max_length=20, 
-        choices=ROLE_CHOICES, 
+        max_length=20,
+        choices=ROLE_CHOICES,
         default='Equipo SST',
         verbose_name="Rol del Inspector"
+    )
+    asset = models.ForeignKey(
+        'gestion_activos.Asset',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Botiquín",
+        related_name="first_aid_inspections"
     )
 
     INSPECTION_STATUS_CHOICES = [
@@ -749,6 +757,9 @@ class StorageCheckItem(models.Model):
 
     evidences = GenericRelation('InspectionEvidence')
 
+    class Meta:
+        ordering = ['pk']
+
 class StorageSignature(models.Model):
     inspection = models.ForeignKey(StorageInspection, related_name='signatures', on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Firmante")
@@ -867,6 +878,9 @@ class ForkliftCheckItem(models.Model):
     registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Registrado por")
     
     evidences = GenericRelation('InspectionEvidence')
+
+    class Meta:
+        ordering = ['pk']
 
 class ForkliftSignature(models.Model):
     inspection = models.ForeignKey(ForkliftInspection, related_name='signatures', on_delete=models.CASCADE)

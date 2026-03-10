@@ -5,6 +5,42 @@
 {% block title %}SST - Gestión de Activos{% endblock %}
 {% block header_title %}Gestión de Activos{% endblock %}
 
+{% block extra_head %}
+<style>
+    .compliance-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.76rem;
+        letter-spacing: 0.2px;
+        white-space: nowrap;
+    }
+
+    .badge-success {
+        background-color: #d1e7dd;
+        color: #0f5132;
+    }
+
+    .badge-warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+
+    .badge-danger {
+        background-color: #f8d7da;
+        color: #842029;
+    }
+
+    .badge-secondary {
+        background-color: #e2e3e5;
+        color: #41464b;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="dashboard-header">
     <div>
@@ -127,9 +163,9 @@
         <table>
             <thead>
                 <tr>
-                    <th>Tipo</th>
-                    <th>Código</th>
+                    <th>Tipo - Código</th>
                     <th>Área</th>
+                    <th>Plano</th>
                     <th>Estado</th>
                     <th style="width: 130px;">Acciones</th>
                 </tr>
@@ -137,13 +173,12 @@
             <tbody>
                 {% for asset in assets %}
                 <tr>
-                    <td>
+                    <td
+                        style="font-family: monospace; font-weight: 600; color: #49BAA0; display: flex; align-items: center;">
                         <span class="badge"
-                            style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 4px; font-size: 0.78rem;">
+                            style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 4px; font-size: 0.78rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin-right: 10px;">
                             {{ asset.asset_type.name }}
                         </span>
-                    </td>
-                    <td style="font-family: monospace; font-weight: 600; color: #49BAA0;">
                         {{ asset.code }}
                         {% if asset.temporal %}
                         <span
@@ -152,11 +187,20 @@
                     </td>
                     <td>{{ asset.area }}</td>
                     <td>
+                        {% if asset.plano %}
+                        <span class="badge"
+                            style="background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; padding: 4px 8px; font-size: 0.78rem;">
+                            <i class="fas fa-map" style="margin-right: 4px; color: #adb5bd;"></i>{{ asset.plano.nombre }}
+                        </span>
+                        {% else %}
+                        <span class="text-muted" style="font-size: 0.8rem;">No asignado</span>
+                        {% endif %}
+                    </td>
+                    <td>
                         <span class="compliance-badge {{ asset.estado_css }}" style="font-size: 0.78rem;">
                             {% if asset.estado_actual == 'VENCIDO' or asset.estado_actual == 'MANTENIMIENTO_VENCIDO' %}
                             <i class="fas fa-times-circle" style="margin-right: 4px;"></i>
-                            {% elif asset.estado_actual == 'PROXIMO_A_VENCER' or asset.estado_actual ==
-                            'PROXIMO_MANTENIMIENTO' %}
+                            {% elif asset.estado_actual == 'PROXIMO_A_VENCER' or asset.estado_actual == 'PROXIMO_MANTENIMIENTO' %}
                             <i class="fas fa-exclamation-triangle" style="margin-right: 4px;"></i>
                             {% else %}
                             <i class="fas fa-check-circle" style="margin-right: 4px;"></i>
@@ -182,7 +226,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 48px 20px; color: var(--text-light);">
+                    <td colspan="5" style="text-align: center; padding: 48px 20px; color: var(--text-light);">
                         <i class="fas fa-boxes"
                             style="font-size: 2.5rem; margin-bottom: 12px; opacity: 0.3; display: block;"></i>
                         No se encontraron activos.

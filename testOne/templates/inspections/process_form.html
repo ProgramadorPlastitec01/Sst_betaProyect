@@ -4,6 +4,8 @@
 {% block title %}SST - {% if object %}Editar{% else %}Nueva{% endif %} Inspección de Procesos{% endblock %}
 
 {% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+<script src="{% static 'js/evidence_manager.js' %}"></script>
 <!-- Reuse existing styles -->
 <style>
     .inspection-card {
@@ -173,10 +175,11 @@
                 <table class="item-table">
                     <thead>
                         <tr>
-                            <th style="width: 40%;">Ítem a Evaluar</th>
-                            <th style="width: 15%;">Cumple</th>
-                            <th style="width: 15%;">Estado</th>
-                            <th style="width: 30%;">Observaciones</th>
+                            <th style="width: 35%;">Ítem a Evaluar</th>
+                            <th style="width: 10%;">Cumple</th>
+                            <th style="width: 12%;">Estado</th>
+                            <th style="width: 28%;">Observaciones</th>
+                            <th style="width: 15%; text-align: center;"><i class="fas fa-camera"></i> Evidencia</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -204,15 +207,26 @@
                                 <div class="text-danger small">{{ item_form.observations.errors }}</div>
                                 {% endif %}
                             </td>
-                        </tr>
-                        <tr class="evidence-row" style="background: #fdfdfd;">
-                            <td colspan="4">
-                                <div style="padding: 8px; border-top: 1px dashed #eee;">
-                                    <label
-                                        style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 5px;">
-                                        <i class="fas fa-camera"></i> Evidencia del Item
+                            <td style="vertical-align: middle; text-align: center;">
+                                <div class="evidence-container"
+                                    id="evidence-container-{{ item_content_type_id }}-{{ item_form.prefix }}">
+                                    {% if item_form.instance.pk %}
+                                    {% for evidence in item_form.instance.evidences.all %}
+                                    <div class="evidence-wrapper" data-id="{{ evidence.id }}"
+                                        onclick="openEvidencePreview('{{ evidence.image.url }}', '{{ evidence.description|escapejs }}')">
+                                        <img src="{{ evidence.image.url }}" alt="Evidencia">
+                                        <div class="evidence-remove"
+                                            onclick="event.stopPropagation(); deleteEvidence({{ evidence.id }}, this)">
+                                            &times;</div>
+                                    </div>
+                                    {% endfor %}
+                                    {% endif %}
+                                    <label class="evidence-add-btn" title="Agregar evidencia">
+                                        <i class="fas fa-camera"></i>
+                                        <span>Agregar</span>
+                                        <input type="file" accept="image/*" style="display: none;"
+                                            onchange="uploadEvidence(this, '{{ item_content_type_id }}', '{{ item_form.prefix }}')">
                                     </label>
-                                    {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=item_form.instance.pk|default:item_form.prefix evidences=item_form.instance.evidences can_edit=True %}
                                 </div>
                             </td>
                         </tr>

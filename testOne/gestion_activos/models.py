@@ -53,6 +53,14 @@ class Asset(models.Model):
         verbose_name="Area",
         related_name="assets"
     )
+    plano = models.ForeignKey(
+        'system_config.Plano',
+        on_delete=models.SET_NULL,
+        verbose_name="Plano",
+        null=True,
+        blank=True,
+        related_name="activos"
+    )
     fecha_adquisicion = models.DateField(blank=True, null=True, verbose_name="Fecha de Adquisicion")
     activo = models.BooleanField(default=True, verbose_name="Activo")
     # Solo se asigna True cuando se crea desde el flujo de Movimientos como reemplazo.
@@ -105,6 +113,16 @@ class Asset(models.Model):
                     return 'PROXIMO_MANTENIMIENTO'
             return 'OPERATIVO'
 
+        # Botiquin
+        if hasattr(self, 'botiquin_detail'):
+            bot = self.botiquin_detail
+            if bot.fecha_proxima_revision:
+                if bot.fecha_proxima_revision < hoy:
+                    return 'REVISION_VENCIDA'
+                if bot.fecha_proxima_revision <= pronto:
+                    return 'PROXIMA_REVISION'
+            return 'AL_DIA'
+
         return 'SIN_CLASIFICAR'
 
     @property
@@ -119,6 +137,9 @@ class Asset(models.Model):
             'MANTENIMIENTO_VENCIDO': 'Mantenimiento Vencido',
             'PROXIMO_MANTENIMIENTO': 'Proximo Mantenimiento',
             'OPERATIVO': 'Operativo',
+            'REVISION_VENCIDA': 'Revisión Vencida',
+            'PROXIMA_REVISION': 'Próxima Revisión',
+            'AL_DIA': 'Al Día',
             'SIN_CLASIFICAR': 'Sin Clasificar',
         }
         return labels.get(self.estado_actual, self.estado_actual)
@@ -135,6 +156,9 @@ class Asset(models.Model):
             'MANTENIMIENTO_VENCIDO': 'badge-danger',
             'PROXIMO_MANTENIMIENTO': 'badge-warning',
             'OPERATIVO': 'badge-success',
+            'REVISION_VENCIDA': 'badge-danger',
+            'PROXIMA_REVISION': 'badge-warning',
+            'AL_DIA': 'badge-success',
             'SIN_CLASIFICAR': 'badge-secondary',
         }
         return css.get(self.estado_actual, 'badge-secondary')
@@ -244,6 +268,40 @@ class MontacargasDetail(models.Model):
 
     def __str__(self):
         return f"Montacargas: {self.asset.code}"
+
+
+class BotiquinDetail(models.Model):
+    """Datos especificos de un activo tipo Botiquin."""
+
+    asset = models.OneToOneField(
+        Asset,
+        on_delete=models.CASCADE,
+        related_name='botiquin_detail',
+        verbose_name="Activo"
+    )
+    fecha_ultima_revision = models.DateField(
+        verbose_name="Fecha de Última Revisión / Recarga"
+    )
+    fecha_proxima_revision = models.DateField(
+        verbose_name="Próxima Revisión / Recarga",
+        blank=True,
+        null=True,
+        help_text="Se calcula automáticamente: +1 año desde la fecha de última revisión."
+    )
+
+    class Meta:
+        verbose_name = "Detalle de Botiquín"
+        verbose_name_plural = "Detalles de Botiquín"
+
+    def save(self, *args, **kwargs):
+        # Calcular automáticamente la próxima revisión (+1 año)
+        if self.fecha_ultima_revision:
+            from dateutil.relativedelta import relativedelta
+            self.fecha_proxima_revision = self.fecha_ultima_revision + relativedelta(years=1)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Botiquín: {self.asset.code}"
 
 
 class MovimientoActivo(models.Model):

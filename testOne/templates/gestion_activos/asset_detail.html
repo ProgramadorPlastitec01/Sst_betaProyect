@@ -797,13 +797,19 @@
             </div>
             <div>
                 <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Plano
+                    Asignado</label>
+                <div style="font-weight: 600;">{% if asset.plano %}{{ asset.plano.nombre }}{% else %}<span
+                        class="text-muted">No asignado</span>{% endif %}</div>
+            </div>
+            <div>
+                <label
                     style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Estado
                     de Cumplimiento</label>
                 <span class="compliance-badge {{ asset.estado_css }}">
                     {% if asset.estado_actual == 'VENCIDO' or asset.estado_actual == 'MANTENIMIENTO_VENCIDO' %}
                     <i class="fas fa-times-circle" style="margin-right: 4px;"></i>
-                    {% elif asset.estado_actual == 'PROXIMO_A_VENCER' or asset.estado_actual == 'PROXIMO_MANTENIMIENTO'
-                    %}
+                    {% elif asset.estado_actual == 'PROXIMO_A_VENCER' or asset.estado_actual == 'PROXIMO_MANTENIMIENTO'%}
                     <i class="fas fa-exclamation-triangle" style="margin-right: 4px;"></i>
                     {% else %}
                     <i class="fas fa-check-circle" style="margin-right: 4px;"></i>
@@ -896,6 +902,28 @@
                     style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Próximo
                     Mantenimiento Preventivo</label>
                 <div style="font-weight: 600;">{{ mnt.fecha_proximo_mantenimiento|date:"d/m/Y" }}</div>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% endif %}
+
+    {% if asset.botiquin_detail %}
+    {% with bot=asset.botiquin_detail %}
+    <div class="card">
+        <h3 class="inspection-section-title"><i class="fas fa-medkit"></i> Detalles del Botiquín</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px;">
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Última
+                    Revisión</label>
+                <div style="font-weight: 600;">{{ bot.fecha_ultima_revision|date:"d/m/Y" }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Próxima
+                    Revisión (Proyectada)</label>
+                <div style="font-weight: 600;">{{ bot.fecha_proxima_revision|date:"d/m/Y" }}</div>
             </div>
         </div>
     </div>

@@ -144,7 +144,7 @@
         }
     </script>
 
-    <!-- General Info Card (MOVIDO ARRIBA) -->
+    <!-- General Info Card (/MOVIDO ARRIBA) -->
     <div class="card">
         <h3 class="inspection-section-title"><i class="fas fa-info-circle"></i> Información General</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px;">
@@ -168,6 +168,31 @@
                     style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Rol</label>
                 <div style="font-weight: 600;">{{ object.inspector_role }}</div>
             </div>
+            {% if object.asset %}
+            <div style="grid-column: span 2;">
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">
+                    <i class="fas fa-first-aid" style="color: var(--primary-color);"></i> Botiquín Inspeccionado
+                </label>
+                <div
+                    style="display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #f0faf7, #e6f7f1); border: 1px solid #a8d5c2; border-left: 3px solid var(--primary-color); border-radius: 8px; padding: 10px 14px;">
+                    <div>
+                        <div style="font-weight: 700; font-size: 1rem; color: #155724;">{{ object.asset.code }}</div>
+                        <div style="font-size: 0.8rem; color: #5a8a72; margin-top: 2px;">
+                            <i class="fas fa-map-marker-alt"></i> {{ object.asset.area }}
+                            &nbsp;·&nbsp;
+                            <span class="compliance-badge {{ object.asset.estado_css }}" style="font-size:0.72rem;">{{
+                                object.asset.estado_label }}</span>
+                        </div>
+                    </div>
+                    <a href="{% url 'asset_detail' object.asset.pk %}" class="btn"
+                        style="background: white; border: 1px solid var(--primary-color); color: var(--primary-color); font-size:0.78rem; padding: 4px 10px; margin-left: auto;"
+                        title="Ver activo">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         {% if object.observations %}
@@ -271,7 +296,9 @@
                         </td>
                         <td style="font-size: 0.85rem;">{{ item.observations|default:"-" }}</td>
                         <td style="vertical-align: middle; text-align: center;">
-                            {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=item.pk evidences=item.evidences.all can_edit=False %}
+                            {% include 'inspections/includes/evidence_manager.html' with
+                            content_type_id=item_content_type_id object_id=item.pk evidences=item.evidences.all
+                            can_edit=False %}
                         </td>
 
                         {% if object.status == 'En proceso' or object.status == 'Programada' %}

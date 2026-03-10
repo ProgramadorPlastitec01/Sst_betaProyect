@@ -226,48 +226,69 @@ ExtinguisherItemFormSet = inlineformset_factory(
 class FirstAidInspectionForm(forms.ModelForm):
     class Meta:
         model = FirstAidInspection
-        fields = ['inspection_date', 'area', 'inspector_role']
+        fields = ['inspection_date', 'asset', 'area', 'inspector_role']
         widgets = {
             'inspection_date': forms.DateInput(
                 format='%Y-%m-%d',
                 attrs={'type': 'date'}
             ),
+            'asset': AssetSelect(attrs={
+                'class': 'form-control asset-item-select',
+                'style': 'width: 100%;',
+                'id': 'id_asset_botiquin'
+            }),
         }
-    
+
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         from django.utils import timezone
-        
+        from gestion_activos.models import Asset, AssetType
+
         # 1. Date Logic
         if not self.instance.pk:
             if 'inspection_date' not in self.initial:
                 self.fields['inspection_date'].initial = timezone.now().date()
-        
+
         if self.instance.pk and self.instance.inspection_date:
             self.fields['inspection_date'].widget.attrs['value'] = self.instance.inspection_date.strftime('%Y-%m-%d')
-        
-        # 2. Inspector Role Logic
+
+        # 2. Inspector Role — automático desde sesión, no se muestra en template
+        self.fields['inspector_role'].required = False
         if self.user:
             user_role_name = self.user.get_role_name()
             role_choices = [c[0] for c in self.fields['inspector_role'].choices]
-            
             if user_role_name in role_choices:
                 self.fields['inspector_role'].initial = user_role_name
-                self.fields['inspector_role'].widget.attrs.update({
-                    'readonly': 'readonly',
-                    'style': 'pointer-events: none; background-color: #f8f9fa; border-color: #e2e8f0;'
-                })
-            
+
+        # 3. Asset — solo Botiquines activos
+        try:
+            tipo_botiquin = AssetType.objects.get(name='Botiquín')
+            if self.instance.pk and self.instance.asset:
+                qs = Asset.objects.filter(pk=self.instance.asset.pk)
+                self.fields['asset'].disabled = True
+            else:
+                qs = Asset.objects.filter(
+                    asset_type=tipo_botiquin,
+                    activo=True
+                ).select_related('area', 'botiquin_detail').order_by('code')
+        except AssetType.DoesNotExist:
+            qs = Asset.objects.none()
+
+        self.fields['asset'].queryset = qs
+        self.fields['asset'].required = True
+        self.fields['asset'].empty_label = '--- Seleccione un Botiquín ---'
+
+        # 4. Área
         self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
         self.fields['area'].empty_label = "Seleccione un área"
-        
-        # Lock area if provided (e.g. from schedule)
+
         if self.initial.get('area'):
             self.fields['area'].widget.attrs.update({
                 'style': 'pointer-events: none; background-color: #e9ecef;',
                 'readonly': 'readonly'
             })
+
 
 class FirstAidItemForm(forms.ModelForm):
     # Permitir cantidad 0: PositiveIntegerField de Django valida >= 1,
@@ -528,17 +549,13 @@ class ForkliftInspectionForm(forms.ModelForm):
         if self.instance.pk and self.instance.inspection_date:
             self.fields['inspection_date'].widget.attrs['value'] = self.instance.inspection_date.strftime('%Y-%m-%d')
         
-        # 2. Inspector Role Logic
+        # 2. Inspector Role Logic — se asigna desde el usuario, no se muestra en el form
+        self.fields['inspector_role'].required = False
         if self.user:
             user_role_name = self.user.get_role_name()
             role_choices = [c[0] for c in self.fields['inspector_role'].choices]
-            
             if user_role_name in role_choices:
                 self.fields['inspector_role'].initial = user_role_name
-                self.fields['inspector_role'].widget.attrs.update({
-                    'readonly': 'readonly',
-                    'style': 'pointer-events: none; background-color: #f8f9fa; border-color: #e2e8f0;'
-                })
 
         # 3. Asset Queryset (Only Forklifts)
         try:

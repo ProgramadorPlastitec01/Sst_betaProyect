@@ -1,5 +1,6 @@
 from django import forms
-from .models import Asset, ExtintorDetail, MontacargasDetail, AssetType, TipoExtintor
+from .models import Asset, ExtintorDetail, MontacargasDetail, BotiquinDetail, AssetType, TipoExtintor
+from system_config.models import Plano
 
 
 class AssetTypeForm(forms.ModelForm):
@@ -19,11 +20,12 @@ class AssetTypeForm(forms.ModelForm):
 class AssetForm(forms.ModelForm):
     class Meta:
         model = Asset
-        fields = ['code', 'asset_type', 'area', 'fecha_adquisicion', 'activo', 'observaciones']
+        fields = ['code', 'asset_type', 'area', 'plano', 'fecha_adquisicion', 'activo', 'observaciones']
         widgets = {
             'code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Código único del activo'}),
             'asset_type': forms.Select(attrs={'class': 'form-control', 'id': 'id_asset_type'}),
             'area': forms.Select(attrs={'class': 'form-control'}),
+            'plano': forms.Select(attrs={'class': 'form-control'}),
             'fecha_adquisicion': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -33,6 +35,8 @@ class AssetForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Solo mostrar tipos de activo que tienen lógica implementada
         self.fields['asset_type'].queryset = AssetType.objects.all()
+        self.fields['plano'].queryset = Plano.objects.filter(activo=True)
+        self.fields['plano'].empty_label = 'Seleccione un plano...'
 
 
 class ExtintorDetailForm(forms.ModelForm):
@@ -61,15 +65,28 @@ class ExtintorDetailForm(forms.ModelForm):
 class MontacargasDetailForm(forms.ModelForm):
     class Meta:
         model = MontacargasDetail
-        fields = ['marca', 'modelo', 'numero_serie', 'capacidad_carga_kg',
-                  'fecha_ultimo_mantenimiento', 'fecha_proximo_mantenimiento']
+        fields = ['marca', 'modelo', 'numero_serie', 'tipo_montacargas',
+                  'capacidad_carga_kg', 'fecha_ultimo_mantenimiento', 'fecha_proximo_mantenimiento']
         widgets = {
             'marca': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Marca'}),
             'modelo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Modelo'}),
             'numero_serie': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de serie'}),
+            'tipo_montacargas': forms.Select(attrs={'class': 'form-control'}),
             'capacidad_carga_kg': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
             'fecha_ultimo_mantenimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'fecha_proximo_mantenimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+
+
+class BotiquinDetailForm(forms.ModelForm):
+    class Meta:
+        model = BotiquinDetail
+        fields = ['fecha_ultima_revision']
+        widgets = {
+            'fecha_ultima_revision': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+        labels = {
+            'fecha_ultima_revision': 'Última Revisión / Recarga',
         }
 
 

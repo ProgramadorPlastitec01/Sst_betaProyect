@@ -114,21 +114,34 @@
                         <i class="fas fa-boxes"></i> <span>Gestión de Activos</span>
                     </a>
                 </li>
-                <li>
-                    <a href="{% url 'asset_report' %}"
-                        class="{% if request.resolver_match.url_name == 'asset_report' %}active{% endif %}">
-                        <i class="fas fa-chart-pie"></i> <span>Reporte</span>
-                    </a>
-                </li>
                 {% endif %}
 
                 {% has_permission 'reports' 'view' as can_view_reports %}
-                {% if can_view_reports %}
+                {% if can_view_assets or can_view_reports %}
                 <li>
-                    <a href="{% url 'inspection_reports' %}"
-                        class="{% if request.resolver_match.url_name  ==  'inspection_reports' %}active{% endif %}">
-                        <i class="fas fa-chart-line"></i> <span>Consultas</span>
-                    </a>
+                    <button class="nav-group-trigger" id="reportes-trigger" type="button">
+                        <i class="fas fa-chart-bar nav-icon"></i>
+                        <span>Reportes</span>
+                        <i class="fas fa-chevron-down chevron"></i>
+                    </button>
+                    <ul class="sidebar-submenu" id="reportes-submenu">
+                        {% if can_view_assets %}
+                        <li>
+                            <a href="{% url 'asset_report' %}"
+                                class="{% if request.resolver_match.url_name == 'asset_report' %}active{% endif %}">
+                                <i class="fas fa-boxes"></i> <span>Activos</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_view_reports %}
+                        <li>
+                            <a href="{% url 'inspection_reports' %}"
+                                class="{% if request.resolver_match.url_name == 'inspection_reports' %}active{% endif %}">
+                                <i class="fas fa-clipboard-list"></i> <span>Inspecciones</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
                 </li>
                 {% endif %}
             </ul>
@@ -347,6 +360,31 @@
                     } else {
                         submenu.classList.add('open');
                         trigger.classList.add('open');
+                    }
+                });
+            }
+
+            // ── Reportes submenu ──
+            var repTrigger = document.getElementById('reportes-trigger');
+            var repSubmenu = document.getElementById('reportes-submenu');
+            if (repTrigger && repSubmenu) {
+                var reportPaths = ['asset-report', 'asset_report', 'reports', 'inspection-reports'];
+                var currentPath = window.location.pathname;
+                var isReportActive = reportPaths.some(function (p) {
+                    return currentPath.indexOf(p) !== -1;
+                });
+                if (isReportActive) {
+                    repSubmenu.classList.add('open');
+                    repTrigger.classList.add('open');
+                }
+                repTrigger.addEventListener('click', function () {
+                    var isOpen = repSubmenu.classList.contains('open');
+                    if (isOpen) {
+                        repSubmenu.classList.remove('open');
+                        repTrigger.classList.remove('open');
+                    } else {
+                        repSubmenu.classList.add('open');
+                        repTrigger.classList.add('open');
                     }
                 });
             }

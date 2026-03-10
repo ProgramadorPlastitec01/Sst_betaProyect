@@ -6,8 +6,8 @@ from django.contrib import messages
 from django.db.models import Q
 from django.http import JsonResponse
 
-from .models import Asset, AssetType, ExtintorDetail, MontacargasDetail, TipoExtintor
-from .forms import AssetForm, ExtintorDetailForm, MontacargasDetailForm, AssetTypeForm, TipoExtintorForm
+from .models import Asset, AssetType, ExtintorDetail, MontacargasDetail, BotiquinDetail, TipoExtintor
+from .forms import AssetForm, ExtintorDetailForm, MontacargasDetailForm, BotiquinDetailForm, AssetTypeForm, TipoExtintorForm
 from roles.mixins import RolePermissionRequiredMixin
 
 
@@ -98,7 +98,7 @@ class AssetListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
     context_object_name = 'assets'
 
     def get_queryset(self):
-        qs = Asset.objects.select_related('asset_type', 'area').all()
+        qs = Asset.objects.select_related('asset_type', 'area', 'plano').all()
 
         f_type = self.request.GET.get('tipo', '')
         f_area = self.request.GET.get('area', '')
@@ -135,7 +135,7 @@ class AssetListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
 
         # Stats
         all_assets = Asset.objects.select_related(
-            'asset_type'
+            'asset_type', 'area', 'plano'
         ).prefetch_related('extintor_detail', 'montacargas_detail').all()
         context['total_assets'] = all_assets.count()
         context['activos_count'] = sum(
@@ -159,7 +159,7 @@ class AssetDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailVie
 
     def get_queryset(self):
         return Asset.objects.select_related(
-            'asset_type', 'area'
+            'asset_type', 'area', 'plano'
         ).prefetch_related('extintor_detail', 'montacargas_detail')
 
 
@@ -174,6 +174,8 @@ class AssetCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, View):
             return ExtintorDetailForm(post_data, instance=instance), 'extintor'
         if 'montacarga' in name_lower:
             return MontacargasDetailForm(post_data, instance=instance), 'montacargas'
+        if 'botiqu' in name_lower:
+            return BotiquinDetailForm(post_data, instance=instance), 'botiquin'
         return None, None
 
     def get(self, request):
@@ -238,6 +240,8 @@ class AssetUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, View):
             return asset.extintor_detail, 'extintor'
         if hasattr(asset, 'montacargas_detail'):
             return asset.montacargas_detail, 'montacargas'
+        if hasattr(asset, 'botiquin_detail'):
+            return asset.botiquin_detail, 'botiquin'
         return None, None
 
     def _get_detail_form(self, asset_type_name, post_data=None, instance=None):
@@ -246,6 +250,8 @@ class AssetUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, View):
             return ExtintorDetailForm(post_data, instance=instance), 'extintor'
         if 'montacarga' in name_lower:
             return MontacargasDetailForm(post_data, instance=instance), 'montacargas'
+        if 'botiqu' in name_lower:
+            return BotiquinDetailForm(post_data, instance=instance), 'botiquin'
         return None, None
 
     def get(self, request, pk):
@@ -328,6 +334,9 @@ class AssetTypeDetailFormView(LoginRequiredMixin, View):
         elif 'montacarga' in name_lower:
             form = MontacargasDetailForm()
             detail_type = 'montacargas'
+        elif 'botiqu' in name_lower:
+            form = BotiquinDetailForm()
+            detail_type = 'botiquin'
         else:
             return JsonResponse({'html': ''})
 
@@ -427,6 +436,7 @@ class AssetInspectionHistoryView(LoginRequiredMixin, View):
     INSPECTION_SOURCES = [
         ('inspections.ExtinguisherInspection', 'items',  'Extintor',    'extinguisher_detail'),
         ('inspections.ForkliftInspection',     'direct', 'Montacargas', 'forklift_detail'),
+        ('inspections.FirstAidInspection',     'direct', 'Botiquín',    'first_aid_detail'),
     ]
 
     def _build_queryset(self, Model, rel_type, asset):
@@ -917,8 +927,10 @@ class AssetInventoryReportView(LoginRequiredMixin, RolePermissionRequiredMixin, 
         f_estado = request.GET.get('estado', '')
         f_temporal = request.GET.get('temporal', '')
 
-        # Base queryset
-        qs = Asset.objects.select_related('asset_type', 'area').prefetch_related('extintor_detail', 'montacargas_detail').all()
+        # Base queryset — incluye botiquin_detail para evitar N+1 queries
+        qs = Asset.objects.select_related('asset_type', 'area', 'plano').prefetch_related(
+            'extintor_detail', 'montacargas_detail', 'botiquin_detail'
+        ).all()
 
         if f_area:
             qs = qs.filter(area_id=f_area)
@@ -934,10 +946,16 @@ class AssetInventoryReportView(LoginRequiredMixin, RolePermissionRequiredMixin, 
         if f_estado:
             assets_list = [a for a in assets_list if a.estado_actual == f_estado]
 
-        # KPIs
+        # KPIs — cada tipo de activo tiene su propio vocabulario de estados
         total_assets = len(assets_list)
-        total_activos = sum(1 for a in assets_list if a.estado_actual in ('ACTIVO', 'OPERATIVO'))
-        total_vencidos = sum(1 for a in assets_list if a.estado_actual in ('VENCIDO', 'MANTENIMIENTO_VENCIDO'))
+        # Activos/Operativos/Al día (estado óptimo por tipo)
+        total_activos = sum(1 for a in assets_list if a.estado_actual in (
+            'ACTIVO', 'OPERATIVO', 'AL_DIA', 'PROXIMA_REVISION', 'PROXIMO_A_VENCER', 'PROXIMO_MANTENIMIENTO'
+        ))
+        # Vencidos (estado crítico por tipo)
+        total_vencidos = sum(1 for a in assets_list if a.estado_actual in (
+            'VENCIDO', 'MANTENIMIENTO_VENCIDO', 'REVISION_VENCIDA'
+        ))
         total_reemplazados = sum(1 for a in assets_list if a.estado_actual == 'REEMPLAZADO')
         total_fueraservicio = sum(1 for a in assets_list if a.estado_actual == 'FUERA_DE_SERVICIO')
         total_temporales = sum(1 for a in assets_list if a.temporal)
@@ -973,9 +991,11 @@ class AssetInventoryReportView(LoginRequiredMixin, RolePermissionRequiredMixin, 
         chart_area = {'labels': list(area_counts.keys()), 'data': list(area_counts.values())}
         chart_temp = {'labels': list(temporal_counts.keys()), 'data': list(temporal_counts.values())}
 
-        # Compliance Indicador: Activos FIJOS operativos vs Total FIJOS (excluyendo fuera de servicio y reemplazados)
-        activos_fijos_optimos = sum(1 for a in assets_list if not a.temporal and a.estado_actual in ('ACTIVO', 'OPERATIVO'))
-        activos_fijos_base = sum(1 for a in assets_list if not a.temporal and a.estado_actual not in ('FUERA_DE_SERVICIO', 'REEMPLAZADO'))
+        # Compliance: activos fijos en estado óptimo vs total fijos elegibles
+        ESTADOS_OPTIMOS = ('ACTIVO', 'OPERATIVO', 'AL_DIA', 'PROXIMA_REVISION', 'PROXIMO_A_VENCER', 'PROXIMO_MANTENIMIENTO')
+        ESTADOS_EXCLUIDOS = ('FUERA_DE_SERVICIO', 'REEMPLAZADO')
+        activos_fijos_optimos = sum(1 for a in assets_list if not a.temporal and a.estado_actual in ESTADOS_OPTIMOS)
+        activos_fijos_base = sum(1 for a in assets_list if not a.temporal and a.estado_actual not in ESTADOS_EXCLUIDOS)
         cumplimiento = (activos_fijos_optimos / activos_fijos_base * 100) if activos_fijos_base > 0 else 0
 
         context = {

@@ -4,7 +4,11 @@
 {% block title %}SST - {% if object %}Editar{% else %}Nueva{% endif %} Inspección de Montacargas{% endblock %}
 
 {% block extra_head %}
-<!-- Reuse existing styles -->
+<link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+<script src="{% static 'js/evidence_manager.js' %}"></script>
+<!-- Tom Select (searchable dropdown) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <style>
     .inspection-card {
         background: white;
@@ -81,6 +85,155 @@
         width: 100%;
         min-height: 60px;
     }
+
+    /* Tom Select - montacargas selector */
+    .ts-wrapper.form-control,
+    .ts-wrapper {
+        padding: 0 !important;
+        border: none !important;
+        background: #ffffff !important;
+    }
+
+    .ts-control,
+    .ts-control.has-items,
+    .ts-control.focus {
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 6px !important;
+        font-size: 0.9rem !important;
+        min-height: 42px !important;
+        box-shadow: none !important;
+        color: var(--text-color, #333) !important;
+    }
+
+    .ts-control input,
+    .ts-control input:focus {
+        background: #ffffff !important;
+        color: var(--text-color, #333) !important;
+        opacity: 1 !important;
+    }
+
+    .ts-control:focus-within,
+    .ts-wrapper.focus .ts-control {
+        border-color: var(--primary-color) !important;
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15) !important;
+        background: #ffffff !important;
+    }
+
+    .ts-dropdown,
+    .ts-dropdown-content {
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12) !important;
+        font-size: 0.88rem !important;
+        z-index: 9999 !important;
+    }
+
+    .ts-dropdown-content {
+        max-height: 280px;
+        overflow-y: auto;
+    }
+
+    .ts-dropdown .option {
+        background: #ffffff !important;
+        color: var(--text-color, #333) !important;
+        padding: 9px 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .ts-dropdown .option:hover,
+    .ts-dropdown .option.active {
+        background: #f0f7ff !important;
+        color: #1a3c5e !important;
+    }
+
+    .mnt-opt-code {
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: #1a3c5e;
+    }
+
+    .mnt-opt-meta {
+        font-size: 0.76rem;
+        color: #888;
+        margin-top: 2px;
+    }
+
+    /* Preview card del montacargas */
+    .asset-preview-card {
+        display: none;
+        background: linear-gradient(135deg, #f0f7ff 0%, #e8f4fd 100%);
+        border: 1px solid #c5dff5;
+        border-left: 4px solid var(--primary-color);
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-top: 16px;
+        animation: fadeInCard 0.25s ease;
+    }
+
+    @keyframes fadeInCard {
+        from {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .asset-preview-card.visible {
+        display: block;
+    }
+
+    .preview-card-header {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--primary-color);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .preview-card-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px 16px;
+    }
+
+    @media (max-width: 768px) {
+        .preview-card-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .preview-card-field {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .preview-card-lbl {
+        font-size: 0.60rem;
+        color: #5a8ab0;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .preview-card-val {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #1a3c5e;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 </style>
 {% endblock %}
 
@@ -127,35 +280,32 @@
                 </div>
             </div>
 
-            <!-- Previsualización del Activo (Dinámico) -->
-            <div id="asset-preview-panel" class="mt-4 p-3"
-                style="background: #f8f9fa; border-radius: 8px; border-left: 4px solid #49BAA0; display: none; margin-top: 20px;">
-                <div class="row">
-                    <div class="col-md-3">
-                        <small class="text-muted d-block">Marca / Modelo</small>
-                        <strong id="preview-marca-modelo">-</strong>
+            <!-- Tarjeta preview del montacargas seleccionado -->
+            <div id="asset-preview-panel" class="asset-preview-card">
+                <div class="preview-card-header">
+                    <i class="fas fa-truck-moving"></i> Información del equipo seleccionado
+                </div>
+                <div class="preview-card-grid">
+                    <div class="preview-card-field">
+                        <span class="preview-card-lbl">Marca / Modelo</span>
+                        <span class="preview-card-val" id="preview-marca-modelo">—</span>
                     </div>
-                    <div class="col-md-3">
-                        <small class="text-muted d-block">Tipo de Energía</small>
-                        <strong id="preview-fuel">-</strong>
+                    <div class="preview-card-field">
+                        <span class="preview-card-lbl">Tipo de Energía</span>
+                        <span class="preview-card-val" id="preview-fuel">—</span>
                     </div>
-                    <div class="col-md-3">
-                        <small class="text-muted d-block">Ubicación / Área</small>
-                        <strong id="preview-area">-</strong>
+                    <div class="preview-card-field">
+                        <span class="preview-card-lbl">Área / Ubicación</span>
+                        <span class="preview-card-val" id="preview-area">—</span>
                     </div>
-                    <div class="col-md-3">
-                        <small class="text-muted d-block">Estado Actual</small>
-                        <span id="preview-estado" class="badge">--</span>
+                    <div class="preview-card-field">
+                        <span class="preview-card-lbl">Estado Actual</span>
+                        <span class="preview-card-val" id="preview-estado">—</span>
                     </div>
                 </div>
             </div>
 
             <div class="form-grid mt-4">
-                <div class="form-group">
-                    <label>Rol del Inspector</label>
-                    {{ form.inspector_role }}
-                </div>
-
                 <div class="form-group">
                     <label>Área de Registro</label>
                     {{ form.area }}
@@ -170,39 +320,95 @@
                 const previewPanel = document.getElementById('asset-preview-panel');
                 const areaSelect = document.getElementById('id_area');
 
-                function updatePreview() {
-                    if (!assetSelect) return;
-                    const selected = assetSelect.options[assetSelect.selectedIndex];
-                    if (selected && selected.value) {
-                        previewPanel.style.display = 'block';
-                        document.getElementById('preview-marca-modelo').textContent =
-                            (selected.getAttribute('data-marca') || '') + ' ' + (selected.getAttribute('data-modelo') || '');
-                        document.getElementById('preview-fuel').textContent = selected.getAttribute('data-fuel') || '-';
-                        document.getElementById('preview-area').textContent = selected.getAttribute('data-area') || '-';
+                if (!assetSelect) return;
 
-                        const estado = selected.getAttribute('data-estado') || '-';
-                        const elEstado = document.getElementById('preview-estado');
-                        elEstado.textContent = estado;
+                // Extraer data-attributes de cada option ANTES de inicializar Tom Select
+                const rawOptions = [];
+                Array.from(assetSelect.options).forEach(opt => {
+                    rawOptions.push({
+                        value: opt.value,
+                        text: opt.text,
+                        code: opt.getAttribute('data-code') || '',
+                        area: opt.getAttribute('data-area') || '',
+                        marca: opt.getAttribute('data-marca') || '',
+                        modelo: opt.getAttribute('data-modelo') || '',
+                        fuel: opt.getAttribute('data-fuel') || '',
+                        estado: opt.getAttribute('data-estado') || '',
+                        search: opt.getAttribute('data-search') || opt.text,
+                    });
+                });
 
-                        elEstado.className = 'badge ' + (estado.includes('Operativo') || estado.includes('Activo') ? 'badge-success' : 'badge-warning');
+                function showPreview(item) {
+                    if (!item || !item.value) {
+                        previewPanel.classList.remove('visible');
+                        return;
+                    }
+                    document.getElementById('preview-marca-modelo').textContent =
+                        ((item.marca || '') + ' ' + (item.modelo || '')).trim() || '—';
+                    document.getElementById('preview-fuel').textContent = item.fuel || '—';
+                    document.getElementById('preview-area').textContent = item.area || '—';
 
-                        const assetArea = selected.getAttribute('data-area');
-                        if (assetArea && areaSelect && !areaSelect.readOnly && !areaSelect.style.pointerEvents) {
-                            for (let i = 0; i < areaSelect.options.length; i++) {
-                                if (areaSelect.options[i].text === assetArea) {
-                                    areaSelect.selectedIndex = i;
-                                    break;
-                                }
+                    const estadoEl = document.getElementById('preview-estado');
+                    const estadoColor = (item.estado || '').includes('Operativo') || (item.estado || '').includes('Activo')
+                        ? '#28a745' : '#fd7e14';
+                    estadoEl.innerHTML = `<span style="font-weight:700;color:${estadoColor};">${item.estado || '—'}</span>`;
+
+                    // Auto-seleccionar área del activo si el campo no está bloqueado
+                    if (item.area && areaSelect && !areaSelect.disabled) {
+                        for (let i = 0; i < areaSelect.options.length; i++) {
+                            if (areaSelect.options[i].text === item.area) {
+                                areaSelect.selectedIndex = i;
+                                break;
                             }
                         }
-                    } else {
-                        previewPanel.style.display = 'none';
                     }
+                    previewPanel.classList.add('visible');
                 }
 
-                if (assetSelect) {
-                    assetSelect.addEventListener('change', updatePreview);
-                    updatePreview();
+                // Inicializar Tom Select
+                const ts = new TomSelect(assetSelect, {
+                    valueField: 'value',
+                    labelField: 'text',
+                    searchField: ['code', 'marca', 'modelo', 'fuel', 'area', 'search'],
+                    options: rawOptions,
+                    maxOptions: null,
+                    placeholder: '--- Seleccione un montacargas ---',
+                    allowEmptyOption: true,
+                    plugins: ['clear_button'],
+                    render: {
+                        option: function (data, escape) {
+                            if (!data.value) {
+                                return `<div class="option" style="color:#aaa;font-style:italic;">${escape(data.text)}</div>`;
+                            }
+                            const estadoColor = (data.estado || '').includes('Operativo') || (data.estado || '').includes('Activo')
+                                ? '#28a745' : '#fd7e14';
+                            return `<div class="option">
+                                <div class="mnt-opt-code">
+                                    <i class="fas fa-truck-moving" style="color:var(--primary-color);margin-right:5px;"></i>
+                                    ${escape(data.code || data.text)}
+                                    <span style="font-size:0.72rem;font-weight:400;color:${estadoColor};margin-left:8px;">${escape(data.estado)}</span>
+                                </div>
+                                <div class="mnt-opt-meta">${escape(data.marca)} ${escape(data.modelo)} &nbsp;·&nbsp; ${escape(data.fuel)} &nbsp;·&nbsp; ${escape(data.area)}</div>
+                            </div>`;
+                        },
+                        item: function (data, escape) {
+                            if (!data.value) return `<div>${escape(data.text)}</div>`;
+                            return `<div><strong>${escape(data.code || data.text)}</strong><span style="font-size:0.8rem;color:#666;margin-left:8px;">${escape(data.marca)} ${escape(data.modelo)}</span></div>`;
+                        },
+                        no_results: function (data, escape) {
+                            return `<div class="no-results" style="padding:12px;text-align:center;color:#888;"><i class="fas fa-search" style="margin-right:5px;"></i>Sin resultados para "${escape(data.input)}"</div>`;
+                        }
+                    },
+                    onChange: function (value) {
+                        const item = this.options[value];
+                        showPreview(item);
+                    }
+                });
+
+                // Disparar preview si ya hay valor seleccionado (modo edición)
+                if (assetSelect.value) {
+                    const sel = rawOptions.find(o => o.value == assetSelect.value);
+                    if (sel) showPreview(sel);
                 }
             });
         </script>
@@ -216,7 +422,6 @@
             <div class="alert alert-danger">{{ items.non_form_errors }}</div>
             {% endif %}
 
-            <!-- SECTION 1: MONTACARGAS APAGADO -->
             <h4 class="subsection-title"
                 style="color: #49BAA0; margin: 20px 0 10px; border-bottom: 2px solid #e9ecef; padding-bottom: 8px;">
                 <i class="fas fa-power-off"></i> MONTACARGAS APAGADO (Pre-operacional)
@@ -225,18 +430,17 @@
                 <table class="item-table">
                     <thead>
                         <tr>
-                            <th style="width: 40%;">Ítem a Evaluar</th>
-                            <th style="width: 15%;">Cumple</th>
-                            <th style="width: 15%;">Estado</th>
-                            <th style="width: 30%;">Observaciones</th>
+                            <th style="width: 35%;">Ítem a Evaluar</th>
+                            <th style="width: 10%;">Cumple</th>
+                            <th style="width: 12%;">Estado</th>
+                            <th style="width: 28%;">Observaciones</th>
+                            <th style="width: 15%; text-align: center;"><i class="fas fa-camera"></i> Evidencia</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item_form in items %}
                         {% if forloop.counter <= 19 %} {{ item_form.id }} <tr>
-                            <td>
-                                {{ item_form.question }}
-                            </td>
+                            <td>{{ item_form.question }}</td>
                             <td>
                                 {{ item_form.response }}
                                 {% if item_form.response.errors %}
@@ -255,20 +459,28 @@
                                 <div class="text-danger small">{{ item_form.observations.errors }}</div>
                                 {% endif %}
                             </td>
-                            </tr>
-                            <tr class="evidence-row" style="background: #fdfdfd;">
-                                <td colspan="4">
-                                    <div style="padding: 8px; border-top: 1px dashed #eee;">
-                                        <label
-                                            style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 5px;">
-                                            <i class="fas fa-camera"></i> Evidencia del Item
-                                        </label>
-                                        {% include 'inspections/includes/evidence_manager.html' with
-                                        content_type_id=item_content_type_id
-                                        object_id=item_form.instance.pk|default:item_form.prefix
-                                        evidences=item_form.instance.evidences can_edit=True %}
+                            <td style="vertical-align: middle; text-align: center;">
+                                <div class="evidence-container"
+                                    id="evidence-container-{{ item_content_type_id }}-{{ item_form.prefix }}">
+                                    {% if item_form.instance.pk %}
+                                    {% for evidence in item_form.instance.evidences.all %}
+                                    <div class="evidence-wrapper" data-id="{{ evidence.id }}"
+                                        onclick="openEvidencePreview('{{ evidence.image.url }}', '{{ evidence.description|escapejs }}')">
+                                        <img src="{{ evidence.image.url }}" alt="Evidencia">
+                                        <div class="evidence-remove"
+                                            onclick="event.stopPropagation(); deleteEvidence({{ evidence.id }}, this)">
+                                            &times;</div>
                                     </div>
-                                </td>
+                                    {% endfor %}
+                                    {% endif %}
+                                    <label class="evidence-add-btn" title="Agregar evidencia">
+                                        <i class="fas fa-camera"></i>
+                                        <span>Agregar</span>
+                                        <input type="file" accept="image/*" style="display: none;"
+                                            onchange="uploadEvidence(this, '{{ item_content_type_id }}', '{{ item_form.prefix }}')">
+                                    </label>
+                                </div>
+                            </td>
                             </tr>
                             {% endif %}
                             {% endfor %}
@@ -285,10 +497,11 @@
                 <table class="item-table">
                     <thead>
                         <tr>
-                            <th style="width: 40%;">Ítem a Evaluar</th>
-                            <th style="width: 15%;">Cumple</th>
-                            <th style="width: 15%;">Estado</th>
-                            <th style="width: 30%;">Observaciones</th>
+                            <th style="width: 35%;">Ítem a Evaluar</th>
+                            <th style="width: 10%;">Cumple</th>
+                            <th style="width: 12%;">Estado</th>
+                            <th style="width: 28%;">Observaciones</th>
+                            <th style="width: 15%; text-align: center;"><i class="fas fa-camera"></i> Evidencia</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -296,9 +509,7 @@
                         {% if forloop.counter > 19 %}
                         {{ item_form.id }}
                         <tr>
-                            <td>
-                                {{ item_form.question }}
-                            </td>
+                            <td>{{ item_form.question }}</td>
                             <td>
                                 {{ item_form.response }}
                                 {% if item_form.response.errors %}
@@ -317,18 +528,26 @@
                                 <div class="text-danger small">{{ item_form.observations.errors }}</div>
                                 {% endif %}
                             </td>
-                        </tr>
-                        <tr class="evidence-row" style="background: #fdfdfd;">
-                            <td colspan="4">
-                                <div style="padding: 8px; border-top: 1px dashed #eee;">
-                                    <label
-                                        style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 5px;">
-                                        <i class="fas fa-camera"></i> Evidencia del Item
+                            <td style="vertical-align: middle; text-align: center;">
+                                <div class="evidence-container"
+                                    id="evidence-container-{{ item_content_type_id }}-{{ item_form.prefix }}">
+                                    {% if item_form.instance.pk %}
+                                    {% for evidence in item_form.instance.evidences.all %}
+                                    <div class="evidence-wrapper" data-id="{{ evidence.id }}"
+                                        onclick="openEvidencePreview('{{ evidence.image.url }}', '{{ evidence.description|escapejs }}')">
+                                        <img src="{{ evidence.image.url }}" alt="Evidencia">
+                                        <div class="evidence-remove"
+                                            onclick="event.stopPropagation(); deleteEvidence({{ evidence.id }}, this)">
+                                            &times;</div>
+                                    </div>
+                                    {% endfor %}
+                                    {% endif %}
+                                    <label class="evidence-add-btn" title="Agregar evidencia">
+                                        <i class="fas fa-camera"></i>
+                                        <span>Agregar</span>
+                                        <input type="file" accept="image/*" style="display: none;"
+                                            onchange="uploadEvidence(this, '{{ item_content_type_id }}', '{{ item_form.prefix }}')">
                                     </label>
-                                    {% include 'inspections/includes/evidence_manager.html' with
-                                    content_type_id=item_content_type_id
-                                    object_id=item_form.instance.pk|default:item_form.prefix
-                                    evidences=item_form.instance.evidences can_edit=True %}
                                 </div>
                             </td>
                         </tr>

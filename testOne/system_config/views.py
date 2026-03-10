@@ -76,3 +76,47 @@ class AdvancedConfigView(LoginRequiredMixin, View):
             messages.info(request, "No se realizaron cambios.")
             
         return redirect('advanced_config')
+
+from django.urls import reverse_lazy
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
+from django.contrib import messages
+from .models import Plano
+from .forms import PlanoForm
+
+class StaffRequiredMixin(UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_staff
+
+class PlanoListView(LoginRequiredMixin, StaffRequiredMixin, ListView):
+    model = Plano
+    template_name = 'system_config/plano_list.html'
+    context_object_name = 'planos'
+
+class PlanoCreateView(LoginRequiredMixin, StaffRequiredMixin, CreateView):
+    model = Plano
+    form_class = PlanoForm
+    template_name = 'system_config/plano_form.html'
+    success_url = reverse_lazy('plano_list')
+
+    def form_valid(self, form):
+        messages.success(self.request, "Plano creado correctamente.")
+        return super().form_valid(form)
+
+class PlanoUpdateView(LoginRequiredMixin, StaffRequiredMixin, UpdateView):
+    model = Plano
+    form_class = PlanoForm
+    template_name = 'system_config/plano_form.html'
+    success_url = reverse_lazy('plano_list')
+
+    def form_valid(self, form):
+        messages.success(self.request, "Plano actualizado correctamente.")
+        return super().form_valid(form)
+
+class PlanoDeleteView(LoginRequiredMixin, StaffRequiredMixin, DeleteView):
+    model = Plano
+    success_url = reverse_lazy('plano_list')
+    
+    def post(self, request, *args, **kwargs):
+        messages.success(request, "Plano eliminado correctamente.")
+        return super().post(request, *args, **kwargs)
