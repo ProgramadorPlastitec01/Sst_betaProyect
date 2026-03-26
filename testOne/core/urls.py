@@ -31,6 +31,7 @@ urlpatterns = [
     path('configuration/advanced/', include('system_config.urls')),
     path('configuration/', ConfigurationView.as_view(), name='configuration'),
     path('activos/', include('gestion_activos.urls')),
+    path('planos/', include('planos.urls')),
 ]
 
 if settings.DEBUG:

@@ -1,0 +1,1287 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Planos — SST{% endblock %}
+{% block header_title %}Visor de Planos{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ── Layout principal del módulo ─────────────────────── */
+    .planos-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    /* ── Selector de planos ──────────────────────────────── */
+    .planos-selector {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .planos-selector-label {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: var(--text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    .planos-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .plano-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: 1.5px solid var(--border-color);
+        background: var(--white);
+        color: var(--text-color);
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: var(--transition);
+        cursor: pointer;
+    }
+
+    .plano-tab:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        background: rgba(73, 186, 160, 0.05);
+        text-decoration: none;
+    }
+
+    .plano-tab.active {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        color: #fff;
+    }
+
+    .plano-tab.active:hover {
+        background: var(--primary-hover);
+        border-color: var(--primary-hover);
+        color: #fff;
+    }
+
+    /* ── Área de contenido principal ────────────────────── */
+    .planos-content {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        gap: 20px;
+        min-height: 560px;
+    }
+
+    /* ── Panel izquierdo: lista de activos ──────────────── */
+    .planos-assets-panel {
+        background: var(--white);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .planos-assets-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .planos-assets-header h3 {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-color);
+        margin: 0;
+    }
+
+    .asset-count-badge {
+        background: rgba(73, 186, 160, 0.12);
+        color: var(--primary-color);
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 20px;
+    }
+
+    /* Hint debajo del header en modo edición */
+    .assets-edit-hint {
+        display: none;
+        padding: 8px 16px;
+        font-size: 0.78rem;
+        color: var(--primary-color);
+        background: rgba(73, 186, 160, 0.06);
+        border-bottom: 1px solid rgba(73, 186, 160, 0.15);
+        gap: 6px;
+        align-items: center;
+    }
+    .assets-edit-hint.visible {
+        display: flex;
+    }
+
+    .planos-assets-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 0;
+        max-height: 520px;
+    }
+
+    .asset-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        cursor: default;
+        transition: background 0.15s ease, border-left 0.15s ease;
+        border-bottom: 1px solid var(--border-color);
+        border-left: 3px solid transparent;
+        position: relative;
+    }
+
+    .asset-item:last-child {
+        border-bottom: none;
+    }
+
+    .asset-item:hover {
+        background: #f8faf9;
+    }
+
+    /* Modo edición: items clickeables */
+    .edit-mode-active .asset-item {
+        cursor: pointer;
+    }
+
+    .edit-mode-active .asset-item:hover {
+        background: rgba(73, 186, 160, 0.06);
+        border-left-color: rgba(73, 186, 160, 0.4);
+    }
+
+    /* Activo seleccionado */
+    .asset-item.selected {
+        background: rgba(73, 186, 160, 0.1) !important;
+        border-left-color: var(--primary-color) !important;
+    }
+
+    /* Activo ya ubicado en el plano */
+    .asset-item.placed {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .asset-item.placed::after {
+        content: '\f3c5'; /* fa-map-marker-alt unicode */
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+        font-size: 0.7rem;
+        color: var(--primary-color);
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .asset-item-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.875rem;
+        flex-shrink: 0;
+    }
+
+    .asset-item-icon.tipo-extintor   { background: rgba(220,53,69,.1);  color: #dc3545; }
+    .asset-item-icon.tipo-botiquin   { background: rgba(40,167,69,.1);  color: #28a745; }
+    .asset-item-icon.tipo-montacargas{ background: rgba(255,193,7,.1);  color: #e0a800; }
+    .asset-item-icon.tipo-otro       { background: rgba(108,117,125,.1);color: #6c757d; }
+
+    .asset-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .asset-item-code {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .asset-item-meta {
+        font-size: 0.75rem;
+        color: var(--text-light);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ── Badges de estado ────────────────────────────────── */
+    .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .badge-success  { background: rgba(40,167,69,.12);  color: #1a7a30; }
+    .badge-danger   { background: rgba(220,53,69,.12);  color: #b02a37; }
+    .badge-warning  { background: rgba(255,193,7,.15);  color: #8a6d00; }
+    .badge-secondary{ background: rgba(108,117,125,.12);color: #495057; }
+    .badge-primary  { background: rgba(73,186,160,.12); color: #2a7d6a; }
+    .badge-orange   { background: rgba(253,126,20,.12); color: #c45c00; }
+
+    /* ── Panel derecho: visor SVG ──────────────────────── */
+    .planos-viewer-panel {
+        background: var(--white);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .planos-viewer-toolbar {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .planos-viewer-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-color);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .planos-viewer-title i { color: var(--primary-color); }
+
+    .planos-viewer-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    /* ── Modo Edición badge ────────────────────────────── */
+    .edit-mode-badge {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        background: rgba(220, 53, 69, 0.12);
+        color: #b02a37;
+        font-size: 0.78rem;
+        font-weight: 600;
+        border: 1.5px solid rgba(220, 53, 69, 0.25);
+    }
+
+    .edit-mode-badge.visible { display: inline-flex; }
+
+    /* ── Barra de info del activo seleccionado ─────────── */
+    #selected-asset-bar {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 20px;
+        border-bottom: 1px solid var(--border-color);
+        background: rgba(73, 186, 160, 0.06);
+        font-size: 0.85rem;
+    }
+
+    #selected-asset-bar.visible { display: flex; }
+
+    #selected-asset-bar .sel-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+    }
+
+    #selected-asset-bar .sel-label {
+        flex: 1;
+        font-weight: 600;
+        color: var(--text-color);
+    }
+
+    #selected-asset-bar .sel-hint {
+        font-size: 0.78rem;
+        color: var(--text-light);
+    }
+
+    #selected-asset-bar .sel-cancel {
+        background: none;
+        border: none;
+        color: var(--text-light);
+        cursor: pointer;
+        font-size: 1rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: color 0.15s;
+    }
+
+    #selected-asset-bar .sel-cancel:hover { color: #dc3545; }
+
+    /* ── SVG Viewport ──────────────────────────────────── */
+    .planos-svg-viewport {
+        flex: 1;
+        position: relative;
+        overflow: auto;
+        background:
+            radial-gradient(circle, #e8ede9 1px, transparent 1px),
+            #f4f7f6;
+        background-size: 24px 24px;
+        min-height: 480px;
+    }
+
+    /* Viewport en modo edición con activo listo para ubicar */
+    .planos-svg-viewport.ready-to-place {
+        cursor: crosshair !important;
+    }
+
+    /* Contenedor del SVG */
+    #plano-svg-container {
+        position: relative;
+        display: inline-block;
+        min-width: 100%;
+        min-height: 100%;
+        cursor: default;
+        user-select: none;
+    }
+
+    #plano-svg-container img.plano-svg-img {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        pointer-events: none;
+    }
+
+    /* ── Cursor indicador (sigue el mouse) ─────────────── */
+    #plano-cursor-indicator {
+        display: none;
+        position: absolute;
+        pointer-events: none;
+        z-index: 30;
+        transform: translate(-50%, -50%);
+        transition: none;
+    }
+
+    #plano-cursor-indicator .cursor-ring {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 2px solid var(--primary-color);
+        background: rgba(73, 186, 160, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: cursorPulse 1.4s ease-in-out infinite;
+    }
+
+    #plano-cursor-indicator .cursor-ring i {
+        font-size: 0.8rem;
+        color: var(--primary-color);
+    }
+
+    @keyframes cursorPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(73, 186, 160, 0.4); }
+        50%       { box-shadow: 0 0 0 6px rgba(73, 186, 160, 0); }
+    }
+
+    /* ── Iconos de activos ubicados en el plano ────────── */
+    .plano-asset-icon {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        z-index: 20;
+        pointer-events: none; /* preparado para drag futuro */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        animation: iconDrop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes iconDrop {
+        from { transform: translate(-50%, -70%) scale(0.5); opacity: 0; }
+        to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+
+    .plano-asset-icon .icon-pin {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%; /* Cambiado a circulo perfecto para mejor centrado visual */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 0 1.5px rgba(255,255,255,0.8), 0 3px 6px rgba(0,0,0,0.3); /* Borde sutil y sombra */
+        flex-shrink: 0;
+        transition: transform 0.2s;
+    }
+
+    .plano-asset-icon .icon-pin i {
+        font-size: 0.75rem;
+        color: #fff;
+    }
+
+    .plano-asset-icon:hover .icon-pin {
+        transform: scale(1.1); /* Efecto interactivo sutil */
+    }
+
+    .plano-asset-icon .icon-label {
+        background: rgba(0,0,0,0.72);
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 4px;
+        white-space: nowrap;
+        letter-spacing: 0.3px;
+        margin-top: 2px; /* Separacion ligera */
+    }
+
+    /* ── Estado: plano no disponible ───────────────────── */
+    .plano-unavailable {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        min-height: 480px;
+        gap: 16px;
+        color: var(--text-light);
+    }
+
+    .plano-unavailable i {
+        font-size: 3rem;
+        opacity: 0.3;
+        color: var(--text-light);
+    }
+
+    .plano-unavailable p   { font-size: 1rem; font-weight: 500; }
+    .plano-unavailable small{ font-size: 0.8rem; opacity: 0.7; }
+
+    /* ── Buscador de activos ─────────────────────────────── */
+    .assets-search {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        background: #fafbfa;
+    }
+
+    .assets-search-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .assets-search-input-wrapper i {
+        position: absolute;
+        left: 14px;
+        color: var(--text-light);
+        font-size: 0.85rem;
+    }
+
+    .assets-search-input {
+        width: 100%;
+        padding: 8px 14px 8px 36px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.85rem;
+        background: var(--white);
+        transition: border-color 0.2s, box-shadow 0.2s;
+        outline: none;
+    }
+
+    .assets-search-input:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(73, 186, 160, 0.15);
+    }
+
+    /* ── Panel vacío ────────────────────────────────────── */
+    .assets-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+        color: var(--text-light);
+        gap: 10px;
+        text-align: center;
+    }
+
+    .assets-empty i { font-size: 2rem; opacity: 0.25; }
+    .assets-empty p { font-size: 0.85rem; margin: 0; }
+
+    /* ── Responsive ────────────────────────────────────── */
+    @media (max-width: 900px) {
+        .planos-content { grid-template-columns: 1fr; }
+        .planos-assets-panel { order: 2; }
+        .planos-viewer-panel { order: 1; }
+    }
+</style>
+
+<!-- JSON de ubicaciones inyectado para el script -->
+<script type="application/json" id="ubicaciones-data">
+    {{ ubicaciones|safe }}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="planos-layout">
+
+    <!-- ── Encabezado ──────────────────────────────────── -->
+    <div class="dashboard-header">
+        <div>
+            <h1 style="font-size:1.4rem; font-weight:700; margin:0;">
+                <i class="fas fa-map" style="color:var(--primary-color);"></i>
+                Planos
+            </h1>
+            <p style="margin:4px 0 0; font-size:0.875rem; color:var(--text-light);">
+                Visualización de planos y ubicación de activos
+            </p>
+        </div>
+    </div>
+
+    <!-- ── Selector de planos ──────────────────────────── -->
+    <div class="card" style="padding:18px 24px; margin-bottom:0;">
+        <div class="planos-selector">
+            <span class="planos-selector-label">
+                <i class="fas fa-layer-group" style="margin-right:6px;color:var(--primary-color);"></i>
+                Plano:
+            </span>
+            <nav class="planos-tabs" aria-label="Selector de planos">
+                {% for plano in planos_disponibles %}
+                <a href="?plano={{ plano.id }}"
+                   class="plano-tab {% if plano.id == plano_seleccionado %}active{% endif %}"
+                   title="Ver plano {{ plano.label }}"
+                   aria-current="{% if plano.id == plano_seleccionado %}page{% endif %}">
+                    <i class="fas fa-map-marked-alt" style="font-size:0.8rem;"></i>
+                    {{ plano.label }}
+                </a>
+                {% endfor %}
+            </nav>
+        </div>
+    </div>
+    
+    <!-- Token CSRF oculto para habilitar las peticiones AJAX en Django -->
+    <div style="display:none;">{% csrf_token %}</div>
+
+    <!-- ── Contenido principal ─────────────────────────── -->
+    <div class="planos-content">
+
+        <!-- Panel Izquierdo: Activos -->
+        <aside class="planos-assets-panel" id="assets-panel">
+            <div class="planos-assets-header">
+                <h3><i class="fas fa-boxes" style="color:var(--primary-color); margin-right:6px;"></i>Activos</h3>
+                <span class="asset-count-badge">{{ activos|length }}</span>
+            </div>
+
+            <!-- Buscador -->
+            <div class="assets-search">
+                <div class="assets-search-input-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="assets-search-input" class="assets-search-input" placeholder="Buscar código, tipo o área...">
+                </div>
+            </div>
+
+            <!-- Hint de modo edición (oculto por defecto) -->
+            <div class="assets-edit-hint" id="assets-edit-hint">
+                <i class="fas fa-hand-pointer"></i>
+                <span>Selecciona un activo o icono para mover o ubicar</span>
+            </div>
+
+            <div class="planos-assets-list" id="assets-list">
+                {% if activos %}
+                    {% for asset in activos %}
+                    <div class="asset-item"
+                         id="asset-item-{{ asset.pk }}"
+                         data-asset-pk="{{ asset.pk }}"
+                         data-asset-code="{{ asset.codigo }}"
+                         data-asset-tipo="{{ asset.tipo }}"
+                         data-asset-icono="{{ asset.icono }}"
+                         title="{{ asset.tipo }} — {{ asset.area }}">
+                        <div class="asset-item-icon
+                            {% if asset.tipo == 'Extintor' %}tipo-extintor
+                            {% elif asset.tipo == 'Botiquín' %}tipo-botiquin
+                            {% elif asset.tipo == 'Montacargas' %}tipo-montacargas
+                            {% else %}tipo-otro{% endif %}">
+                            <i class="{{ asset.icono }}"></i>
+                        </div>
+                        <div class="asset-item-info">
+                            <div class="asset-item-code">{{ asset.codigo }}</div>
+                            <div class="asset-item-meta">{{ asset.area }} - {{ asset.tipo }}</div>
+                        </div>
+                        <span class="badge {{ asset.estado_css }}">{{ asset.estado }}</span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="assets-empty">
+                        <i class="fas fa-box-open"></i>
+                        <p>Sin activos asignados<br>a este plano</p>
+                    </div>
+                {% endif %}
+            </div>
+        </aside>
+
+        <!-- Panel Derecho: Visor SVG -->
+        <section class="planos-viewer-panel">
+            <div class="planos-viewer-toolbar">
+                <div class="planos-viewer-title">
+                    <i class="fas fa-map-marked-alt"></i>
+                    Plano: <strong id="plano-id-label">{{ plano_seleccionado }}</strong>
+                    {% if not svg_existe %}
+                    <span class="badge badge-danger" style="font-size:0.7rem;">No disponible</span>
+                    {% endif %}
+                </div>
+
+                <div class="planos-viewer-actions">
+                    <!-- Badge de modo edición -->
+                    <span class="edit-mode-badge" id="edit-mode-badge">
+                        <i class="fas fa-pencil-alt"></i> Modo Edición
+                    </span>
+
+                    <!-- Botón Modo Edición (solo administradores) -->
+                    {% if puede_editar %}
+                    <button type="button"
+                            id="btn-toggle-edit"
+                            class="btn btn-sm btn-secondary"
+                            onclick="toggleModoEdicion()"
+                            title="Activar/desactivar modo edición">
+                        <i class="fas fa-pencil-alt"></i>
+                        <span id="btn-edit-label">Modo Edición</span>
+                    </button>
+                    {% endif %}
+
+                    <!-- Zoom -->
+                    {% if svg_existe %}
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="zoomIn()" title="Acercar">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="zoomOut()" title="Alejar">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="zoomReset()" title="Restablecer zoom">
+                        <i class="fas fa-compress-arrows-alt"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Barra de activo seleccionado (sólo visible cuando hay selección activa) -->
+            <div id="selected-asset-bar">
+                <span class="sel-icon" id="sel-icon-wrap"></span>
+                <span class="sel-label" id="sel-label-text">—</span>
+                <span class="sel-hint">Haz clic sobre el plano para posicionarlo</span>
+                <button class="sel-cancel" onclick="deseleccionarActivo()" title="Cancelar selección">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Viewport del SVG -->
+            <div class="planos-svg-viewport" id="svg-viewport">
+                {% if svg_existe %}
+                    <div id="plano-svg-container">
+                        <!-- Imagen del plano -->
+                        <img class="plano-svg-img"
+                             src="{{ svg_url }}"
+                             alt="Plano {{ plano_seleccionado }}"
+                             id="plano-img"
+                             draggable="false">
+
+                        <!-- CAPA DE ICONOS POSICIONADOS -->
+                        <div id="plano-icons-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></div>
+
+                        <!-- Indicador de cursor (sigue el mouse) -->
+                        <div id="plano-cursor-indicator">
+                            <div class="cursor-ring">
+                                <i class="fas fa-plus"></i>
+                            </div>
+                        </div>
+
+                        <!-- POPUP INFORMATIVO DEL ACTIVO -->
+                        <div id="plano-info-popup" class="plano-popup">
+                            <div class="popup-header">
+                                <span id="popup-activo-nombre" class="popup-title">---</span>
+                                <button type="button" class="popup-close" onclick="window.cerrarPopupActivo()"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div class="popup-body">
+                                <div class="popup-row"><strong>Código:</strong> <span id="popup-activo-codigo">---</span></div>
+                                <div class="popup-row"><strong>Tipo:</strong> <span id="popup-activo-tipo">---</span></div>
+                                <div class="popup-row"><strong>Últ. Inspec:</strong> <span id="popup-activo-fecha">---</span></div>
+                                <div class="popup-row mt-1"><strong>Estado:</strong> <span id="popup-activo-estado" style="font-weight:600;">---</span></div>
+                            </div>
+                            <div class="popup-footer">
+                                <button type="button" class="btn btn-sm btn-outline-secondary btn-block disabled" style="cursor:not-allowed;" title="Próximamente">Acciones de Activo</button>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="plano-unavailable">
+                        <i class="fas fa-map"></i>
+                        <p>Plano no disponible</p>
+                        <small>El archivo <strong>{{ plano_seleccionado }}.svg</strong> aún no ha sido cargado al sistema.</small>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+    </div><!-- /.planos-content -->
+</div><!-- /.planos-layout -->
+
+<style>
+/* ── ESTILOS DEL POPUP INFORMATIVO ── */
+.plano-popup {
+    display: none;
+    position: absolute;
+    width: 220px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    border: 1px solid rgba(0,0,0,0.08);
+    z-index: 50;
+    font-family: inherit;
+    pointer-events: auto; /* Para permitir clicks internos */
+    transition: opacity 0.2s;
+}
+.plano-popup .popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    background-color: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+}
+.plano-popup .popup-title { font-weight: 600; font-size: 0.85rem; color: #333; }
+.plano-popup .popup-close {
+    background: none; border: none; color: #888; font-size: 1rem; cursor: pointer; padding: 0; line-height: 1;
+}
+.plano-popup .popup-close:hover { color: #dc3545; }
+.plano-popup .popup-body { padding: 10px 12px; font-size: 0.8rem; color: #555; }
+.plano-popup .popup-row { margin-bottom: 4px; }
+.plano-popup .popup-footer { padding: 8px 12px; border-top: 1px solid #f0f0f0; background-color: #fafafa; border-radius: 0 0 8px 8px; }
+</style>
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+(function () {
+    'use strict';
+
+    /* ═══════════════════════════════════════════════════════
+     *  ESTADO GLOBAL DEL MÓDULO
+     * ═══════════════════════════════════════════════════════ */
+    let modoEdicion        = false;
+    let zoomLevel          = 1;
+    let activoSeleccionado = null;   // { pk, code, tipo, icono, mode: 'new'|'move' }
+    let isSaving           = false;
+
+    // Mapa de activos ubicados: pk → { x, y, tipo, code, icono, element }
+    const activosUbicados = {};
+    const planoSeleccionadoLabel = document.getElementById('plano-id-label');
+    const planoSeleccionado = planoSeleccionadoLabel ? planoSeleccionadoLabel.innerText.trim() : '';
+
+    /* ── Constantes y Utilidades ─────────────────────────── */
+    const ZOOM_STEP = 0.15;
+    const ZOOM_MIN  = 0.3;
+    const ZOOM_MAX  = 4;
+
+    const PIN_CSS_CLASS = {
+        'Extintor':    'pin-extintor',
+        'Botiquín':    'pin-botiquin',
+        'Montacargas': 'pin-montacargas',
+    };
+
+    const ICON_COLOR = {
+        'Extintor':    '#dc3545',
+        'Botiquín':    '#28a745',
+        'Montacargas': '#e0a800',
+    };
+
+    function getCSRFToken() {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === 'csrftoken=') {
+                    cookieValue = decodeURIComponent(cookie.substring(10));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+     *  REFERENCIAS DOM
+     * ═══════════════════════════════════════════════════════ */
+    const container       = document.getElementById('plano-svg-container');
+    const viewport        = document.getElementById('svg-viewport');
+    const iconsLayer      = document.getElementById('plano-icons-layer');
+    const cursorIndicator = document.getElementById('plano-cursor-indicator');
+    const editBadge       = document.getElementById('edit-mode-badge');
+    const btnToggle       = document.getElementById('btn-toggle-edit');
+    const btnLabel        = document.getElementById('btn-edit-label');
+    const selectedBar     = document.getElementById('selected-asset-bar');
+    const selIconWrap     = document.getElementById('sel-icon-wrap');
+    const selLabelText    = document.getElementById('sel-label-text');
+    const assetsPanel     = document.getElementById('assets-panel');
+    const editHint        = document.getElementById('assets-edit-hint');
+    const searchInput     = document.getElementById('assets-search-input');
+    const assetItems      = document.querySelectorAll('.asset-item');
+
+    /* ═══════════════════════════════════════════════════════
+     *  BUSCADOR EN TIEMPO REAL
+     * ═══════════════════════════════════════════════════════ */
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase().trim();
+            assetItems.forEach(item => {
+                const textCode = item.querySelector('.asset-item-code').innerText.toLowerCase();
+                const textMeta = item.querySelector('.asset-item-meta').innerText.toLowerCase();
+                if (textCode.includes(term) || textMeta.includes(term)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    /* ═══════════════════════════════════════════════════════
+     *  ZOOM
+     * ═══════════════════════════════════════════════════════ */
+    function applyZoom() {
+        if (!container) return;
+        container.style.transform       = `scale(${zoomLevel})`;
+        container.style.transformOrigin = 'top left';
+    }
+
+    window.zoomIn = function () { zoomLevel = Math.min(ZOOM_MAX, +(zoomLevel + ZOOM_STEP).toFixed(2)); applyZoom(); };
+    window.zoomOut = function () { zoomLevel = Math.max(ZOOM_MIN, +(zoomLevel - ZOOM_STEP).toFixed(2)); applyZoom(); };
+    window.zoomReset = function () { zoomLevel = 1; applyZoom(); };
+
+    if (viewport) {
+        viewport.addEventListener('wheel', function (e) {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                (e.deltaY < 0) ? window.zoomIn() : window.zoomOut();
+            }
+        }, { passive: false });
+    }
+
+    /* ═══════════════════════════════════════════════════════
+     *  MODO EDICIÓN
+     * ═══════════════════════════════════════════════════════ */
+    window.toggleModoEdicion = function () {
+        modoEdicion = !modoEdicion;
+
+        if (modoEdicion) {
+            window.cerrarPopupActivo();
+            if (editBadge) editBadge.classList.add('visible');
+            if (btnToggle) btnToggle.classList.replace('btn-secondary', 'btn-danger');
+            if (btnLabel)  btnLabel.textContent = 'Salir de Edición';
+            if (editHint)  editHint.classList.add('visible');
+            if (assetsPanel) assetsPanel.classList.add('edit-mode-active');
+            
+            _attachPlanoEvents();
+
+            toastr.info('Modo edición activado. Puedes ubicar o mover activos.', '', { timeOut: 3000 });
+        } else {
+            if (editBadge) editBadge.classList.remove('visible');
+            if (btnToggle) btnToggle.classList.replace('btn-danger', 'btn-secondary');
+            if (btnLabel)  btnLabel.textContent = 'Modo Edición';
+            if (editHint)  editHint.classList.remove('visible');
+            if (assetsPanel) assetsPanel.classList.remove('edit-mode-active');
+            
+            deseleccionarActivo();
+            if (viewport) viewport.classList.remove('ready-to-place');
+            _hideCursorIndicator();
+            _detachPlanoEvents();
+
+            toastr.info('Modo edición desactivado', '', { timeOut: 2000 });
+        }
+    };
+
+    /* ═══════════════════════════════════════════════════════
+     *  SELECCIÓN Y MOVIMIENTO
+     * ═══════════════════════════════════════════════════════ */
+    function _initAssetListClicks() {
+        assetItems.forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!modoEdicion) return;
+
+                const pk    = el.dataset.assetPk;
+                const code  = el.dataset.assetCode;
+                const tipo  = el.dataset.assetTipo;
+                const icono = el.dataset.assetIcono;
+                const estado = el.dataset.assetEstado || 'Desconocido';
+                const ultima = el.dataset.assetUltimainsp || 'Sin registro';
+
+                if (activoSeleccionado && activoSeleccionado.pk === pk) {
+                    deseleccionarActivo();
+                    return;
+                }
+
+                if (activosUbicados[pk]) {
+                    seleccionarActivo(pk, code, tipo, icono, el, 'move', estado, ultima);
+                } else {
+                    seleccionarActivo(pk, code, tipo, icono, el, 'new', estado, ultima);
+                }
+            });
+        });
+    }
+
+    function seleccionarActivo(pk, code, tipo, icono, itemEl, mode, estado, ultima) {
+        document.querySelectorAll('.asset-item.selected').forEach(el => el.classList.remove('selected'));
+        document.querySelectorAll('.plano-asset-icon.selected').forEach(el => el.classList.remove('selected', 'pulse'));
+
+        activoSeleccionado = { pk, code, tipo, icono, mode, estado, ultimaInsp: ultima };
+
+        if (itemEl) itemEl.classList.add('selected');
+
+        if (activosUbicados[pk] && activosUbicados[pk].element) {
+            const iconEl = activosUbicados[pk].element;
+            iconEl.classList.add('selected', 'pulse');
+            iconEl.style.opacity = '0.5'; 
+        }
+
+        if (selIconWrap) {
+            const color = obtenerColorPorEstado(estado);
+            selIconWrap.innerHTML = `
+                <span style="background:${color}1a; color:${color}; width:28px; height:28px; border-radius:6px;
+                             display:flex; align-items:center; justify-content:center; font-size:0.8rem;">
+                    <i class="${icono}"></i>
+                </span>`;
+        }
+        if (selLabelText) {
+            selLabelText.innerHTML = `${code} (${tipo}) <span class="badge badge-warning ml-2" style="font-size:0.65rem;">${mode === 'move' ? 'MOVIENDO' : 'UBICANDO'}</span>`;
+        }
+        if (selectedBar) selectedBar.classList.add('visible');
+
+        if (viewport) viewport.classList.add('ready-to-place');
+        if (container) container.style.cursor = 'crosshair';
+
+        if (cursorIndicator) {
+            const iconEl = cursorIndicator.querySelector('i');
+            if (iconEl) { iconEl.className = icono; }
+        }
+    }
+
+    window.deseleccionarActivo = function () {
+        if (activoSeleccionado && activosUbicados[activoSeleccionado.pk]) {
+            const iconEl = activosUbicados[activoSeleccionado.pk].element;
+            if (iconEl) {
+                iconEl.classList.remove('selected', 'pulse');
+                iconEl.style.opacity = '1';
+            }
+        }
+
+        activoSeleccionado = null;
+        document.querySelectorAll('.asset-item.selected').forEach(el => el.classList.remove('selected'));
+        
+        if (selectedBar) selectedBar.classList.remove('visible');
+        if (viewport)    viewport.classList.remove('ready-to-place');
+        if (container)   container.style.cursor = 'default';
+        _hideCursorIndicator();
+    };
+
+    /* ═══════════════════════════════════════════════════════
+     *  EVENTOS DEL PLANO Y CLIC EN ICONOS
+     * ═══════════════════════════════════════════════════════ */
+    function _onPlanMouseMove(e) {
+        if (!modoEdicion || !activoSeleccionado || !container) return;
+
+        const rect = container.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / zoomLevel;
+        const y = (e.clientY - rect.top)  / zoomLevel;
+
+        if (cursorIndicator) {
+            cursorIndicator.style.display = 'block';
+            cursorIndicator.style.left    = x + 'px';
+            cursorIndicator.style.top     = y + 'px';
+        }
+    }
+
+    function _onPlanMouseLeave() { _hideCursorIndicator(); }
+
+    function _onPlanClick(e) {
+        if (!modoEdicion || !activoSeleccionado || isSaving) return;
+
+        // Si el usuario hace clic exactamente en un pin existente que no sea el actual, lo ignoramos para ubicar
+        const pinClicked = e.target.closest('.plano-asset-icon');
+        if (pinClicked) {
+            const pk = pinClicked.getAttribute('data-pk');
+            if (pk !== activoSeleccionado.pk) {
+                // Hacer click en la lista equivalente
+                const listItem = document.getElementById(`asset-item-${pk}`);
+                if (listItem) listItem.click();
+            }
+            return;
+        }
+
+        const rect = container.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / zoomLevel;
+        const y = (e.clientY - rect.top)  / zoomLevel;
+
+        _guardarUbicacionAPI(activoSeleccionado, x, y);
+    }
+
+    // Clic directo en un icono
+    function _onIconClick(e) {
+        e.stopPropagation(); // Evitar propagar el clic hacia el plano (container)
+        
+        const pin = e.currentTarget;
+        const pk = pin.getAttribute('data-pk');
+
+        if (modoEdicion) {
+            // Lógica para seleccionar/mover en modo edición
+            if (activoSeleccionado && activoSeleccionado.pk === pk) return; // ya seleccionado
+            const listItem = document.getElementById(`asset-item-${pk}`);
+            if (listItem) listItem.click();
+        } else {
+            // Lógica para popup informativo en modo vista
+            _mostrarPopupActivo(pk, pin);
+        }
+    }
+
+    // Identificación Dinámica de Colores
+    function obtenerColorPorEstado(estadoStr) {
+        // Normalización: Mayúsculas y sin acentos
+        let est = (estadoStr || '').toUpperCase().trim();
+        est = est.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Quita tildes
+        
+        const verde = ['OPERATIVO', 'VIGENTE', 'ACTIVO', 'AL DIA', 'AL_DIA'];
+        const amarillo = ['PROXIMO A VENCER', 'PROXIMO_A_VENCER', 'PROXIMA REVISION', 'PROXIMO MANTENIMIENTO'];
+        const rojo = ['VENCIDO', 'NO OPERATIVO', 'NO_OPERATIVO', 'FUERA DE SERVICIO', 'FUERA_DE_SERVICIO', 'REVISION VENCIDA', 'MANTENIMIENTO VENCIDO'];
+        const azul = ['SIN INSPECCION', 'SIN_INSPECCION', 'SIN CLASIFICAR', 'SIN_CLASIFICAR'];
+        
+        if (verde.some(w => est.includes(w)))    return '#28a745';
+        if (amarillo.some(w => est.includes(w))) return '#ffc107';
+        if (rojo.some(w => est.includes(w)))     return '#dc3545';
+        if (azul.some(w => est.includes(w)))     return '#007bff';
+        
+        console.warn(`Estado no reconocido: ${estadoStr}`);
+        return '#6c757d'; // Por defecto o desconocido (gris)
+    }
+
+    // Funciones del Popup Informativo
+    const infoPopup = document.getElementById('plano-info-popup');
+
+    function _mostrarPopupActivo(pk, pinElement) {
+        const activo = activosUbicados[pk];
+        if (!activo) {
+            console.warn('Activo no encontrado para ID seleccionado');
+            return;
+        }
+
+        const color = obtenerColorPorEstado(activo.estado);
+
+        // Llenar datos en el popup
+        document.getElementById('popup-activo-nombre').innerText = activo.code; // Identificador/Código en title
+        document.getElementById('popup-activo-codigo').innerText = activo.code; 
+        document.getElementById('popup-activo-tipo').innerText = activo.tipo;
+        document.getElementById('popup-activo-fecha').innerText = activo.ultimaInsp || 'Sin registro';
+        
+        const estLabel = document.getElementById('popup-activo-estado');
+        estLabel.innerText = activo.estado;
+        estLabel.style.color = color;
+
+        // Posicionar el popup (ligeramente ajustado debajo del pin)
+        const px = activo.x + 15;
+        const py = activo.y + 15;
+
+        infoPopup.style.left = px + 'px';
+        infoPopup.style.top = py + 'px';
+        infoPopup.style.display = 'block';
+    }
+
+    window.cerrarPopupActivo = function() {
+        if (infoPopup) infoPopup.style.display = 'none';
+    };
+
+    // Clic en el propio contenedor del mapa para cerrar popup (en modo vista)
+    if (container) {
+        container.addEventListener('click', function(e) {
+            if (!modoEdicion) {
+                window.cerrarPopupActivo();
+            }
+        });
+    }
+
+    function _attachPlanoEvents() {
+        if (!container) return;
+        container.addEventListener('mousemove', _onPlanMouseMove);
+        container.addEventListener('mouseleave', _onPlanMouseLeave);
+        container.addEventListener('click', _onPlanClick);
+    }
+
+    function _detachPlanoEvents() {
+        if (!container) return;
+        container.removeEventListener('mousemove', _onPlanMouseMove);
+        container.removeEventListener('mouseleave', _onPlanMouseLeave);
+        container.removeEventListener('click', _onPlanClick);
+    }
+
+    function _hideCursorIndicator() {
+        if (cursorIndicator) cursorIndicator.style.display = 'none';
+    }
+
+    /* ═══════════════════════════════════════════════════════
+     *  UI OPTIMISTA & API FETCH (Primero visual, luego BD)
+     * ═══════════════════════════════════════════════════════ */
+    function _guardarUbicacionAPI(activo, x, y) {
+        const payload = {
+            activo_pk: activo.pk,
+            plano: planoSeleccionado,
+            x: parseFloat(x.toFixed(2)),
+            y: parseFloat(y.toFixed(2))
+        };
+
+        // 1. APLICAR VISUALMENTE DE INMEDIATO (Optimistic UI Update)
+        _renderIzquierdaUI(activo, x, y);
+
+        // 2. ENVIAR A LA BASE DE DATOS
+        isSaving = true;
+        fetch('/planos/ubicar/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Error en el servidor o permisos (403)');
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                toastr.error('Error del servidor: ' + data.error);
+            } else {
+                toastr.success(activo.mode === 'move' ? 'Se movió el activo en la Base de Datos.' : 'Se guardó en la Base de Datos.', '', { timeOut: 2000 });
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            toastr.error('El guardado en la Base de Datos falló (verifique su conexión o sesión). Sin embargo, el icono fue colocado visualmente temporalmente.', 'Error de Envío', { timeOut: 6000 });
+        })
+        .finally(() => {
+            isSaving = false;
+        });
+    }
+
+    function _renderIzquierdaUI(activo, x, y, apiResponseData) {
+        const { pk, code, tipo, icono, estado, ultimaInsp } = activo;
+
+        if (activo.mode === 'move' && activosUbicados[pk] && activosUbicados[pk].element) {
+            // Reubicación visual (modo mover)
+            const el = activosUbicados[pk].element;
+            el.style.left = x + 'px';
+            el.style.top  = y + 'px';
+            el.style.opacity = '1';
+            el.classList.remove('selected', 'pulse');
+            
+            activosUbicados[pk].x = x;
+            activosUbicados[pk].y = y;
+            // No cambiamos su estado ni color ya que un move no cambia su status, 
+            // aunque idealmente actualizaríamos si tuviéramos nueva info en apiResponseData.
+        } else {
+            // Creación visual nueva
+            _dibujarPinVisual(pk, code, tipo, icono, x, y, estado, ultimaInsp);
+            
+            // Marcar ítem de lista
+            const itemEl = document.getElementById(`asset-item-${pk}`);
+            if (itemEl) itemEl.classList.add('placed');
+        }
+
+        deseleccionarActivo();
+    }
+
+    function _dibujarPinVisual(pk, code, tipo, icono, x, y, estadoStr, ultimaInspStr) {
+        const color = obtenerColorPorEstado(estadoStr);
+        const div = document.createElement('div');
+        div.className            = 'plano-asset-icon';
+        div.id                   = `plano-icon-${pk}`;
+        div.style.left           = x + 'px';
+        div.style.top            = y + 'px';
+        div.setAttribute('data-pk', pk);
+        
+        // Color dinámico aplicado al fondo del icono completo. 
+        // También un punto visual o borde se simula con box-shadow.
+        div.innerHTML = `
+            <div class="icon-pin" style="background-color: ${color}; box-shadow: 0 0 0 2px #fff, 0 3px 6px rgba(0,0,0,0.3);">
+                <i class="${icono}"></i>
+            </div>
+            <span class="icon-label">${code}</span>
+        `;
+
+        div.style.pointerEvents = 'auto'; // Siempre recibe clics (para edición o para ver info)
+        div.style.cursor = 'pointer';
+        div.addEventListener('click', _onIconClick);
+
+        if (iconsLayer) iconsLayer.appendChild(div);
+
+        // Guardar en el diccionario local
+        activosUbicados[pk] = { x, y, tipo, code, icono, element: div, estado: estadoStr, ultimaInsp: ultimaInspStr };
+    }
+
+    /* ═══════════════════════════════════════════════════════
+     *  INICIALIZACIÓN AL CARGAR LA PÁGINA
+     * ═══════════════════════════════════════════════════════ */
+    document.addEventListener('DOMContentLoaded', function () {
+        _initAssetListClicks();
+        
+        // Carga inicial de pines ya guardados (Solo para este plano)
+        {% for u in ubicaciones %}
+            if ('{{ u.plano_asignado|escapejs }}' === planoSeleccionado) {
+                _dibujarPinVisual('{{ u.pk|escapejs }}', '{{ u.code|escapejs }}', '{{ u.tipo|escapejs }}', '{{ u.icono|escapejs }}', parseFloat('{{ u.x|escapejs }}'), parseFloat('{{ u.y|escapejs }}'), '{{ u.estado|escapejs }}', '{{ u.ultima_insp|escapejs }}');
+                // Marcar en la lista
+                var __tmp_li = document.getElementById('asset-item-{{ u.pk }}');
+                if (__tmp_li) __tmp_li.classList.add('placed');
+            }
+        {% endfor %}
+    });
+
+})();
+</script>
+<style>
+/* Animación para el click handler de los iconos siendo movidos */
+.pulse {
+    animation: quickPulse 0.8s infinite alternate !important;
+}
+@keyframes quickPulse {
+    from { transform: translate(-50%, -50%) scale(1); filter: brightness(1) drop-shadow(0 0 4px var(--primary-color)); }
+    to   { transform: translate(-50%, -50%) scale(1.1); filter: brightness(1.2) drop-shadow(0 0 12px var(--primary-color)); }
+}
+</style>
+{% endblock %}

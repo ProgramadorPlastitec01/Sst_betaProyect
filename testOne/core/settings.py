@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'notifications',
     'system_config',
     'gestion_activos',
+    'planos',
 ]
 
 MIDDLEWARE = [
