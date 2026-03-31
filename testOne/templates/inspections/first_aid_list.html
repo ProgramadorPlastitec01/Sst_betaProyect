@@ -52,8 +52,7 @@
                         {% endif %}
                     </td>
                     <td>{{ item.area }}</td>
-                    <td>{% if item.responsible %}{{ item.responsible.get_full_name|default:item.responsible.username
-                        }}{% else %}No asignado{% endif %}</td>
+                    <td>{% if item.responsible %}{{ item.responsible.get_full_name|default:item.responsible.username }}{% else %}No asignado{% endif %}</td>
                     <td><span class="badge" style="background: #e3f2fd; color: #1976d2;">{{ item.frequency }}</span>
                     </td>
                     <td>{{ item.observations|truncatewords:8|default:"—" }}</td>

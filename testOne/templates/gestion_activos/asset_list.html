@@ -134,13 +134,14 @@
                 <option value="">Todos los estados</option>
                 <option value="ACTIVO" {% if f_estado == 'ACTIVO' %}selected{% endif %}>Activo</option>
                 <option value="OPERATIVO" {% if f_estado == 'OPERATIVO' %}selected{% endif %}>Operativo</option>
+                <option value="AL_DIA" {% if f_estado == 'AL_DIA' %}selected{% endif %}>Al Día</option>
                 <option value="VENCIDO" {% if f_estado == 'VENCIDO' %}selected{% endif %}>Vencido</option>
-                <option value="PROXIMO_A_VENCER" {% if f_estado == 'PROXIMO_A_VENCER' %}selected{% endif %}>Próximo a
-                    Vencer</option>
-                <option value="MANTENIMIENTO_VENCIDO" {% if f_estado == 'MANTENIMIENTO_VENCIDO' %}selected{% endif %}>
-                    Mantenimiento Vencido</option>
-                <option value="PROXIMO_MANTENIMIENTO" {% if f_estado == 'PROXIMO_MANTENIMIENTO' %}selected{% endif %}>
-                    Próximo Mantenimiento</option>
+                <option value="PROXIMO_A_VENCER" {% if f_estado == 'PROXIMO_A_VENCER' %}selected{% endif %}>Próximo a Vencer</option>
+                <option value="MANTENIMIENTO_VENCIDO" {% if f_estado == 'MANTENIMIENTO_VENCIDO' %}selected{% endif %}>Mantenimiento Vencido</option>
+                <option value="PROXIMO_MANTENIMIENTO" {% if f_estado == 'PROXIMO_MANTENIMIENTO' %}selected{% endif %}>Próximo Mantenimiento</option>
+                <option value="REVISION_VENCIDA" {% if f_estado == 'REVISION_VENCIDA' %}selected{% endif %}>Revisión Vencida</option>
+                <option value="PROXIMA_REVISION" {% if f_estado == 'PROXIMA_REVISION' %}selected{% endif %}>Próxima Revisión</option>
+                <option value="SIN_INSPECCION" {% if f_estado == 'SIN_INSPECCION' %}selected{% endif %}>Sin Inspección</option>
             </select>
         </div>
         <button type="submit" class="btn btn-primary" style="margin-bottom: 0;">
@@ -188,12 +189,9 @@
                     <td>{{ asset.area }}</td>
                     <td>
                         {% if asset.plano %}
-                        <span class="badge"
-                            style="background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; padding: 4px 8px; font-size: 0.78rem;">
-                            <i class="fas fa-map" style="margin-right: 4px; color: #adb5bd;"></i>{{ asset.plano.nombre }}
-                        </span>
+                        <span style="font-size: 0.85rem; color: #495057;">{{ asset.plano.nombre }}</span>
                         {% else %}
-                        <span class="text-muted" style="font-size: 0.8rem;">No asignado</span>
+                        <span class="text-muted" style="font-size: 0.8rem;">-</span>
                         {% endif %}
                     </td>
                     <td>

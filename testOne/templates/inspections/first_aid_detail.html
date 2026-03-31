@@ -181,8 +181,7 @@
                         <div style="font-size: 0.8rem; color: #5a8a72; margin-top: 2px;">
                             <i class="fas fa-map-marker-alt"></i> {{ object.asset.area }}
                             &nbsp;·&nbsp;
-                            <span class="compliance-badge {{ object.asset.estado_css }}" style="font-size:0.72rem;">{{
-                                object.asset.estado_label }}</span>
+                            <span class="compliance-badge {{ object.asset.estado_css }}" style="font-size:0.72rem;">{{ object.asset.estado_label }}</span>
                         </div>
                     </div>
                     <a href="{% url 'asset_detail' object.asset.pk %}" class="btn"
@@ -296,9 +295,7 @@
                         </td>
                         <td style="font-size: 0.85rem;">{{ item.observations|default:"-" }}</td>
                         <td style="vertical-align: middle; text-align: center;">
-                            {% include 'inspections/includes/evidence_manager.html' with
-                            content_type_id=item_content_type_id object_id=item.pk evidences=item.evidences.all
-                            can_edit=False %}
+                            {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=item.pk evidences=item.evidences.all can_edit=False %}
                         </td>
 
                         {% if object.status == 'En proceso' or object.status == 'Programada' %}

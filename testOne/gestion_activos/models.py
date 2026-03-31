@@ -115,6 +115,11 @@ class Asset(models.Model):
 
         # Botiquin
         if hasattr(self, 'botiquin_detail'):
+            # El estado depende de si tiene inspecciones realizadas
+            inspecciones_count = self.first_aid_inspections.filter(status__in=['Cerrada', 'Cerrada con seguimientos']).count()
+            if inspecciones_count == 0:
+                return 'SIN_INSPECCION'
+            
             bot = self.botiquin_detail
             if bot.fecha_proxima_revision:
                 if bot.fecha_proxima_revision < hoy:
@@ -140,6 +145,7 @@ class Asset(models.Model):
             'REVISION_VENCIDA': 'Revisión Vencida',
             'PROXIMA_REVISION': 'Próxima Revisión',
             'AL_DIA': 'Al Día',
+            'SIN_INSPECCION': 'Sin Inspección',
             'SIN_CLASIFICAR': 'Sin Clasificar',
         }
         return labels.get(self.estado_actual, self.estado_actual)
@@ -159,6 +165,7 @@ class Asset(models.Model):
             'REVISION_VENCIDA': 'badge-danger',
             'PROXIMA_REVISION': 'badge-warning',
             'AL_DIA': 'badge-success',
+            'SIN_INSPECCION': 'badge-secondary',
             'SIN_CLASIFICAR': 'badge-secondary',
         }
         return css.get(self.estado_actual, 'badge-secondary')

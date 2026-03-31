@@ -119,7 +119,7 @@ class AssetListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
         f_status = self.request.GET.get('estado', '')
         if f_status:
             # Prefetch detail relations for state calculation
-            qs = qs.prefetch_related('extintor_detail', 'montacargas_detail')
+            qs = qs.prefetch_related('extintor_detail', 'montacargas_detail', 'botiquin_detail', 'first_aid_inspections')
             qs = [a for a in qs if a.estado_actual == f_status]
         return qs
 
@@ -140,7 +140,7 @@ class AssetListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
         context['total_assets'] = all_assets.count()
         context['activos_count'] = sum(
             1 for a in all_assets
-            if a.estado_actual in ('ACTIVO', 'OPERATIVO')
+            if a.estado_actual in ('ACTIVO', 'OPERATIVO', 'AL_DIA')
         )
         context['alertas_count'] = sum(
             1 for a in all_assets
