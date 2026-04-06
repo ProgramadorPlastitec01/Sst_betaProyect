@@ -14,6 +14,7 @@ from inspections.models import (
     ProcessInspection, StorageInspection, ForkliftInspection
 )
 from datetime import date, timedelta
+from roles.mixins import RolePermissionRequiredMixin
 
 class CustomLoginView(LoginView):
     template_name = 'users/login.html'
@@ -270,11 +271,9 @@ class DashboardModalDataView(LoginRequiredMixin, View):
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(page)
 
-        # ── Determinar permisos de acción del usuario actual ──
-        role_name = user.role.name if user.role else ''
-        is_admin = user.is_superuser or role_name == 'Administrador'
-        can_edit = is_admin or role_name == 'Equipo SST'
-        can_delete = is_admin  # Solo Administrador puede eliminar
+        # ── Determinar permisos de acción del usuario actual usando lógica granular ──
+        can_edit = user.has_perm_custom('schedule', 'edit')
+        can_delete = user.has_perm_custom('schedule', 'delete')
 
         rows = []
         for item in page_obj:
@@ -358,10 +357,12 @@ class DashboardModalDataView(LoginRequiredMixin, View):
         end = start + per_page
         return all_items[start:end], total
 
-class UserListView(LoginRequiredMixin, ListView):
+class UserListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
+    permission_required = ('users', 'view')
     model = CustomUser
     template_name = 'users/user_list.html'
     context_object_name = 'users'
+    paginate_by = 10
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -399,9 +400,9 @@ class UserListView(LoginRequiredMixin, ListView):
         
         return context
 
-class UserCreateView(LoginRequiredMixin, CreateView):
+class UserCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, CreateView):
+    permission_required = ('users', 'create')
     model = CustomUser
-    form_class = CustomUserCreationForm
     template_name = 'users/user_form.html'
     success_url = reverse_lazy('user_list')
     
@@ -410,9 +411,9 @@ class UserCreateView(LoginRequiredMixin, CreateView):
         messages.success(self.request, f'Usuario {form.instance.username} creado exitosamente')
         return response
 
-class UserUpdateView(LoginRequiredMixin, UpdateView):
+class UserUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView):
+    permission_required = ('users', 'edit')
     model = CustomUser
-    form_class = CustomUserChangeForm
     template_name = 'users/user_form.html'
     success_url = reverse_lazy('user_list')
     
@@ -421,7 +422,8 @@ class UserUpdateView(LoginRequiredMixin, UpdateView):
         messages.success(self.request, f'Usuario {form.instance.username} actualizado correctamente')
         return response
 
-class UserDeleteView(LoginRequiredMixin, DeleteView):
+class UserDeleteView(LoginRequiredMixin, RolePermissionRequiredMixin, DeleteView):
+    permission_required = ('users', 'delete')
     model = CustomUser
     template_name = 'users/user_confirm_delete.html'
     success_url = reverse_lazy('user_list')

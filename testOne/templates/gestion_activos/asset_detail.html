@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static permission_tags %}
 
 {% block title %}SST - Detalle Activo: {{ asset.code }}{% endblock %}
 {% block header_title %}Detalle de Activo{% endblock %}
@@ -767,9 +767,12 @@
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
 
+            {% has_permission 'assets' 'edit' as can_edit %}
+            {% if can_edit %}
             <a href="{% url 'asset_update' asset.pk %}" class="btn btn-primary">
                 <i class="fas fa-edit"></i> Editar
             </a>
+            {% endif %}
         </div>
     </div>
 

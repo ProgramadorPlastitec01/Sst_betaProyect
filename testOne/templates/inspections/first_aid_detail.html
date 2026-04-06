@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static permission_tags %}
 
 {% block title %}SST - Detalle Inspección Botiquín{% endblock %}
 
@@ -42,8 +42,11 @@
             </button>
 
             {% if object.status != 'Cerrada' and object.status != 'Cerrada con seguimientos' %}
+            {% has_permission 'first_aid' 'edit' as can_edit %}
+            {% if can_edit %}
             <a href="{% url 'first_aid_edit' object.pk %}" class="btn btn-primary"><i class="fas fa-edit"></i>
                 Editar</a>
+            {% endif %}
             {% endif %}
         </div>
     </div>

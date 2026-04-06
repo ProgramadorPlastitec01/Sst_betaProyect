@@ -8,7 +8,6 @@ class Permission(models.Model):
     """
     MODULE_CHOICES = [
         ('users', 'Usuarios'),
-        ('inspections', 'Inspecciones'),
         ('schedule', 'Cronograma'),
         ('extinguisher', 'Extintores'),
         ('first_aid', 'Botiquines'),

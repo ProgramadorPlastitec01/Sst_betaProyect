@@ -400,7 +400,8 @@ class ScheduledInspectionsMixin:
         return context
 
 # 0. Core Schedule Views
-class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
+class InspectionListView(LoginRequiredMixin, RolePermissionRequiredMixin, MatrixContextMixin, ListView):
+    permission_required = ('schedule', 'view')
     model = InspectionSchedule
     template_name = 'inspections/inspection_list.html'
     context_object_name = 'schedule'
@@ -577,7 +578,8 @@ class InspectionListView(LoginRequiredMixin, MatrixContextMixin, ListView):
         
         return context
 
-class InspectionCreateView(LoginRequiredMixin, CreateView):
+class InspectionCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, CreateView):
+    permission_required = ('schedule', 'create')
     model = InspectionSchedule
     form_class = InspectionScheduleForm
     template_name = 'inspections/inspection_form.html'
@@ -637,7 +639,8 @@ class InspectionCreateView(LoginRequiredMixin, CreateView):
             
         return response
 
-class InspectionUpdateView(LoginRequiredMixin, UpdateView):
+class InspectionUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView):
+    permission_required = ('schedule', 'edit')
     model = InspectionSchedule
     form_class = InspectionUpdateForm
     template_name = 'inspections/inspection_form.html'
@@ -648,7 +651,8 @@ class InspectionUpdateView(LoginRequiredMixin, UpdateView):
         messages.success(self.request, 'Programación actualizada correctamente')
         return response
 
-class InspectionDeleteView(LoginRequiredMixin, DeleteView):
+class InspectionDeleteView(LoginRequiredMixin, RolePermissionRequiredMixin, DeleteView):
+    permission_required = ('schedule', 'delete')
     model = InspectionSchedule
     template_name = 'inspections/inspection_confirm_delete.html'
     success_url = reverse_lazy('inspection_list')

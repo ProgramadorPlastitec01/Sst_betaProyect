@@ -6,41 +6,35 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         
-        # Estructura base de permisos por módulo según requerimiento:
-        # 1. Acceso (view)
-        # 2. Registrar (create)
-        # 3. Modificar (edit) 
-        # 4. Eliminar (delete)
-        # 5. Consulta (details)
+        # Definición precisa de permisos por módulo según funcionalidad real
+        module_permissions = {
+            'users': ['view', 'create', 'edit', 'delete', 'details', 'reset_password'],
+            'schedule': ['view', 'create', 'edit', 'delete', 'details'],
+            'extinguisher': ['view', 'create', 'edit', 'details'],
+            'first_aid': ['view', 'create', 'edit', 'details'],
+            'process': ['view', 'create', 'edit', 'details'],
+            'storage': ['view', 'create', 'edit', 'details'],
+            'forklift': ['view', 'create', 'edit', 'details'],
+            'assets': ['view', 'create', 'edit', 'delete', 'details', 'gestionar_movimientos'],
+            'roles': ['view', 'create', 'edit', 'delete', 'details'],
+            'reports': ['view'],
+            'planos': ['view', 'create', 'edit', 'delete', 'details'],
+        }
         
-        standard_actions = [
-            ('view', 'Acceso al módulo'),
-            ('create', 'Registrar'),
-            ('edit', 'Modificar'),
-            ('delete', 'Eliminar'),
-            ('details', 'Consulta'),
-        ]
-        
-        modules = dict(Permission.MODULE_CHOICES)
+        action_labels = dict(Permission.ACTION_CHOICES)
+        modules_labels = dict(Permission.MODULE_CHOICES)
         
         permissions_data = []
         
-        # Generar automáticamente los 5 permisos estándar para cada módulo
-        for mod_code, mod_name in modules.items():
-            for act_code, act_label in standard_actions:
+        for mod_code, actions in module_permissions.items():
+            mod_label = modules_labels.get(mod_code, mod_code.capitalize())
+            for act_code in actions:
+                act_label = action_labels.get(act_code, act_code.capitalize())
                 permissions_data.append({
                     'module': mod_code,
                     'action': act_code,
-                    'description': f'{act_label} en {mod_name}'
+                    'description': f'{act_label} en {mod_label}'
                 })
-        
-        # Agregar permisos especiales existentes para no romper funcionalidad
-        special_permissions = [
-            {'module': 'users', 'action': 'reset_password', 'description': 'Restablecer Contraseña en Usuarios'},
-            {'module': 'assets', 'action': 'gestionar_movimientos', 'description': 'Gestionar Movimientos en Gestión de Activos'},
-        ]
-        
-        permissions_data.extend(special_permissions)
         
         self.stdout.write(self.style.SUCCESS('\n=== Inicializando Permisos ===\n'))
         
@@ -76,10 +70,15 @@ class Command(BaseCommand):
                     existing_count += 1
                     self.stdout.write(f'  [--] {perm.description}')
         
+        # 4. Limpiar permisos obsoletos (Crucial para eliminar los permisos fantasma)
+        current_codenames = [f"{p['module']}_{p['action']}" for p in permissions_data]
+        deleted_count, _ = Permission.objects.exclude(codename__in=current_codenames).delete()
+        
         # Resumen
         self.stdout.write(self.style.SUCCESS('\n=== Resumen ==='))
         self.stdout.write(self.style.SUCCESS(f'Permisos creados: {created_count}'))
         self.stdout.write(self.style.SUCCESS(f'Permisos actualizados: {updated_count}'))
-        self.stdout.write(f'Permisos existentes: {existing_count}')
-        self.stdout.write(self.style.SUCCESS(f'Total de permisos: {Permission.objects.count()}'))
+        self.stdout.write(self.style.WARNING(f'Permisos obsoletos eliminados: {deleted_count}'))
+        self.stdout.write(f'Permisos mantenos/existentes: {existing_count}')
+        self.stdout.write(self.style.SUCCESS(f'Total de permisos activos: {Permission.objects.count()}'))
         self.stdout.write(self.style.SUCCESS('\nAhora ejecuta: python manage.py init_roles'))

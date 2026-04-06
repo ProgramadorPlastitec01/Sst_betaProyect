@@ -137,6 +137,10 @@ class RoleDeleteView(LoginRequiredMixin, RolePermissionRequiredMixin, DeleteView
 
 def role_permissions_view(request, pk):
     """Vista para asignar permisos a un rol"""
+    if not request.user.has_perm_custom('roles', 'edit'):
+        messages.error(request, 'No tienes permiso para modificar permisos de roles.')
+        return redirect('role_list')
+        
     role = get_object_or_404(Role, pk=pk)
     
     if request.method == 'POST':
@@ -162,6 +166,10 @@ def role_permissions_view(request, pk):
 
 def toggle_role_status(request, pk):
     """Vista para activar/desactivar un rol"""
+    if not request.user.has_perm_custom('roles', 'edit'):
+         messages.error(request, 'No tienes permiso para modificar el estado de los roles.')
+         return redirect('role_list')
+         
     role = get_object_or_404(Role, pk=pk)
     
     # Validar que no se desactive el rol Administrador
