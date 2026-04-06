@@ -67,7 +67,7 @@ class RoleUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView
 
 class RoleDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
     """Vista para ver detalles de un rol"""
-    permission_required = ('roles', 'view')
+    permission_required = ('roles', 'details')
     model = Role
     template_name = 'roles/role_detail.html'
     

@@ -44,8 +44,14 @@ class RolePermissionsForm(forms.Form):
                 modules[perm.module] = []
             modules[perm.module].append(perm)
         
+        # Orden forzado de acciones para que "Acceso" sea el primero (requerimiento de UI)
+        action_order = {'view': 0, 'create': 1, 'edit': 2, 'delete': 3, 'details': 4, 'reset_password': 5, 'gestionar_movimientos': 6}
+        
         # Crear campos de checkbox para cada permiso
         for module_code, module_perms in modules.items():
+            # Ordenar para que action 'view' sea el primero de cada módulo
+            module_perms.sort(key=lambda p: action_order.get(p.action, 99))
+            
             module_name = dict(Permission.MODULE_CHOICES).get(module_code, module_code)
             
             for perm in module_perms:

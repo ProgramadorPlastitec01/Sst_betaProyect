@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.conf import settings
 from django.db import transaction
+from roles.mixins import RolePermissionRequiredMixin
 import os
 
 
@@ -38,7 +39,8 @@ def _icono_por_tipo(tipo_nombre):
 
 
 # ── Vista principal ───────────────────────────────────────────────────────────
-class PlanosView(LoginRequiredMixin, TemplateView):
+class PlanosView(LoginRequiredMixin, RolePermissionRequiredMixin, TemplateView):
+    permission_required = ('planos', 'view')
     template_name = 'planos/planos_view.html'
 
     def get_context_data(self, **kwargs):
@@ -62,7 +64,7 @@ class PlanosView(LoginRequiredMixin, TemplateView):
         # Permisos de edición
         user = self.request.user
         puede_editar = user.is_superuser or (
-            hasattr(user, 'role') and user.role and user.role.name == 'Administrador'
+            hasattr(user, 'has_perm_custom') and user.has_perm_custom('planos', 'edit')
         )
 
         context.update({
@@ -157,7 +159,8 @@ class PlanosView(LoginRequiredMixin, TemplateView):
 
 
 # ── API: Guardar / Mover ubicación ───────────────────────────────────────────
-class UbicarActivoView(LoginRequiredMixin, View):
+class UbicarActivoView(LoginRequiredMixin, RolePermissionRequiredMixin, View):
+    permission_required = ('planos', 'edit')
     """
     POST /planos/ubicar/
     Body JSON: { activo_pk, plano, x, y }
@@ -174,7 +177,7 @@ class UbicarActivoView(LoginRequiredMixin, View):
         # Verificar permisos de edición
         user = request.user
         puede_editar = user.is_superuser or (
-            hasattr(user, 'role') and user.role and user.role.name == 'Administrador'
+            hasattr(user, 'has_perm_custom') and user.has_perm_custom('planos', 'edit')
         )
         if not puede_editar:
             return JsonResponse({'error': 'Sin permiso para editar planos.'}, status=403)

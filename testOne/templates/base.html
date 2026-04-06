@@ -26,7 +26,7 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <a href="{% url 'dashboard' %}" class="logo">
-                    <i class="fas fa-shield-alt"></i> <span class="logo-text">SST System</span>
+                    <img src="{% static 'images/logo.png' %}" alt="SST Logo" class="app-logo">
                 </a>
             </div>
             <ul class="sidebar-menu">
@@ -114,6 +114,10 @@
                         <i class="fas fa-boxes"></i> <span>Gestión de Activos</span>
                     </a>
                 </li>
+                {% endif %}
+
+                {% has_permission 'planos' 'view' as can_view_planos %}
+                {% if can_view_planos %}
                 <li>
                     <a href="{% url 'planos_view' %}"
                         class="{% if 'planos' in request.path %}active{% endif %}">

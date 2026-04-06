@@ -46,16 +46,32 @@ body {
 }
 
 .sidebar-header {
-    padding: 24px;
+    padding: 0 24px;
     text-align: center;
     border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 170px;
 }
 
 .sidebar-header .logo {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-decoration: none;
+}
+
+.app-logo {
+    max-width: 100%;
+    max-height: 170px;
+    height: auto;
+    object-fit: contain;
+    transition: var(--transition);
+}
+
+.sidebar:hover .app-logo {
+    transform: scale(1.05);
 }
 
 .sidebar-menu {

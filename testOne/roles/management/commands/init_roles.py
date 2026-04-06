@@ -18,27 +18,27 @@ class Command(BaseCommand):
             {
                 'name': 'Equipo SST',
                 'description': 'Equipo de Seguridad y Salud en el Trabajo, gestión de inspecciones y cronogramas',
-                'permissions': ['view', 'create', 'edit']  # Ver, crear y editar inspecciones
+                'permissions': ['view', 'create', 'edit', 'details']  # Ver, crear, editar y consultar
             },
             {
                 'name': 'Almacenista',
                 'description': 'Responsable de inspecciones de almacenamiento y control de inventarios',
-                'permissions': ['view', 'create', 'edit']
+                'permissions': ['view', 'create', 'edit', 'details']
             },
             {
                 'name': 'Brigadista',
                 'description': 'Responsable de inspecciones de extintores y botiquines de primeros auxilios',
-                'permissions': ['view', 'create', 'edit']
+                'permissions': ['view', 'create', 'edit', 'details']
             },
             {
                 'name': 'Montacarguista',
                 'description': 'Operador de montacargas, responsable de inspecciones de equipos',
-                'permissions': ['view', 'create']  # Solo ver y crear sus inspecciones
+                'permissions': ['view', 'create', 'details']  # Ver, crear y consultar
             },
             {
                 'name': 'Consulta',
                 'description': 'Acceso de solo lectura para consultar inspecciones y reportes',
-                'permissions': ['view']  # Solo lectura
+                'permissions': ['view', 'details']  # Solo lectura expandida
             },
         ]
         

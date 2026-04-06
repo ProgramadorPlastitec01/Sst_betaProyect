@@ -152,7 +152,7 @@ class AssetListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
 
 
 class AssetDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView):
-    permission_required = ('assets', 'view')
+    permission_required = ('assets', 'details')
     model = Asset
     template_name = 'gestion_activos/asset_detail.html'
     context_object_name = 'asset'

@@ -7,65 +7,94 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
-            <h2>
-                <i class="fas fa-key"></i>
+            <h2 class="mb-1">
+                <i class="fas fa-key text-primary me-2"></i>
                 Gestión de Permisos: <strong>{{ role.name }}</strong>
             </h2>
-            <p class="text-muted">{{ role.description }}</p>
+            <p class="text-muted ms-4 ps-2">{{ role.description|default:"Sin descripción" }}</p>
         </div>
     </div>
 
+    <!-- Contenedor Principal (Quitar clases de row-cols que puedan romper el flex) -->
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-body">
+            <div class="card shadow-sm border-0 bg-transparent">
+                <div class="card-body p-0">
                     {% if role.name == 'Administrador' %}
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i>
-                        El rol <strong>Administrador</strong> tiene todos los permisos del sistema por defecto y no
-                        pueden ser modificados.
+                    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center gap-3 mb-4">
+                        <i class="fas fa-info-circle fa-2x"></i>
+                        <div>
+                            <strong>Rol del Sistema:</strong> El rol <strong>Administrador</strong> tiene todos los permisos del sistema por defecto y no
+                            pueden ser modificados para garantizar la integridad operativa.
+                        </div>
                     </div>
                     {% endif %}
 
-                    <form method="post">
+                    <form method="post" id="permissions-form">
                         {% csrf_token %}
 
-                        {% for module_name, perms in permissions_by_module.items %}
-                        <div class="card mb-3">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-folder"></i> {{ module_name }}
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    {% for perm_data in perms %}
-                                    <div class="col-md-3 col-sm-6 mb-2">
-                                        <div class="form-check">
-                                            <input type="checkbox" class="form-check-input"
-                                                name="{{ perm_data.field_name }}" id="{{ perm_data.field_name }}" 
-												{% if perm_data.permission.id in selected_permission_ids %} checked 
-												{% endif %} {% if role.name == 'Administrador' %}disabled{% endif %}>
-                                            <label class="form-check-label" for="{{ perm_data.field_name }}">
-                                                {{ perm_data.permission.get_action_display }}
-                                            </label>
+                        <!-- Grid Custom para Emular 3 Columnas -->
+                        <div class="row g-3">
+                            {% for module_name, perms in permissions_by_module.items %}
+                            <div class="col-12 col-md-6 col-lg-4">
+                                <div class="card h-100 border-0 shadow-sm module-card" style="border-radius: 12px; background: #fff; border: 1px solid #e5e7eb !important;">
+                                    <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between" style="border-radius: 12px 12px 0 0;">
+                                        <h5 class="mb-0 text-primary fw-bold d-flex align-items-center" style="font-size: 1rem;">
+                                            <i class="fas fa-layer-group me-2"></i> {{ module_name }}
+                                        </h5>
+                                        <span class="badge bg-light text-primary rounded-pill px-3">{{ perms|length }}</span>
+                                    </div>
+                                    <div class="card-body p-2">
+                                        <div class="list-group list-group-flush">
+                                            {% for perm_data in perms %}
+                                            <div class="list-group-item border-0 px-2 py-2 mb-1 rounded-3 permission-item">
+                                                <div class="d-flex align-items-center w-100">
+                                                    
+                                                    <!-- Columna Nombre Permiso -->
+                                                    <div style="width: 140px; flex-shrink: 0;" class="pe-2">
+                                                        <label class="form-check-label mb-0" for="{{ perm_data.field_name }}" style="cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #374151;">
+                                                            {{ perm_data.permission.get_action_display }}
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <!-- Columna Descripción -->
+                                                    <div class="flex-grow-1 px-1" style="font-size: 0.75rem; color: #6B7280; line-height: 1.2;">
+                                                        {{ perm_data.permission.description }}
+                                                    </div>
+                                                    
+                                                    <!-- Columna Checkbox -->
+                                                    <div class="form-check form-switch mb-0 ms-2" style="flex-shrink: 0; min-height: auto; padding-left: 0;">
+                                                        <input type="checkbox" 
+                                                               class="form-check-input perm-checkbox m-0 float-end"
+                                                               {% if perm_data.permission.action == 'view' %}data-module-access="{{ module_name|slugify }}"{% endif %}
+                                                               data-module-group="{{ module_name|slugify }}"
+                                                               name="{{ perm_data.field_name }}" 
+                                                               id="{{ perm_data.field_name }}" 
+                                                               {% if perm_data.permission.id in selected_permission_ids %} checked {% endif %} 
+                                                               {% if role.name == 'Administrador' %}disabled{% endif %}
+                                                               style="width: 2.2em; height: 1.1em; cursor: pointer;">
+                                                    </div>
+                                                    
+                                                </div>
+                                            </div>
+                                            {% endfor %}
                                         </div>
                                     </div>
-                                    {% endfor %}
                                 </div>
                             </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
 
-                        <div class="d-flex gap-2 mt-4">
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-4 border-top">
+                            <a href="{% url 'role_detail' role.pk %}" class="btn btn-secondary px-4">
+                                <i class="fas fa-arrow-left me-2"></i> Volver al Detalle
+                            </a>
+                            
                             {% if role.name != 'Administrador' %}
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Guardar Permisos
+                            <button type="submit" class="btn btn-primary px-5 py-2 shadow-sm rounded-3">
+                                <i class="fas fa-save me-2"></i> Guardar Cambios
                             </button>
                             {% endif %}
-                            <a href="{% url 'role_detail' role.pk %}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Volver
-                            </a>
                         </div>
                     </form>
                 </div>
@@ -73,4 +102,78 @@
         </div>
     </div>
 </div>
+
+<style>
+    .module-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .module-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.08) !important;
+        border-color: var(--primary-color) !important;
+    }
+    .permission-item {
+        transition: background-color 0.2s ease;
+    }
+    .permission-item:hover {
+        background-color: #f9fafb;
+    }
+    .form-check-input:checked {
+        background-color: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
+    }
+    .text-primary {
+        color: var(--primary-color) !important;
+    }
+    .badge.bg-light.text-primary {
+        background-color: rgba(73, 186, 160, 0.1) !important;
+        color: var(--primary-color) !important;
+    }
+    /* Asegurar que el label no agregue paddings raros que empujen el switch */
+    .form-check-input {
+        margin-left: 0;
+    }
+    
+    /* Las tarjetas usan el grid nativo de Bootstrap (col-12 col-md-6 col-lg-4) */
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if role.name != 'Administrador' %}
+    // Lógica para toggle automático de permisos cuando se activa Acceso al módulo
+    const accessCheckboxes = document.querySelectorAll('[data-module-access]');
+    
+    accessCheckboxes.forEach(accessBox => {
+        accessBox.addEventListener('change', function() {
+            const moduleGroup = this.getAttribute('data-module-group');
+            const relatedCheckboxes = document.querySelectorAll(`[data-module-group="${moduleGroup}"]:not([data-module-access])`);
+            
+            if (this.checked) {
+                // Si activa el acceso, activamos todos los demás permisos
+                relatedCheckboxes.forEach(box => {
+                    box.checked = true;
+                });
+            } else {
+                // Si desactiva el acceso, desactivamos todos los demás permisos
+                relatedCheckboxes.forEach(box => {
+                    box.checked = false;
+                });
+            }
+        });
+    });
+
+    // Validar al revés: si activas algo que no es acceso, el acceso DEBE activarse automáticamente
+    const subPermCheckboxes = document.querySelectorAll('.perm-checkbox:not([data-module-access])');
+    subPermCheckboxes.forEach(box => {
+        box.addEventListener('change', function() {
+            if (this.checked) {
+                const moduleGroup = this.getAttribute('data-module-group');
+                const accessBox = document.querySelector(`[data-module-access][data-module-group="${moduleGroup}"]`);
+                if (accessBox) accessBox.checked = true;
+            }
+        });
+    });
+    {% endif %}
+});
+</script>
 {% endblock %}

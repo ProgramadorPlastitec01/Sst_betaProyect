@@ -925,7 +925,7 @@ class ExtinguisherUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, In
         return reverse('extinguisher_detail', kwargs={'pk': self.object.pk})
 
 class ExtinguisherDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
-    permission_required = ('extinguisher', 'view')
+    permission_required = ('extinguisher', 'details')
     model = ExtinguisherInspection
     template_name = 'inspections/extinguisher_detail.html'
     
@@ -1109,7 +1109,8 @@ class SignExtinguisherInspectionView(LoginRequiredMixin, View):
             
         return redirect('extinguisher_detail', pk=pk)
 
-class ExtinguisherReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
+class ExtinguisherReportView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
+    permission_required = ('extinguisher', 'details')
     model = ExtinguisherInspection
     template_name = 'inspections/extinguisher_report.html'
     
@@ -1245,7 +1246,7 @@ class FirstAidUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Inspec
         return reverse('first_aid_detail', kwargs={'pk': self.object.pk})
 
 class FirstAidDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
-    permission_required = ('first_aid', 'view')
+    permission_required = ('first_aid', 'details')
     model = FirstAidInspection
     template_name = 'inspections/first_aid_detail.html'
     
@@ -1413,7 +1414,8 @@ class SignFirstAidInspectionView(LoginRequiredMixin, View):
         
         return redirect('first_aid_detail', pk=pk)
 
-class FirstAidReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
+class FirstAidReportView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
+    permission_required = ('first_aid', 'details')
     model = FirstAidInspection
     template_name = 'inspections/first_aid_report.html'
 
@@ -1587,7 +1589,7 @@ class ProcessItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Evi
         return reverse('process_detail', kwargs={'pk': self.object.inspection.pk})
 
 class ProcessDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
-    permission_required = ('process', 'view')
+    permission_required = ('process', 'details')
     model = ProcessInspection
     template_name = 'inspections/process_detail.html'
 
@@ -1755,7 +1757,8 @@ class SignProcessInspectionView(LoginRequiredMixin, View):
         
         return redirect('process_detail', pk=pk)
 
-class ProcessReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
+class ProcessReportView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
+    permission_required = ('process', 'details')
     model = ProcessInspection
     template_name = 'inspections/process_report.html'
 
@@ -1893,7 +1896,7 @@ class StorageItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Evi
         return reverse('storage_detail', kwargs={'pk': self.object.inspection.pk})
 
 class StorageDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
-    permission_required = ('storage', 'view')
+    permission_required = ('storage', 'details')
     model = StorageInspection
     template_name = 'inspections/storage_detail.html'
 
@@ -2061,7 +2064,8 @@ class SignStorageInspectionView(LoginRequiredMixin, View):
         
         return redirect('storage_detail', pk=pk)
 
-class StorageReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
+class StorageReportView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
+    permission_required = ('storage', 'details')
     model = StorageInspection
     template_name = 'inspections/storage_report.html'
     
@@ -2189,7 +2193,7 @@ class ForkliftItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, Ev
         return reverse('forklift_detail', kwargs={'pk': self.object.inspection.pk})
 
 class ForkliftDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
-    permission_required = ('forklift', 'view')
+    permission_required = ('forklift', 'details')
     model = ForkliftInspection
     template_name = 'inspections/forklift_detail.html'
     
@@ -2359,7 +2363,8 @@ class SignForkliftInspectionView(LoginRequiredMixin, View):
         
         return redirect('forklift_detail', pk=pk)
 
-class ForkliftReportView(LoginRequiredMixin, EvidenceMixin, DetailView):
+class ForkliftReportView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, DetailView):
+    permission_required = ('forklift', 'details')
     model = ForkliftInspection
     template_name = 'inspections/forklift_report.html'
     

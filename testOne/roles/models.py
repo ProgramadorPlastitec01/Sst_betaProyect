@@ -18,13 +18,15 @@ class Permission(models.Model):
         ('assets', 'Gestión de Activos'),
         ('roles', 'Roles'),
         ('reports', 'Reportes'),
+        ('planos', 'Planos'),
     ]
     
     ACTION_CHOICES = [
-        ('view', 'Ver módulo'),
+        ('view', 'Acceso al módulo'),
         ('create', 'Registrar'),
-        ('edit', 'Editar'),
+        ('edit', 'Modificar'),
         ('delete', 'Eliminar'),
+        ('details', 'Consulta'),
         ('reset_password', 'Restablecer Contraseña'),
         ('gestionar_movimientos', 'Gestionar Movimientos'),
     ]

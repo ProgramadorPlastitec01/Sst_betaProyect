@@ -6,70 +6,47 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         
-        # Definir todos los permisos del sistema
-        permissions_data = [
-            # Usuarios
-            {'module': 'users', 'action': 'view', 'description': 'Ver listado de usuarios'},
-            {'module': 'users', 'action': 'create', 'description': 'Crear nuevos usuarios'},
-            {'module': 'users', 'action': 'edit', 'description': 'Editar usuarios existentes'},
-            {'module': 'users', 'action': 'delete', 'description': 'Eliminar usuarios'},
-            
-            # Roles
-            {'module': 'roles', 'action': 'view', 'description': 'Ver listado de roles'},
-            {'module': 'roles', 'action': 'create', 'description': 'Crear nuevos roles'},
-            {'module': 'roles', 'action': 'edit', 'description': 'Editar roles y permisos'},
-            {'module': 'roles', 'action': 'delete', 'description': 'Eliminar roles'},
-            
-            # Cronograma
-            {'module': 'schedule', 'action': 'view', 'description': 'Ver cronograma anual'},
-            {'module': 'schedule', 'action': 'create', 'description': 'Programar nuevas inspecciones'},
-            {'module': 'schedule', 'action': 'edit', 'description': 'Editar programaciones'},
-            {'module': 'schedule', 'action': 'delete', 'description': 'Eliminar programaciones'},
-            
-            # Extintores
-            {'module': 'extinguisher', 'action': 'view', 'description': 'Ver inspecciones de extintores'},
-            {'module': 'extinguisher', 'action': 'create', 'description': 'Registrar inspecciones de extintores'},
-            {'module': 'extinguisher', 'action': 'edit', 'description': 'Editar inspecciones de extintores'},
-            {'module': 'extinguisher', 'action': 'delete', 'description': 'Eliminar inspecciones de extintores'},
-            
-            # Botiquines
-            {'module': 'first_aid', 'action': 'view', 'description': 'Ver inspecciones de botiquines'},
-            {'module': 'first_aid', 'action': 'create', 'description': 'Registrar inspecciones de botiquines'},
-            {'module': 'first_aid', 'action': 'edit', 'description': 'Editar inspecciones de botiquines'},
-            {'module': 'first_aid', 'action': 'delete', 'description': 'Eliminar inspecciones de botiquines'},
-            
-            # Procesos
-            {'module': 'process', 'action': 'view', 'description': 'Ver inspecciones de procesos'},
-            {'module': 'process', 'action': 'create', 'description': 'Registrar inspecciones de procesos'},
-            {'module': 'process', 'action': 'edit', 'description': 'Editar inspecciones de procesos'},
-            {'module': 'process', 'action': 'delete', 'description': 'Eliminar inspecciones de procesos'},
-            
-            # Almacenamiento
-            {'module': 'storage', 'action': 'view', 'description': 'Ver inspecciones de almacenamiento'},
-            {'module': 'storage', 'action': 'create', 'description': 'Registrar inspecciones de almacenamiento'},
-            {'module': 'storage', 'action': 'edit', 'description': 'Editar inspecciones de almacenamiento'},
-            {'module': 'storage', 'action': 'delete', 'description': 'Eliminar inspecciones de almacenamiento'},
-            
-            # Montacargas
-            {'module': 'forklift', 'action': 'view', 'description': 'Ver inspecciones de montacargas'},
-            {'module': 'forklift', 'action': 'create', 'description': 'Registrar inspecciones de montacargas'},
-            {'module': 'forklift', 'action': 'edit', 'description': 'Editar inspecciones de montacargas'},
-            {'module': 'forklift', 'action': 'delete', 'description': 'Eliminar inspecciones de montacargas'},
-
-            # Activos - Inventario
-            {'module': 'assets', 'action': 'view', 'description': 'Ver inventario de activos'},
-            {'module': 'assets', 'action': 'create', 'description': 'Crear nuevos activos'},
-            {'module': 'assets', 'action': 'edit', 'description': 'Editar activos'},
-            {'module': 'assets', 'action': 'delete', 'description': 'Eliminar activos'},
-
-            # Movimientos de Activos
-            {'module': 'assets', 'action': 'gestionar_movimientos', 'description': 'Registrar movimientos de activos (salidas, reemplazos, retornos)'},
+        # Estructura base de permisos por módulo según requerimiento:
+        # 1. Acceso (view)
+        # 2. Registrar (create)
+        # 3. Modificar (edit) 
+        # 4. Eliminar (delete)
+        # 5. Consulta (details)
+        
+        standard_actions = [
+            ('view', 'Acceso al módulo'),
+            ('create', 'Registrar'),
+            ('edit', 'Modificar'),
+            ('delete', 'Eliminar'),
+            ('details', 'Consulta'),
         ]
+        
+        modules = dict(Permission.MODULE_CHOICES)
+        
+        permissions_data = []
+        
+        # Generar automáticamente los 5 permisos estándar para cada módulo
+        for mod_code, mod_name in modules.items():
+            for act_code, act_label in standard_actions:
+                permissions_data.append({
+                    'module': mod_code,
+                    'action': act_code,
+                    'description': f'{act_label} en {mod_name}'
+                })
+        
+        # Agregar permisos especiales existentes para no romper funcionalidad
+        special_permissions = [
+            {'module': 'users', 'action': 'reset_password', 'description': 'Restablecer Contraseña en Usuarios'},
+            {'module': 'assets', 'action': 'gestionar_movimientos', 'description': 'Gestionar Movimientos en Gestión de Activos'},
+        ]
+        
+        permissions_data.extend(special_permissions)
         
         self.stdout.write(self.style.SUCCESS('\n=== Inicializando Permisos ===\n'))
         
         created_count = 0
         existing_count = 0
+        updated_count = 0
         
         for perm_data in permissions_data:
             codename = f"{perm_data['module']}_{perm_data['action']}"
@@ -87,12 +64,22 @@ class Command(BaseCommand):
                 created_count += 1
                 self.stdout.write(self.style.SUCCESS(f'  [OK] {perm.description}'))
             else:
-                existing_count += 1
-                self.stdout.write(f'  [--] {perm.description}')
+                # Update description if it changed (to match new naming convention)
+                if perm.description != perm_data['description']:
+                    perm.description = perm_data['description']
+                    perm.module = perm_data['module']
+                    perm.action = perm_data['action']
+                    perm.save()
+                    updated_count += 1
+                    self.stdout.write(self.style.SUCCESS(f'  [UPDATED] {perm.description}'))
+                else:
+                    existing_count += 1
+                    self.stdout.write(f'  [--] {perm.description}')
         
         # Resumen
         self.stdout.write(self.style.SUCCESS('\n=== Resumen ==='))
         self.stdout.write(self.style.SUCCESS(f'Permisos creados: {created_count}'))
+        self.stdout.write(self.style.SUCCESS(f'Permisos actualizados: {updated_count}'))
         self.stdout.write(f'Permisos existentes: {existing_count}')
         self.stdout.write(self.style.SUCCESS(f'Total de permisos: {Permission.objects.count()}'))
         self.stdout.write(self.style.SUCCESS('\nAhora ejecuta: python manage.py init_roles'))
