@@ -402,7 +402,7 @@ class UserListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
 
 class UserCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, CreateView):
     permission_required = ('users', 'create')
-    model = CustomUser
+    form_class = CustomUserCreationForm
     template_name = 'users/user_form.html'
     success_url = reverse_lazy('user_list')
     
@@ -413,7 +413,7 @@ class UserCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, CreateView
 
 class UserUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView):
     permission_required = ('users', 'edit')
-    model = CustomUser
+    form_class = CustomUserChangeForm
     template_name = 'users/user_form.html'
     success_url = reverse_lazy('user_list')
     
