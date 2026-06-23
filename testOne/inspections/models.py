@@ -374,16 +374,26 @@ class ExtinguisherInspection(BaseInspection):
         default='Programada', 
         verbose_name="Estado de Inspección"
     )
+    manual_participants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='manual_extinguisher_inspections',
+        blank=True,
+        verbose_name="Participantes Adicionales"
+    )
 
     def get_participants(self):
-        """Returns unique users who registered items or is the main inspector."""
+        """Returns unique users who registered items, is the main inspector, or were added manually."""
         from django.contrib.auth import get_user_model
         User = get_user_model()
         user_ids = set(self.items.values_list('registered_by', flat=True))
         user_ids.discard(None)
         if self.inspector:
             user_ids.add(self.inspector.id)
-        return User.objects.filter(id__in=user_ids)
+            
+        qs = User.objects.filter(id__in=user_ids)
+        if self.pk:
+            qs = qs | self.manual_participants.all()
+        return qs.distinct()
     
     parent_inspection = models.ForeignKey(
         'self', 
@@ -510,6 +520,12 @@ class FirstAidInspection(BaseInspection):
         default='Programada', 
         verbose_name="Estado de Inspección"
     )
+    manual_participants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='manual_firstaid_inspections',
+        blank=True,
+        verbose_name="Participantes Adicionales"
+    )
 
     def get_participants(self):
         from django.contrib.auth import get_user_model
@@ -518,7 +534,11 @@ class FirstAidInspection(BaseInspection):
         user_ids.discard(None)
         if self.inspector:
             user_ids.add(self.inspector.id)
-        return User.objects.filter(id__in=user_ids)
+            
+        qs = User.objects.filter(id__in=user_ids)
+        if self.pk:
+            qs = qs | self.manual_participants.all()
+        return qs.distinct()
     
     parent_inspection = models.ForeignKey(
         'self', 
@@ -610,6 +630,12 @@ class ProcessInspection(BaseInspection):
         ('Cerrada con seguimientos', 'Cerrada con seguimientos'),
     ]
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Programada', verbose_name="Estado")
+    manual_participants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='manual_process_inspections',
+        blank=True,
+        verbose_name="Participantes Adicionales"
+    )
 
     def get_participants(self):
         from django.contrib.auth import get_user_model
@@ -618,7 +644,11 @@ class ProcessInspection(BaseInspection):
         user_ids.discard(None)
         if self.inspector:
             user_ids.add(self.inspector.id)
-        return User.objects.filter(id__in=user_ids)
+            
+        qs = User.objects.filter(id__in=user_ids)
+        if self.pk:
+            qs = qs | self.manual_participants.all()
+        return qs.distinct()
     additional_observations = models.TextField(blank=True, null=True, verbose_name="Observaciones Adicionales")
     parent_inspection = models.ForeignKey(
         'self', 
@@ -706,6 +736,12 @@ class StorageInspection(BaseInspection):
         ('Cerrada con seguimientos', 'Cerrada con seguimientos'),
     ]
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Programada', verbose_name="Estado")
+    manual_participants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='manual_storage_inspections',
+        blank=True,
+        verbose_name="Participantes Adicionales"
+    )
 
     def get_participants(self):
         from django.contrib.auth import get_user_model
@@ -714,7 +750,11 @@ class StorageInspection(BaseInspection):
         user_ids.discard(None)
         if self.inspector:
             user_ids.add(self.inspector.id)
-        return User.objects.filter(id__in=user_ids)
+            
+        qs = User.objects.filter(id__in=user_ids)
+        if self.pk:
+            qs = qs | self.manual_participants.all()
+        return qs.distinct()
     additional_observations = models.TextField(blank=True, null=True, verbose_name="Observaciones Adicionales")
     parent_inspection = models.ForeignKey(
         'self', 
@@ -806,6 +846,12 @@ class ForkliftInspection(BaseInspection):
         ('Cerrada con seguimientos', 'Cerrada con seguimientos'),
     ]
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Programada', verbose_name="Estado")
+    manual_participants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='manual_forklift_inspections',
+        blank=True,
+        verbose_name="Participantes Adicionales"
+    )
 
     def save(self, *args, **kwargs):
         # Sync forklift type from asset detail if linked
@@ -820,7 +866,11 @@ class ForkliftInspection(BaseInspection):
         user_ids.discard(None)
         if self.inspector:
             user_ids.add(self.inspector.id)
-        return User.objects.filter(id__in=user_ids)
+            
+        qs = User.objects.filter(id__in=user_ids)
+        if self.pk:
+            qs = qs | self.manual_participants.all()
+        return qs.distinct()
     additional_observations = models.TextField(blank=True, null=True, verbose_name="Observaciones Adicionales")
     parent_inspection = models.ForeignKey(
         'self', 

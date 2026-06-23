@@ -166,7 +166,25 @@
                         {% block header_title %}Panel de Control{% endblock %}
                     </h2>
                 </div>
-                <div class="user-profile" style="position: relative;">
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    {# ── BADGE DE SIMULACIÓN INTEGRADO ── #}
+                    {% if simulated_role %}
+                    <div style="display: flex; align-items: center; background-color: rgba(111, 66, 193, 0.08); border: 1px solid rgba(111, 66, 193, 0.2); border-radius: 20px; padding: 4px 12px; height: 32px;">
+                        <i class="fas fa-user-secret" style="color: #6f42c1; margin-right: 8px; font-size: 0.9rem;"></i>
+                        <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-color);">
+                            Simulando: <strong style="color: #6f42c1;">{{ simulated_role.name }}</strong>
+                        </span>
+                        <div style="width: 1px; height: 14px; background-color: rgba(111, 66, 193, 0.2); margin: 0 10px;"></div>
+                        <form method="post" action="{% url 'role_simulate_stop' %}" style="margin: 0; display: flex; align-items: center;">
+                            {% csrf_token %}
+                            <button type="submit" style="background: none; border: none; padding: 0; color: #dc3545; font-size: 0.8rem; font-weight: 600; cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" title="Salir de simulación">
+                                Salir
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <div class="user-profile" style="position: relative;">
                     <div class="user-info" style="cursor: pointer;" onclick="toggleUserDropdown()">
                         <span class="user-name">{{ user.get_full_name|default:user.email }}</span>
                         <span class="user-role">{% if user.is_staff %}Administrador{% else %}Inspector{% endif %}</span>
@@ -205,10 +223,14 @@
                         </form>
                     </div>
                 </div>
+                </div>
             </header>
 
             <!-- Main Content Area -->
             <main class="main-content">
+
+
+
                 <div class="content-container">
                     {# Django messages are now handled by Toastr - see bottom of template #}
 
@@ -217,6 +239,7 @@
             </main>
         </div>
     </div>
+
 
     <!-- Inactivity Timer Script -->
     <script>

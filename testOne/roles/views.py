@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
-from .models import Role, Permission
+from .models import Role, Permission, PERMISSION_MATRIX
 from .forms import RoleForm, RolePermissionsForm
 from .mixins import RolePermissionRequiredMixin
 
@@ -73,38 +73,54 @@ class RoleDetailView(LoginRequiredMixin, RolePermissionRequiredMixin, DetailView
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
-        # Obtener todos los permisos definidos en el sistema
-        all_permissions = Permission.objects.all().order_by('module', 'action')
-        
-        # Obtener IDs de permisos que tiene el rol
+
+        # IDs de permisos que tiene el rol
         role_perm_ids = set(self.object.permissions.values_list('id', flat=True))
-        
-        # Agrupar por módulo para visualizar
-        # Estructura: {'users': {'name': 'Usuarios', 'perms': [{'obj': p, 'has': True}, ...]}, ...}
-        permissions_matrix = {}
-        
-        # Usar MODULE_CHOICES para iterar en orden y obtener nombres legibles
-        module_dict = dict(Permission.MODULE_CHOICES)
-        
-        for module_key, module_name in Permission.MODULE_CHOICES:
-            # Filtrar permisos de este módulo
-            module_perms = [p for p in all_permissions if p.module == module_key]
-            
-            if module_perms:
-                perms_list = []
-                for p in module_perms:
-                    perms_list.append({
-                        'permission': p,
-                        'has_perm': p.id in role_perm_ids
-                    })
-                
-                permissions_matrix[module_key] = {
-                    'name': module_name,
-                    'vals': perms_list
-                }
-        
-        context['permissions_matrix'] = permissions_matrix
+
+        # Permisos activos indexados por codename
+        active_perms = {
+            p.codename: p
+            for p in Permission.objects.filter(is_active=True)
+        }
+
+        module_labels = dict(Permission.MODULE_CHOICES)
+        action_labels = dict(Permission.ACTION_CHOICES)
+
+        from .models import ACTION_DISPLAY_ORDER
+
+        # Columnas: todas las acciones que aparecen en la matriz, en orden
+        all_actions = set()
+        for actions in PERMISSION_MATRIX.values():
+            all_actions.update(actions)
+        columns = [a for a in ACTION_DISPLAY_ORDER if a in all_actions]
+        column_labels = {a: action_labels.get(a, a.capitalize()) for a in columns}
+
+        # Filas siguiendo el orden de PERMISSION_MATRIX
+        rows = []
+        for module_code, actions in PERMISSION_MATRIX.items():
+            cells = {}
+            for action_code in columns:
+                if action_code in actions:
+                    codename = f'{module_code}_{action_code}'
+                    perm = active_perms.get(codename)
+                    if perm:
+                        cells[action_code] = {
+                            'permission': perm,
+                            'has_perm': perm.id in role_perm_ids,
+                        }
+                    else:
+                        cells[action_code] = None  # Permiso no sincronizado aún
+                else:
+                    cells[action_code] = None  # No aplica a este módulo
+            rows.append({
+                'module_code': module_code,
+                'module_name': module_labels.get(module_code, module_code.capitalize()),
+                'cells': cells,
+            })
+
+        context['matrix_columns'] = columns
+        context['matrix_column_labels'] = column_labels
+        context['matrix_rows'] = rows
         return context
 
 
@@ -155,10 +171,15 @@ def role_permissions_view(request, pk):
     # Obtener IDs de permisos seleccionados para el rol
     selected_permission_ids = set(role.permissions.values_list('id', flat=True))
     
+    # Construir la estructura de tabla-matriz para el template
+    matrix_context = form.get_matrix_context()
+
     context = {
         'role': role,
         'form': form,
-        'permissions_by_module': form.get_permissions_by_module(),
+        'matrix_columns': matrix_context['columns'],
+        'matrix_column_labels': matrix_context['column_labels'],
+        'matrix_rows': matrix_context['rows'],
         'selected_permission_ids': selected_permission_ids,
     }
     return render(request, 'roles/role_permissions.html', context)
@@ -183,3 +204,69 @@ def toggle_role_status(request, pk):
     status = 'activado' if role.is_active else 'desactivado'
     messages.success(request, f'Rol "{role.name}" {status} correctamente')
     return redirect('role_list')
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SIMULACIÓN DE ROLES — Herramienta exclusiva para administradores
+# Almacena el rol simulado únicamente en la sesión. Sin cambios en BD.
+# ─────────────────────────────────────────────────────────────────────────────
+
+from django.views import View
+
+
+def _user_is_real_admin(user):
+    """
+    Verifica si el usuario es administrador real (superuser o rol Administrador).
+    Usa el rol de BD directamente para evitar interferencia con simulaciones activas.
+    """
+    if user.is_superuser:
+        return True
+    real_role = getattr(user, '_real_role', None) or getattr(user, 'role', None)
+    return real_role and real_role.name == 'Administrador'
+
+
+class StartRoleSimulationView(LoginRequiredMixin, View):
+    """
+    POST: Activa la simulación de un rol para el administrador.
+    Almacena el role_id en request.session['simulated_role_id'].
+    No modifica ningún dato del usuario en base de datos.
+    """
+
+    def post(self, request, *args, **kwargs):
+        # Solo administradores reales pueden activar simulación
+        if not _user_is_real_admin(request.user):
+            messages.error(request, 'No tienes permisos para usar la herramienta de simulación.')
+            return redirect('role_list')
+
+        role_id = request.POST.get('role_id')
+        if not role_id:
+            messages.error(request, 'Debe seleccionar un rol para simular.')
+            return redirect('role_list')
+
+        try:
+            role = Role.objects.get(pk=role_id, is_active=True)
+        except Role.DoesNotExist:
+            messages.error(request, 'El rol seleccionado no existe o está inactivo.')
+            return redirect('role_list')
+
+        # Guardar en sesión (sin tocar la BD del usuario)
+        request.session['simulated_role_id'] = role.pk
+        messages.warning(
+            request,
+            f'Modo simulación activado. Ahora estás visualizando el sistema como: "{role.name}"'
+        )
+        return redirect('dashboard')
+
+
+class StopRoleSimulationView(LoginRequiredMixin, View):
+    """
+    POST: Desactiva la simulación y restaura los permisos reales del administrador.
+    Solo elimina la clave de sesión; no toca ningún dato en BD.
+    """
+
+    def post(self, request, *args, **kwargs):
+        sim_role_id = request.session.pop('simulated_role_id', None)
+        if sim_role_id:
+            messages.success(request, 'Simulación finalizada. Has regresado a tus permisos reales.')
+        return redirect('dashboard')
+

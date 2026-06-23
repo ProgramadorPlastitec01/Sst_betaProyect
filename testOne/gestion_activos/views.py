@@ -15,17 +15,12 @@ from roles.mixins import RolePermissionRequiredMixin
 # ASSET TYPE VIEWS (Solo accesibles desde la Configuración - sin menú lateral)
 # ─────────────────────────────────────────────────────────────────────────────
 
-class AssetTypeListView(LoginRequiredMixin, ListView):
-    """Lista de tipos de activo - acceso solo desde Configuración."""
+class AssetTypeListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
+    """Lista de tipos de activo - accesible mediante permiso RBAC de activos."""
+    permission_required = ('assets', 'view')
     model = AssetType
     template_name = 'gestion_activos/asset_type_list.html'
     context_object_name = 'asset_types'
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_staff:
-            messages.error(request, 'Acceso restringido a administradores.')
-            return redirect('configuration')
-        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -33,50 +28,35 @@ class AssetTypeListView(LoginRequiredMixin, ListView):
         return context
 
 
-class AssetTypeCreateView(LoginRequiredMixin, CreateView):
+class AssetTypeCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, CreateView):
+    permission_required = ('assets', 'create')
     model = AssetType
     form_class = AssetTypeForm
     template_name = 'gestion_activos/asset_type_form.html'
     success_url = reverse_lazy('asset_type_list')
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_staff:
-            messages.error(request, 'Acceso restringido a administradores.')
-            return redirect('configuration')
-        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         messages.success(self.request, f'Tipo de activo "{form.instance.name}" creado exitosamente.')
         return super().form_valid(form)
 
 
-class AssetTypeUpdateView(LoginRequiredMixin, UpdateView):
+class AssetTypeUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView):
+    permission_required = ('assets', 'edit')
     model = AssetType
     form_class = AssetTypeForm
     template_name = 'gestion_activos/asset_type_form.html'
     success_url = reverse_lazy('asset_type_list')
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_staff:
-            messages.error(request, 'Acceso restringido a administradores.')
-            return redirect('configuration')
-        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         messages.success(self.request, f'Tipo de activo "{form.instance.name}" actualizado correctamente.')
         return super().form_valid(form)
 
 
-class AssetTypeDeleteView(LoginRequiredMixin, DeleteView):
+class AssetTypeDeleteView(LoginRequiredMixin, RolePermissionRequiredMixin, DeleteView):
+    permission_required = ('assets', 'delete')
     model = AssetType
     template_name = 'gestion_activos/asset_type_confirm_delete.html'
     success_url = reverse_lazy('asset_type_list')
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_staff:
-            messages.error(request, 'Acceso restringido a administradores.')
-            return redirect('configuration')
-        return super().dispatch(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
         obj = self.get_object()
@@ -351,62 +331,47 @@ class AssetTypeDetailFormView(LoginRequiredMixin, View):
 # TIPO EXTINTOR VIEWS (Solo desde Configuración - staff only)
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TipoExtintorListView(LoginRequiredMixin, ListView):
+class TipoExtintorListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
+    permission_required = ('assets', 'view')
     model = TipoExtintor
     template_name = 'gestion_activos/tipo_extintor_list.html'
     context_object_name = 'tipos'
 
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_staff:
-            messages.error(request, 'Acceso restringido a administradores.')
-            return redirect('configuration')
-        return super().dispatch(request, *args, **kwargs)
 
-
-class TipoExtintorCreateView(LoginRequiredMixin, CreateView):
+class TipoExtintorCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, CreateView):
+    permission_required = ('assets', 'create')
     model = TipoExtintor
     form_class = TipoExtintorForm
     template_name = 'gestion_activos/tipo_extintor_form.html'
     success_url = reverse_lazy('tipo_extintor_list')
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_staff:
-            messages.error(request, 'Acceso restringido a administradores.')
-            return redirect('configuration')
-        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         messages.success(self.request, f'Tipo "{form.instance.nombre}" creado exitosamente.')
         return super().form_valid(form)
 
 
-class TipoExtintorUpdateView(LoginRequiredMixin, UpdateView):
+class TipoExtintorUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView):
+    permission_required = ('assets', 'edit')
     model = TipoExtintor
     form_class = TipoExtintorForm
     template_name = 'gestion_activos/tipo_extintor_form.html'
     success_url = reverse_lazy('tipo_extintor_list')
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_staff:
-            messages.error(request, 'Acceso restringido a administradores.')
-            return redirect('configuration')
-        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         messages.success(self.request, f'Tipo "{form.instance.nombre}" actualizado.')
         return super().form_valid(form)
 
 
-class TipoExtintorDeleteView(LoginRequiredMixin, DeleteView):
+class TipoExtintorDeleteView(LoginRequiredMixin, RolePermissionRequiredMixin, DeleteView):
+    permission_required = ('assets', 'delete')
     model = TipoExtintor
     template_name = 'gestion_activos/tipo_extintor_confirm_delete.html'
     success_url = reverse_lazy('tipo_extintor_list')
 
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_staff:
-            messages.error(request, 'Acceso restringido a administradores.')
-            return redirect('configuration')
-        return super().dispatch(request, *args, **kwargs)
+    def delete(self, request, *args, **kwargs):
+        obj = self.get_object()
+        messages.success(request, f'Tipo "{obj.nombre}" eliminado.')
+        return super().delete(request, *args, **kwargs)
 
 
 

@@ -102,12 +102,19 @@ from .models import (
 class ExtinguisherInspectionForm(forms.ModelForm):
     class Meta:
         model = ExtinguisherInspection
-        fields = ['inspection_date', 'area', 'inspector_role']
+        fields = ['inspection_date', 'area', 'inspector_role', 'manual_participants']
         widgets = {
             'inspection_date': forms.DateInput(
                 format='%Y-%m-%d',
                 attrs={'type': 'date'}
             ),
+            'manual_participants': forms.SelectMultiple(
+                attrs={
+                    'class': 'form-control',
+                    'id': 'id_manual_participants',
+                    'style': 'width: 100%;',
+                }
+            )
         }
 
     def __init__(self, *args, **kwargs):
@@ -137,6 +144,14 @@ class ExtinguisherInspectionForm(forms.ModelForm):
 
         self.fields['area'].queryset = Area.objects.filter(is_active=True).order_by('name')
         self.fields['area'].empty_label = "Seleccione un área"
+
+        # 3. Manual Participants
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.fields['manual_participants'].queryset = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        self.fields['manual_participants'].required = False
+        self.fields['manual_participants'].label = "Participantes Adicionales"
+        self.fields['manual_participants'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name} - {obj.get_role_name() if hasattr(obj, 'get_role_name') else 'Sin Rol'}".strip()
 
         # Lock area if provided (e.g. from schedule)
         if self.initial.get('area'):
@@ -226,7 +241,7 @@ ExtinguisherItemFormSet = inlineformset_factory(
 class FirstAidInspectionForm(forms.ModelForm):
     class Meta:
         model = FirstAidInspection
-        fields = ['inspection_date', 'asset', 'area', 'inspector_role']
+        fields = ['inspection_date', 'asset', 'area', 'inspector_role', 'manual_participants']
         widgets = {
             'inspection_date': forms.DateInput(
                 format='%Y-%m-%d',
@@ -237,6 +252,13 @@ class FirstAidInspectionForm(forms.ModelForm):
                 'style': 'width: 100%;',
                 'id': 'id_asset_botiquin'
             }),
+            'manual_participants': forms.SelectMultiple(
+                attrs={
+                    'class': 'form-control',
+                    'id': 'id_manual_participants',
+                    'style': 'width: 100%;',
+                }
+            )
         }
 
     def __init__(self, *args, **kwargs):
@@ -289,6 +311,14 @@ class FirstAidInspectionForm(forms.ModelForm):
                 'readonly': 'readonly'
             })
 
+        # 5. Manual Participants
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.fields['manual_participants'].queryset = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        self.fields['manual_participants'].required = False
+        self.fields['manual_participants'].label = "Participantes Adicionales"
+        self.fields['manual_participants'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name} - {obj.get_role_name() if hasattr(obj, 'get_role_name') else 'Sin Rol'}".strip()
+
 
 class FirstAidItemForm(forms.ModelForm):
     # Permitir cantidad 0: PositiveIntegerField de Django valida >= 1,
@@ -337,7 +367,7 @@ FirstAidItemFormSet = inlineformset_factory(
 class ProcessInspectionForm(forms.ModelForm):
     class Meta:
         model = ProcessInspection
-        fields = ['inspection_date', 'area', 'inspector_role', 'inspected_process', 'additional_observations']
+        fields = ['inspection_date', 'area', 'inspector_role', 'inspected_process', 'additional_observations', 'manual_participants']
         widgets = {
             'inspection_date': forms.DateInput(
                 format='%Y-%m-%d',
@@ -345,6 +375,13 @@ class ProcessInspectionForm(forms.ModelForm):
             ),
             'additional_observations': forms.Textarea(attrs={'rows': 3}),
             'area': forms.HiddenInput(), # Hidden as per user request
+            'manual_participants': forms.SelectMultiple(
+                attrs={
+                    'class': 'form-control',
+                    'id': 'id_manual_participants',
+                    'style': 'width: 100%;',
+                }
+            )
         }
     
     def __init__(self, *args, **kwargs):
@@ -382,6 +419,14 @@ class ProcessInspectionForm(forms.ModelForm):
         self.fields['inspected_process'].widget.attrs.update({
             'placeholder': 'Ej: Línea de producción, Área de envasado, etc.'
         })
+
+        # 4. Manual Participants
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.fields['manual_participants'].queryset = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        self.fields['manual_participants'].required = False
+        self.fields['manual_participants'].label = "Participantes Adicionales"
+        self.fields['manual_participants'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name} - {obj.get_role_name() if hasattr(obj, 'get_role_name') else 'Sin Rol'}".strip()
 
 class ProcessCheckItemForm(forms.ModelForm):
     class Meta:
@@ -440,7 +485,7 @@ class StorageCheckItemForm(forms.ModelForm):
 class StorageInspectionForm(forms.ModelForm):
     class Meta:
         model = StorageInspection
-        fields = ['inspection_date', 'area', 'inspector_role', 'inspected_process', 'additional_observations']
+        fields = ['inspection_date', 'area', 'inspector_role', 'inspected_process', 'additional_observations', 'manual_participants']
         widgets = {
             'inspection_date': forms.DateInput(
                 format='%Y-%m-%d',
@@ -448,6 +493,13 @@ class StorageInspectionForm(forms.ModelForm):
             ),
             'additional_observations': forms.Textarea(attrs={'rows': 3}),
             'area': forms.HiddenInput(),
+            'manual_participants': forms.SelectMultiple(
+                attrs={
+                    'class': 'form-control',
+                    'id': 'id_manual_participants',
+                    'style': 'width: 100%;',
+                }
+            )
         }
     
     def __init__(self, *args, **kwargs):
@@ -485,6 +537,14 @@ class StorageInspectionForm(forms.ModelForm):
             'placeholder': 'Ej: Almacén de materia prima, Bodega 1, etc.'
         })
 
+        # 4. Manual Participants
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.fields['manual_participants'].queryset = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        self.fields['manual_participants'].required = False
+        self.fields['manual_participants'].label = "Participantes Adicionales"
+        self.fields['manual_participants'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name} - {obj.get_role_name() if hasattr(obj, 'get_role_name') else 'Sin Rol'}".strip()
+
 StorageItemFormSet = inlineformset_factory(
     StorageInspection, StorageCheckItem,
     form=StorageCheckItemForm,
@@ -521,7 +581,7 @@ class ForkliftCheckItemForm(forms.ModelForm):
 class ForkliftInspectionForm(forms.ModelForm):
     class Meta:
         model = ForkliftInspection
-        fields = ['inspection_date', 'asset', 'area', 'inspector_role', 'additional_observations']
+        fields = ['inspection_date', 'asset', 'area', 'inspector_role', 'additional_observations', 'manual_participants']
         widgets = {
             'inspection_date': forms.DateInput(
                 format='%Y-%m-%d',
@@ -533,6 +593,13 @@ class ForkliftInspectionForm(forms.ModelForm):
                 'id': 'id_asset_forklift'
             }),
             'additional_observations': forms.Textarea(attrs={'rows': 3}),
+            'manual_participants': forms.SelectMultiple(
+                attrs={
+                    'class': 'form-control',
+                    'id': 'id_manual_participants',
+                    'style': 'width: 100%;',
+                }
+            )
         }
     
     def __init__(self, *args, **kwargs):
@@ -585,6 +652,14 @@ class ForkliftInspectionForm(forms.ModelForm):
                 'style': 'pointer-events: none; background-color: #e9ecef;',
                 'readonly': 'readonly'
             })
+
+        # 4. Manual Participants
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.fields['manual_participants'].queryset = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        self.fields['manual_participants'].required = False
+        self.fields['manual_participants'].label = "Participantes Adicionales"
+        self.fields['manual_participants'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name} - {obj.get_role_name() if hasattr(obj, 'get_role_name') else 'Sin Rol'}".strip()
 
     def clean_asset(self):
         asset = self.cleaned_data.get('asset')

@@ -1,6 +1,44 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 
+# ─────────────────────────────────────────────────────────────────────────────
+# FUENTE ÚNICA DE VERDAD — Matriz de permisos reales del sistema
+#
+# Define exactamente qué acciones existen para cada módulo.
+# - Cada entrada aquí DEBE tener una vista/acción real que la consuma.
+# - Cada vista/acción real DEBE aparecer aquí.
+# - Usar esta constante para sync de BD, UI y validaciones.
+# ─────────────────────────────────────────────────────────────────────────────
+PERMISSION_MATRIX = {
+    # Gestión de usuarios del sistema
+    'users': ['view', 'create', 'edit', 'delete', 'reset_password'],
+
+    # Gestión de roles y permisos
+    'roles': ['view', 'create', 'edit', 'delete', 'details'],
+
+    # Cronograma anual de inspecciones
+    'schedule': ['view', 'create', 'edit', 'delete'],
+
+    # Módulos de inspección — 'delete' = baja lógica (soft-delete), trazabilidad preservada
+    'extinguisher': ['view', 'create', 'edit', 'delete', 'details'],
+    'first_aid':    ['view', 'create', 'edit', 'delete', 'details'],
+    'process':      ['view', 'create', 'edit', 'delete', 'details'],
+    'storage':      ['view', 'create', 'edit', 'delete', 'details'],
+    'forklift':     ['view', 'create', 'edit', 'delete', 'details'],
+
+    # Inventario de activos físicos
+    'assets': ['view', 'details', 'create', 'edit', 'delete', 'gestionar_movimientos'],
+
+    # Reportes consolidados (solo consulta + exportación)
+    'reports': ['view'],
+
+    # Visualización y posicionamiento de activos en planos SVG
+    'planos': ['view', 'edit'],
+}
+
+# Orden de presentación de las acciones en la UI de permisos
+ACTION_DISPLAY_ORDER = ['view', 'create', 'edit', 'delete', 'details', 'reset_password', 'gestionar_movimientos']
+
 class Permission(models.Model):
     """
     Modelo de Permisos granulares del sistema.

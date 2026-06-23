@@ -385,6 +385,17 @@
                     {{ form.inspector_role }}
                     {{ form.inspector_role.errors }}
                 </div>
+                
+                <div class="form-group">
+                    <label style="font-weight: 600;">
+                        <i class="fas fa-users" style="color:var(--primary-color);"></i> {{ form.manual_participants.label }}
+                    </label>
+                    {{ form.manual_participants }}
+                    {{ form.manual_participants.errors }}
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 4px; line-height: 1.2;">
+                        Seleccione usuarios adicionales que acompañaron la inspección.
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -794,6 +805,29 @@
 
         // Init filas existentes
         document.querySelectorAll('.ext-item-row').forEach(initRow);
+
+        // ── Inicializar Tom Select para Participantes Manuales ──
+        const manualParticipantsEl = document.getElementById('id_manual_participants');
+        if (manualParticipantsEl) {
+            new TomSelect(manualParticipantsEl, {
+                plugins: ['remove_button'],
+                placeholder: 'Buscar y seleccionar participantes...',
+                render: {
+                    item: function(data, escape) {
+                        return '<div style="background-color: #f0faf7; color: #155724; border-radius: 20px; padding: 4px 12px; margin: 2px 4px 2px 0; font-size: 0.85rem; font-weight: 500; border: 1px solid #a8d5c2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">' + 
+                               '<i class="fas fa-user-check" style="color:var(--primary-color, #49BAA0);margin-right:6px;"></i>' + 
+                               escape(data.text) + 
+                               '</div>';
+                    },
+                    option: function(data, escape) {
+                        return '<div style="padding: 10px 14px; border-bottom: 1px solid #f8f9fa; cursor: pointer;">' + 
+                               '<i class="fas fa-user-circle" style="color:var(--primary-color, #49BAA0); margin-right:8px; font-size: 1.1rem; vertical-align: middle;"></i>' + 
+                               '<span style="font-weight: 500; vertical-align: middle;">' + escape(data.text) + '</span>' + 
+                               '</div>';
+                    }
+                }
+            });
+        }
 
         // ── Agregar nueva fila ──
         const addBtn = document.getElementById('add-item-btn');

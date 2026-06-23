@@ -1,5 +1,5 @@
 from django import forms
-from .models import Role, Permission
+from .models import Role, Permission, PERMISSION_MATRIX, ACTION_DISPLAY_ORDER
 
 
 class RoleForm(forms.ModelForm):
@@ -28,72 +28,131 @@ class RoleForm(forms.ModelForm):
 
 
 class RolePermissionsForm(forms.Form):
-    """Formulario para asignar permisos a un rol"""
-    
+    """
+    Formulario para asignar permisos a un rol.
+
+    Genera un campo BooleanField por cada permiso activo en la matriz.
+    La estructura interna refleja PERMISSION_MATRIX — es la fuente de verdad
+    para decidir qué acciones aplican a cada módulo.
+    """
+
     def __init__(self, *args, **kwargs):
         role = kwargs.pop('role', None)
         super().__init__(*args, **kwargs)
-        
-        # Obtener todos los permisos activos agrupados por módulo
-        permissions = Permission.objects.filter(is_active=True).order_by('module', 'action')
-        
-        # Agrupar permisos por módulo
-        modules = {}
-        for perm in permissions:
-            if perm.module not in modules:
-                modules[perm.module] = []
-            modules[perm.module].append(perm)
-        
-        # Orden forzado de acciones para que "Acceso" sea el primero (requerimiento de UI)
-        action_order = {'view': 0, 'create': 1, 'edit': 2, 'delete': 3, 'details': 4, 'reset_password': 5, 'gestionar_movimientos': 6}
-        
-        # Crear campos de checkbox para cada permiso
-        for module_code, module_perms in modules.items():
-            # Ordenar para que action 'view' sea el primero de cada módulo
-            module_perms.sort(key=lambda p: action_order.get(p.action, 99))
-            
-            module_name = dict(Permission.MODULE_CHOICES).get(module_code, module_code)
-            
-            for perm in module_perms:
+
+        # IDs de permisos ya asignados al rol
+        role_perm_ids = set(role.permissions.values_list('id', flat=True)) if role else set()
+
+        # Cargar solo permisos activos en BD, indexados por codename
+        active_perms = {
+            p.codename: p
+            for p in Permission.objects.filter(is_active=True)
+        }
+
+        module_labels = dict(Permission.MODULE_CHOICES)
+        action_labels = dict(Permission.ACTION_CHOICES)
+
+        # Crear campos siguiendo el orden de la matriz
+        for module_code, actions in PERMISSION_MATRIX.items():
+            for action_code in actions:
+                codename = f'{module_code}_{action_code}'
+                perm = active_perms.get(codename)
+                if not perm:
+                    continue  # Permiso aún no en BD (no debería pasar después del sync)
+
                 field_name = f'perm_{perm.id}'
                 self.fields[field_name] = forms.BooleanField(
                     required=False,
-                    label=perm.get_action_display(),
+                    label=action_labels.get(action_code, action_code.capitalize()),
                     widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-                    initial=role.permissions.filter(id=perm.id).exists() if role else False
+                    initial=perm.id in role_perm_ids,
                 )
-                # Guardar metadata del permiso
+                # Metadata para renderizado en template
                 self.fields[field_name].permission = perm
-                self.fields[field_name].module_name = module_name
-    
-    def get_permissions_by_module(self):
-        """Retorna los campos agrupados por módulo para renderizado en template"""
-        modules = {}
+                self.fields[field_name].module_code = module_code
+                self.fields[field_name].module_name = module_labels.get(module_code, module_code.capitalize())
+                self.fields[field_name].action_code = action_code
+
+    def get_matrix_context(self):
+        """
+        Retorna una estructura lista para renderizar la tabla-matriz:
+
+        {
+          'columns': ['view', 'create', 'edit', 'delete', 'details', 'reset_password', 'gestionar_movimientos'],
+          'column_labels': {'view': 'Acceso', 'create': 'Registrar', ...},
+          'rows': [
+            {
+              'module_code': 'users',
+              'module_name': 'Usuarios',
+              'cells': {
+                'view':   {'field_name': 'perm_1', 'field': <BooleanField>, 'permission': <Permission>},
+                'create': {'field_name': 'perm_2', ...},
+                'edit':   None,  # Acción no aplica a este módulo
+                ...
+              }
+            },
+            ...
+          ]
+        }
+        """
+        action_labels = dict(Permission.ACTION_CHOICES)
+        module_labels = dict(Permission.MODULE_CHOICES)
+
+        # Determinar las columnas: unión de todas las acciones, en orden definido
+        all_actions_in_matrix = set()
+        for actions in PERMISSION_MATRIX.values():
+            all_actions_in_matrix.update(actions)
+
+        columns = [a for a in ACTION_DISPLAY_ORDER if a in all_actions_in_matrix]
+        column_labels = {a: action_labels.get(a, a.capitalize()) for a in columns}
+
+        # Indexar campos por módulo y acción
+        field_index = {}  # (module_code, action_code) -> {field_name, field, permission, has_perm}
         for field_name, field in self.fields.items():
             if hasattr(field, 'permission'):
-                module_name = field.module_name
-                if module_name not in modules:
-                    modules[module_name] = []
-                modules[module_name].append({
+                key = (field.module_code, field.action_code)
+                # has_perm: true if the checkbox should be pre-checked
+                # field.initial holds the boolean from __init__
+                has_perm = bool(field.initial)
+                field_index[key] = {
                     'field_name': field_name,
                     'field': field,
-                    'permission': field.permission
-                })
-        return modules
-    
+                    'permission': field.permission,
+                    'has_perm': has_perm,
+                }
+
+        # Construir filas según el orden de PERMISSION_MATRIX
+        rows = []
+        for module_code, actions in PERMISSION_MATRIX.items():
+            cells = {}
+            for action_code in columns:
+                if action_code in actions:
+                    cells[action_code] = field_index.get((module_code, action_code))
+                else:
+                    cells[action_code] = None  # No aplica
+            rows.append({
+                'module_code': module_code,
+                'module_name': module_labels.get(module_code, module_code.capitalize()),
+                'actions': actions,
+                'cells': cells,
+            })
+
+        return {
+            'columns': columns,
+            'column_labels': column_labels,
+            'rows': rows,
+        }
+
     def save(self, role):
         """Guarda los permisos seleccionados en el rol"""
-        selected_permissions = []
-        for field_name, value in self.cleaned_data.items():
-            if field_name.startswith('perm_') and value:
-                perm_id = int(field_name.split('_')[1])
-                selected_permissions.append(perm_id)
-        
-        # Validar que Administrador tenga todos los permisos
         if role.name == 'Administrador':
-            all_perms = Permission.objects.filter(is_active=True)
-            role.permissions.set(all_perms)
+            # El Administrador siempre tiene todos los permisos activos
+            role.permissions.set(Permission.objects.filter(is_active=True))
         else:
-            role.permissions.set(selected_permissions)
-        
+            selected_ids = []
+            for field_name, value in self.cleaned_data.items():
+                if field_name.startswith('perm_') and value:
+                    perm_id = int(field_name.split('_')[1])
+                    selected_ids.append(perm_id)
+            role.permissions.set(selected_ids)
         return role

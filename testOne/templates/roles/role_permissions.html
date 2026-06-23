@@ -1,179 +1,469 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load permission_tags %}
 
 {% block title %}Permisos del Rol: {{ role.name }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
+
+    {# ── Encabezado ── #}
     <div class="row mb-4">
-        <div class="col-12">
-            <h2 class="mb-1">
-                <i class="fas fa-key text-primary me-2"></i>
-                Gestión de Permisos: <strong>{{ role.name }}</strong>
-            </h2>
-            <p class="text-muted ms-4 ps-2">{{ role.description|default:"Sin descripción" }}</p>
-        </div>
-    </div>
-
-    <!-- Contenedor Principal (Quitar clases de row-cols que puedan romper el flex) -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm border-0 bg-transparent">
-                <div class="card-body p-0">
-                    {% if role.name == 'Administrador' %}
-                    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center gap-3 mb-4">
-                        <i class="fas fa-info-circle fa-2x"></i>
-                        <div>
-                            <strong>Rol del Sistema:</strong> El rol <strong>Administrador</strong> tiene todos los permisos del sistema por defecto y no
-                            pueden ser modificados para garantizar la integridad operativa.
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <form method="post" id="permissions-form">
-                        {% csrf_token %}
-
-                        <!-- Grid Custom para Emular 3 Columnas -->
-                        <div class="row g-3">
-                            {% for module_name, perms in permissions_by_module.items %}
-                            <div class="col-12 col-md-6 col-lg-4">
-                                <div class="card h-100 border-0 shadow-sm module-card" style="border-radius: 12px; background: #fff; border: 1px solid #e5e7eb !important;">
-                                    <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between" style="border-radius: 12px 12px 0 0;">
-                                        <h5 class="mb-0 text-primary fw-bold d-flex align-items-center" style="font-size: 1rem;">
-                                            <i class="fas fa-layer-group me-2"></i> {{ module_name }}
-                                        </h5>
-                                        <span class="badge bg-light text-primary rounded-pill px-3">{{ perms|length }}</span>
-                                    </div>
-                                    <div class="card-body p-2">
-                                        <div class="list-group list-group-flush">
-                                            {% for perm_data in perms %}
-                                            <div class="list-group-item border-0 px-2 py-2 mb-1 rounded-3 permission-item">
-                                                <div class="d-flex align-items-center w-100">
-                                                    
-                                                    <!-- Columna Nombre Permiso -->
-                                                    <div style="width: 140px; flex-shrink: 0;" class="pe-2">
-                                                        <label class="form-check-label mb-0" for="{{ perm_data.field_name }}" style="cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #374151;">
-                                                            {{ perm_data.permission.get_action_display }}
-                                                        </label>
-                                                    </div>
-                                                    
-                                                    <!-- Columna Descripción -->
-                                                    <div class="flex-grow-1 px-1" style="font-size: 0.75rem; color: #6B7280; line-height: 1.2;">
-                                                        {{ perm_data.permission.description }}
-                                                    </div>
-                                                    
-                                                    <!-- Columna Checkbox -->
-                                                    <div class="form-check form-switch mb-0 ms-2" style="flex-shrink: 0; min-height: auto; padding-left: 0;">
-                                                        <input type="checkbox" 
-                                                               class="form-check-input perm-checkbox m-0 float-end"
-                                                               {% if perm_data.permission.action == 'view' %}data-module-access="{{ module_name|slugify }}"{% endif %}
-                                                               data-module-group="{{ module_name|slugify }}"
-                                                               name="{{ perm_data.field_name }}" 
-                                                               id="{{ perm_data.field_name }}" 
-                                                               {% if perm_data.permission.id in selected_permission_ids %} checked {% endif %} 
-                                                               {% if role.name == 'Administrador' %}disabled{% endif %}
-                                                               style="width: 2.2em; height: 1.1em; cursor: pointer;">
-                                                    </div>
-                                                    
-                                                </div>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center mt-4 pt-4 border-top">
-                            <a href="{% url 'role_detail' role.pk %}" class="btn btn-secondary px-4">
-                                <i class="fas fa-arrow-left me-2"></i> Volver al Detalle
-                            </a>
-                            
-                            {% if role.name != 'Administrador' %}
-                            <button type="submit" class="btn btn-primary px-5 py-2 shadow-sm rounded-3">
-                                <i class="fas fa-save me-2"></i> Guardar Cambios
-                            </button>
-                            {% endif %}
-                        </div>
-                    </form>
-                </div>
+        <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <h2 class="mb-1 d-flex align-items-center gap-2">
+                    <span class="perm-icon-header"><i class="fas fa-shield-alt"></i></span>
+                    Gestión de Permisos
+                    <span class="role-name-badge">{{ role.name }}</span>
+                </h2>
+                <p class="text-muted mb-0 ms-1">
+                    {{ role.description|default:"Sin descripción" }}
+                    &nbsp;·&nbsp;
+                    <span class="badge bg-secondary rounded-pill">{{ role.permissions.count }} permisos activos</span>
+                </p>
             </div>
+            <a href="{% url 'role_detail' role.pk %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i> Volver al Detalle
+            </a>
         </div>
     </div>
+
+    {# ── Alerta Administrador ── #}
+    {% if role.name == 'Administrador' %}
+    <div class="alert perm-alert-admin mb-4 d-flex align-items-start gap-3">
+        <i class="fas fa-crown fa-lg mt-1"></i>
+        <div>
+            <strong>Rol del Sistema — Administrador</strong><br>
+            <small>Este rol posee todos los permisos del sistema de forma permanente para garantizar la operatividad. Los controles están deshabilitados.</small>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── Formulario con Tabla-Matriz ── #}
+    <form method="post" id="permissions-form">
+        {% csrf_token %}
+
+        {# Acciones masivas por columna #}
+        {% if role.name != 'Administrador' %}
+        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+            <span class="text-muted small fw-semibold">Selección masiva:</span>
+            <button type="button" class="btn btn-sm btn-outline-success" id="btn-select-all">
+                <i class="fas fa-check-double me-1"></i> Todo
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" id="btn-deselect-all">
+                <i class="fas fa-times me-1"></i> Nada
+            </button>
+        </div>
+        {% endif %}
+
+        {# Tabla Matriz de Permisos #}
+        <div class="perm-table-wrapper">
+            <table class="perm-matrix-table" id="permissions-table">
+                <thead>
+                    <tr>
+                        <th class="col-module">
+                            <span class="d-flex align-items-center gap-1">
+                                <i class="fas fa-th-large text-primary" style="font-size:0.8rem;"></i>
+                                Módulo
+                            </span>
+                        </th>
+                        {% for col in matrix_columns %}
+                        <th class="col-action text-center" data-action="{{ col }}">
+                            {{ matrix_column_labels|dict_value:col }}
+                        </th>
+                        {% endfor %}
+                        {% if role.name != 'Administrador' %}
+                        <th class="col-toggle text-center">
+                            <span title="Seleccionar / Deseleccionar módulo">Módulo</span>
+                        </th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in matrix_rows %}
+                    <tr class="perm-row" data-module="{{ row.module_code }}">
+                        <td class="cell-module">
+                            <span class="module-label">
+                                <i class="fas {{ row.module_code|module_icon }} module-icon"></i>
+                                {{ row.module_name }}
+                            </span>
+                        </td>
+                        {% for col in matrix_columns %}
+                        {% with cell=row.cells|dict_value:col %}
+                        <td class="cell-perm text-center {% if not cell %}cell-na{% endif %}">
+                            {% if cell %}
+                                {% if role.name == 'Administrador' %}
+                                    <span class="perm-badge-granted" title="{{ cell.permission.description }}">
+                                        <i class="fas fa-check-circle"></i>
+                                    </span>
+                                {% else %}
+                                    <label class="perm-toggle-label" title="{{ cell.permission.description }}">
+                                        <input type="checkbox"
+                                               class="perm-checkbox visually-hidden"
+                                               name="{{ cell.field_name }}"
+                                               id="{{ cell.field_name }}"
+                                               data-module="{{ row.module_code }}"
+                                               data-action="{{ col }}"
+                                               {% if cell.has_perm %}checked{% endif %}>
+                                        <span class="perm-toggle-icon {% if cell.has_perm %}is-checked{% endif %}">
+                                            <i class="fas fa-check"></i>
+                                        </span>
+                                    </label>
+                                {% endif %}
+                            {% else %}
+                                <span class="cell-na-dash" title="No aplica a este módulo">—</span>
+                            {% endif %}
+                        </td>
+                        {% endwith %}
+                        {% endfor %}
+                        {% if role.name != 'Administrador' %}
+                        <td class="cell-row-toggle text-center">
+                            <button type="button"
+                                    class="btn-row-toggle"
+                                    data-module="{{ row.module_code }}"
+                                    title="Seleccionar / Deseleccionar todo el módulo">
+                                <i class="fas fa-grip-horizontal"></i>
+                            </button>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# Botones de acción #}
+        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top flex-wrap gap-3">
+            <a href="{% url 'role_detail' role.pk %}" class="btn btn-secondary px-4">
+                <i class="fas fa-arrow-left me-2"></i> Cancelar
+            </a>
+            {% if role.name != 'Administrador' %}
+            <button type="submit" class="btn btn-primary px-5 py-2 shadow-sm" id="btn-save">
+                <i class="fas fa-save me-2"></i> Guardar Cambios
+            </button>
+            {% endif %}
+        </div>
+    </form>
+
 </div>
 
+{# ── Estilos específicos de la Tabla-Matriz ── #}
 <style>
-    .module-card {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .module-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.08) !important;
-        border-color: var(--primary-color) !important;
-    }
-    .permission-item {
-        transition: background-color 0.2s ease;
-    }
-    .permission-item:hover {
-        background-color: #f9fafb;
-    }
-    .form-check-input:checked {
-        background-color: var(--primary-color) !important;
-        border-color: var(--primary-color) !important;
-    }
-    .text-primary {
-        color: var(--primary-color) !important;
-    }
-    .badge.bg-light.text-primary {
-        background-color: rgba(73, 186, 160, 0.1) !important;
-        color: var(--primary-color) !important;
-    }
-    /* Asegurar que el label no agregue paddings raros que empujen el switch */
-    .form-check-input {
-        margin-left: 0;
-    }
-    
-    /* Las tarjetas usan el grid nativo de Bootstrap (col-12 col-md-6 col-lg-4) */
+/* ── Variables heredadas del sistema ── */
+:root {
+    --perm-granted: #10b981;
+    --perm-granted-bg: rgba(16, 185, 129, 0.12);
+    --perm-na: #e5e7eb;
+    --perm-border: #e5e7eb;
+    --perm-header-bg: #f8fafc;
+    --perm-row-hover: rgba(73, 186, 160, 0.05);
+}
+
+/* ── Contenedor con scroll horizontal en pantallas pequeñas ── */
+.perm-table-wrapper {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--perm-border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* ── Tabla matriz ── */
+.perm-matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    background: #fff;
+}
+
+/* ── Encabezados ── */
+.perm-matrix-table thead tr {
+    background: var(--perm-header-bg);
+    border-bottom: 2px solid var(--perm-border);
+}
+
+.perm-matrix-table th {
+    padding: 12px 10px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.perm-matrix-table th.col-module {
+    min-width: 160px;
+    text-align: left;
+    padding-left: 16px;
+    border-right: 2px solid var(--perm-border);
+}
+
+.perm-matrix-table th.col-action {
+    min-width: 90px;
+    color: var(--primary-color, #49baa0);
+}
+
+.perm-matrix-table th.col-toggle {
+    min-width: 60px;
+    font-size: 0.72rem;
+    color: #9ca3af;
+}
+
+/* ── Filas ── */
+.perm-matrix-table tbody tr {
+    border-bottom: 1px solid var(--perm-border);
+    transition: background 0.15s ease;
+}
+.perm-matrix-table tbody tr:hover {
+    background: var(--perm-row-hover);
+}
+.perm-matrix-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+/* ── Celda de Módulo ── */
+.perm-matrix-table td.cell-module {
+    padding: 12px 16px;
+    border-right: 2px solid var(--perm-border);
+    font-weight: 600;
+    color: #374151;
+}
+.module-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.module-icon {
+    color: var(--primary-color, #49baa0);
+    font-size: 0.85rem;
+    width: 16px;
+}
+
+/* ── Celdas de permisos ── */
+.perm-matrix-table td.cell-perm {
+    padding: 8px 6px;
+    vertical-align: middle;
+}
+.perm-matrix-table td.cell-na {
+    background: #fafafa;
+}
+.cell-na-dash {
+    color: #d1d5db;
+    font-weight: 700;
+    font-size: 1rem;
+    user-select: none;
+}
+
+/* ── Toggle visual de permiso ── */
+.perm-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin: 0;
+}
+
+.perm-toggle-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 2px solid #d1d5db;
+    background: #f9fafb;
+    color: #d1d5db;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+.perm-toggle-icon:hover {
+    border-color: var(--primary-color, #49baa0);
+    background: var(--perm-granted-bg);
+    color: var(--perm-granted);
+}
+.perm-toggle-icon.is-checked {
+    border-color: var(--perm-granted);
+    background: var(--perm-granted-bg);
+    color: var(--perm-granted);
+}
+
+/* Animación al hacer click */
+.perm-toggle-icon.just-changed {
+    transform: scale(1.3);
+}
+
+/* ── Badge concedido (modo Administrador) ── */
+.perm-badge-granted {
+    color: var(--perm-granted);
+    font-size: 1.1rem;
+    display: inline-flex;
+    justify-content: center;
+}
+
+/* ── Botón toggle de fila ── */
+.btn-row-toggle {
+    background: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 4px 8px;
+    color: #9ca3af;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.btn-row-toggle:hover {
+    border-color: var(--primary-color, #49baa0);
+    color: var(--primary-color, #49baa0);
+    background: var(--perm-granted-bg);
+}
+.btn-row-toggle.row-all-on {
+    border-color: var(--perm-granted);
+    color: var(--perm-granted);
+    background: var(--perm-granted-bg);
+}
+
+/* ── Celda del toggle de fila ── */
+.perm-matrix-table td.cell-row-toggle {
+    padding: 4px 8px;
+    border-left: 1px solid var(--perm-border);
+    background: #fafafa;
+}
+
+/* ── Encabezado principal ── */
+.perm-icon-header {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary-color, #49baa0), #3da892);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.role-name-badge {
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, rgba(73,186,160,0.15), rgba(73,186,160,0.08));
+    color: var(--primary-color, #49baa0);
+    border: 1px solid rgba(73,186,160,0.3);
+    border-radius: 20px;
+    padding: 2px 12px;
+}
+
+/* ── Alerta Administrador ── */
+.perm-alert-admin {
+    background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(99,102,241,0.06));
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 12px;
+    color: #1e40af;
+    padding: 14px 18px;
+}
 </style>
 
+{# ── JavaScript de interacción ── #}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     {% if role.name != 'Administrador' %}
-    // Lógica para toggle automático de permisos cuando se activa Acceso al módulo
-    const accessCheckboxes = document.querySelectorAll('[data-module-access]');
-    
-    accessCheckboxes.forEach(accessBox => {
-        accessBox.addEventListener('change', function() {
-            const moduleGroup = this.getAttribute('data-module-group');
-            const relatedCheckboxes = document.querySelectorAll(`[data-module-group="${moduleGroup}"]:not([data-module-access])`);
-            
-            if (this.checked) {
-                // Si activa el acceso, activamos todos los demás permisos
-                relatedCheckboxes.forEach(box => {
-                    box.checked = true;
-                });
-            } else {
-                // Si desactiva el acceso, desactivamos todos los demás permisos
-                relatedCheckboxes.forEach(box => {
-                    box.checked = false;
-                });
-            }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function getCheckboxesByModule(moduleCode) {
+        return document.querySelectorAll(`.perm-checkbox[data-module="${moduleCode}"]`);
+    }
+
+    function syncToggleIcon(checkbox) {
+        const icon = checkbox.closest('.perm-toggle-label')?.querySelector('.perm-toggle-icon');
+        if (!icon) return;
+        if (checkbox.checked) {
+            icon.classList.add('is-checked');
+        } else {
+            icon.classList.remove('is-checked');
+        }
+    }
+
+    function allCheckedInModule(moduleCode) {
+        const boxes = getCheckboxesByModule(moduleCode);
+        return Array.from(boxes).every(b => b.checked);
+    }
+
+    function updateRowToggle(moduleCode) {
+        const btn = document.querySelector(`.btn-row-toggle[data-module="${moduleCode}"]`);
+        if (!btn) return;
+        if (allCheckedInModule(moduleCode)) {
+            btn.classList.add('row-all-on');
+            btn.title = 'Deseleccionar todo el módulo';
+        } else {
+            btn.classList.remove('row-all-on');
+            btn.title = 'Seleccionar todo el módulo';
+        }
+    }
+
+    function animateIcon(icon) {
+        icon.classList.add('just-changed');
+        setTimeout(() => icon.classList.remove('just-changed'), 200);
+    }
+
+    // ── Inicializar estados de los row toggles ────────────────────────────────
+    document.querySelectorAll('.btn-row-toggle').forEach(btn => {
+        updateRowToggle(btn.dataset.module);
+    });
+
+    // ── Click en checkbox individual ─────────────────────────────────────────
+    document.querySelectorAll('.perm-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+            syncToggleIcon(this);
+            const icon = this.closest('.perm-toggle-label')?.querySelector('.perm-toggle-icon');
+            if (icon) animateIcon(icon);
+            updateRowToggle(this.dataset.module);
         });
     });
 
-    // Validar al revés: si activas algo que no es acceso, el acceso DEBE activarse automáticamente
-    const subPermCheckboxes = document.querySelectorAll('.perm-checkbox:not([data-module-access])');
-    subPermCheckboxes.forEach(box => {
-        box.addEventListener('change', function() {
-            if (this.checked) {
-                const moduleGroup = this.getAttribute('data-module-group');
-                const accessBox = document.querySelector(`[data-module-access][data-module-group="${moduleGroup}"]`);
-                if (accessBox) accessBox.checked = true;
-            }
+    // ── Click en el botón de fila (toggle módulo completo) ────────────────────
+    document.querySelectorAll('.btn-row-toggle').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const moduleCode = this.dataset.module;
+            const allOn = allCheckedInModule(moduleCode);
+            const newState = !allOn;
+
+            getCheckboxesByModule(moduleCode).forEach(cb => {
+                cb.checked = newState;
+                syncToggleIcon(cb);
+            });
+            updateRowToggle(moduleCode);
         });
     });
+
+    // ── Seleccionar TODO ─────────────────────────────────────────────────────
+    document.getElementById('btn-select-all')?.addEventListener('click', function () {
+        document.querySelectorAll('.perm-checkbox').forEach(cb => {
+            cb.checked = true;
+            syncToggleIcon(cb);
+        });
+        document.querySelectorAll('.btn-row-toggle').forEach(btn => updateRowToggle(btn.dataset.module));
+    });
+
+    // ── Deseleccionar TODO ───────────────────────────────────────────────────
+    document.getElementById('btn-deselect-all')?.addEventListener('click', function () {
+        document.querySelectorAll('.perm-checkbox').forEach(cb => {
+            cb.checked = false;
+            syncToggleIcon(cb);
+        });
+        document.querySelectorAll('.btn-row-toggle').forEach(btn => updateRowToggle(btn.dataset.module));
+    });
+
+    // ── Clic en el área de la celda (no solo el checkbox) ───────────────────
+    document.querySelectorAll('.perm-toggle-label').forEach(label => {
+        label.addEventListener('click', function (e) {
+            // El input ya maneja el toggle nativo, solo animamos
+            const icon = this.querySelector('.perm-toggle-icon');
+            if (icon) animateIcon(icon);
+        });
+    });
+
     {% endif %}
 });
 </script>
+
+{# Template filter dict_value necesario — definido inline para evitar dependencia extra #}
 {% endblock %}

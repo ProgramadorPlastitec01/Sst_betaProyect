@@ -79,21 +79,21 @@ class AdvancedConfigView(LoginRequiredMixin, View):
 
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
-from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from .models import Plano
 from .forms import PlanoForm
+from roles.mixins import RolePermissionRequiredMixin
 
-class StaffRequiredMixin(UserPassesTestMixin):
-    def test_func(self):
-        return self.request.user.is_staff
 
-class PlanoListView(LoginRequiredMixin, StaffRequiredMixin, ListView):
+class PlanoListView(LoginRequiredMixin, RolePermissionRequiredMixin, ListView):
+    permission_required = ('planos', 'view')
     model = Plano
     template_name = 'system_config/plano_list.html'
     context_object_name = 'planos'
 
-class PlanoCreateView(LoginRequiredMixin, StaffRequiredMixin, CreateView):
+class PlanoCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, CreateView):
+    permission_required = ('planos', 'edit')
     model = Plano
     form_class = PlanoForm
     template_name = 'system_config/plano_form.html'
@@ -103,7 +103,8 @@ class PlanoCreateView(LoginRequiredMixin, StaffRequiredMixin, CreateView):
         messages.success(self.request, "Plano creado correctamente.")
         return super().form_valid(form)
 
-class PlanoUpdateView(LoginRequiredMixin, StaffRequiredMixin, UpdateView):
+class PlanoUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, UpdateView):
+    permission_required = ('planos', 'edit')
     model = Plano
     form_class = PlanoForm
     template_name = 'system_config/plano_form.html'
@@ -113,10 +114,12 @@ class PlanoUpdateView(LoginRequiredMixin, StaffRequiredMixin, UpdateView):
         messages.success(self.request, "Plano actualizado correctamente.")
         return super().form_valid(form)
 
-class PlanoDeleteView(LoginRequiredMixin, StaffRequiredMixin, DeleteView):
+class PlanoDeleteView(LoginRequiredMixin, RolePermissionRequiredMixin, DeleteView):
+    permission_required = ('planos', 'edit')
     model = Plano
     success_url = reverse_lazy('plano_list')
-    
+
     def post(self, request, *args, **kwargs):
         messages.success(request, "Plano eliminado correctamente.")
         return super().post(request, *args, **kwargs)
+

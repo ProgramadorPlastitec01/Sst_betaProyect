@@ -1128,7 +1128,8 @@ class ExtinguisherReportView(LoginRequiredMixin, RolePermissionRequiredMixin, Ev
         context['any_item_has_evidence'] = any(item.evidences.exists() for item in items)
         return context
 
-class ExtinguisherItemCreateView(LoginRequiredMixin, EvidenceMixin, CreateView):
+class ExtinguisherItemCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, CreateView):
+    permission_required = ('extinguisher', 'edit')
     model = ExtinguisherItem; form_class = ExtinguisherItemForm; template_name = 'inspections/extinguisher_item_form.html'
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1143,7 +1144,8 @@ class ExtinguisherItemCreateView(LoginRequiredMixin, EvidenceMixin, CreateView):
         if 'save_and_add' in self.request.POST: return redirect('extinguisher_item_create', pk=insp.pk)
         return redirect('extinguisher_detail', pk=insp.pk)
 
-class ExtinguisherItemUpdateView(LoginRequiredMixin, EvidenceMixin, UpdateView):
+class ExtinguisherItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, UpdateView):
+    permission_required = ('extinguisher', 'edit')
     model = ExtinguisherItem; form_class = ExtinguisherItemForm; template_name = 'inspections/extinguisher_item_form.html'
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1446,7 +1448,8 @@ class FirstAidReportView(LoginRequiredMixin, RolePermissionRequiredMixin, Eviden
 
         return context
 
-class FirstAidItemCreateView(LoginRequiredMixin, EvidenceMixin, CreateView):
+class FirstAidItemCreateView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, CreateView):
+    permission_required = ('first_aid', 'edit')
     model = FirstAidItem; form_class = FirstAidItemForm; template_name = 'inspections/first_aid_item_form.html'
     def form_valid(self, form):
         insp = get_object_or_404(FirstAidInspection, pk=self.kwargs['pk'])
@@ -1457,7 +1460,8 @@ class FirstAidItemCreateView(LoginRequiredMixin, EvidenceMixin, CreateView):
         if 'save_and_add' in self.request.POST: return redirect('first_aid_item_create', pk=insp.pk)
         return redirect('first_aid_detail', pk=insp.pk)
 
-class FirstAidItemUpdateView(LoginRequiredMixin, EvidenceMixin, UpdateView):
+class FirstAidItemUpdateView(LoginRequiredMixin, RolePermissionRequiredMixin, EvidenceMixin, UpdateView):
+    permission_required = ('first_aid', 'edit')
     model = FirstAidItem; form_class = FirstAidItemForm; template_name = 'inspections/first_aid_item_form.html'
     def form_valid(self, form):
         form.instance.registered_by = self.request.user

@@ -16,4 +16,9 @@ urlpatterns = [
     
     # Activar/Desactivar rol
     path('<int:pk>/toggle/', views.toggle_role_status, name='role_toggle'),
+
+    # Simulación de roles (solo administradores)
+    path('simulate/start/', views.StartRoleSimulationView.as_view(), name='role_simulate_start'),
+    path('simulate/stop/', views.StopRoleSimulationView.as_view(), name='role_simulate_stop'),
 ]
+

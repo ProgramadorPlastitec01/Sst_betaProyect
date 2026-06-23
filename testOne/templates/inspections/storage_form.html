@@ -6,8 +6,48 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/inspections.css' %}">
 <script src="{% static 'js/evidence_manager.js' %}"></script>
+<!-- Tom Select (searchable dropdown) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <!-- Reuse existing styles -->
 <style>
+    /* Tom Select shared styles */
+    .ts-wrapper.form-control, .ts-wrapper {
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+    }
+    .ts-control, .ts-control.has-items, .ts-control.focus {
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 6px !important;
+        font-size: 0.9rem !important;
+        min-height: 42px !important;
+        box-shadow: none !important;
+        color: var(--text-color, #333) !important;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    .ts-control input, .ts-control input:focus {
+        background: transparent !important;
+        color: var(--text-color, #333) !important;
+    }
+    .ts-control:focus-within, .ts-wrapper.focus .ts-control {
+        border-color: var(--primary-color) !important;
+        box-shadow: 0 0 0 3px rgba(73, 186, 160, 0.15) !important;
+    }
+    .ts-dropdown, .ts-dropdown-content {
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12) !important;
+        font-size: 0.88rem !important;
+        z-index: 9999 !important;
+    }
+    .ts-dropdown .option:hover, .ts-dropdown .option.active {
+        background: #f0faf7 !important;
+        color: #0f5132 !important;
+    }
+
     .inspection-card {
         background: white;
         border-radius: 12px;
@@ -144,9 +184,21 @@
                     {% endif %}
                 </div>
 
+                <!-- Manual Participants -->
+                <div class="form-group">
+                    <label style="font-weight: 600;">
+                        <i class="fas fa-users" style="color:var(--primary-color);"></i> {{ form.manual_participants.label }}
+                    </label>
+                    {{ form.manual_participants }}
+                    {{ form.manual_participants.errors }}
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 4px; line-height: 1.2;">
+                        Seleccione usuarios adicionales que acompañaron la inspección.
+                    </div>
+                </div>
+
                 <!-- Render other visible fields dynamically (e.g., area if visible) -->
                 {% for field in form.visible_fields %}
-                {% if field.name != 'inspection_date' and field.name != 'inspector_role' and field.name != 'inspected_process' and field.name != 'additional_observations' %}
+                {% if field.name != 'inspection_date' and field.name != 'inspector_role' and field.name != 'inspected_process' and field.name != 'additional_observations' and field.name != 'manual_participants' %}
                 <div class="form-group">
                     <label>{{ field.label }}</label>
                     {{ field }}
@@ -260,6 +312,29 @@
 
 <script>
     (function () {
+
+        // Inicializar Tom Select para Participantes Manuales
+        const manualParticipantsEl = document.getElementById('id_manual_participants');
+        if (manualParticipantsEl) {
+            new TomSelect(manualParticipantsEl, {
+                plugins: ['remove_button'],
+                placeholder: 'Buscar y seleccionar participantes...',
+                render: {
+                    item: function(data, escape) {
+                        return '<div style="background-color: #f0faf7; color: #155724; border-radius: 20px; padding: 4px 12px; margin: 2px 4px 2px 0; font-size: 0.85rem; font-weight: 500; border: 1px solid #a8d5c2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">' + 
+                               '<i class="fas fa-user-check" style="color:var(--primary-color, #49BAA0);margin-right:6px;"></i>' + 
+                               escape(data.text) + 
+                               '</div>';
+                    },
+                    option: function(data, escape) {
+                        return '<div style="padding: 10px 14px; border-bottom: 1px solid #f8f9fa; cursor: pointer;">' + 
+                               '<i class="fas fa-user-circle" style="color:var(--primary-color, #49BAA0); margin-right:8px; font-size: 1.1rem; vertical-align: middle;"></i>' + 
+                               '<span style="font-weight: 500; vertical-align: middle;">' + escape(data.text) + '</span>' + 
+                               '</div>';
+                    }
+                }
+            });
+        }
 
         // --- Banner de error inline (reemplaza alert()) ---
         function showValidationBanner(messages) {
