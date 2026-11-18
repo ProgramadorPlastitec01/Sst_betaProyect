@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}SST - Eliminar Activo{% endblock %}
+{% block header_title %}Gestión de Activos{% endblock %}
+{% block content %}
+<div style="max-width: 600px; margin: 40px auto;">
+    <div class="card">
+        <div style="text-align: center; padding: 16px 0 24px;">
+            <i class="fas fa-trash-alt" style="font-size: 3rem; color: #dc3545; margin-bottom: 16px;"></i>
+            <h2 style="font-size: 1.4rem; font-weight: 700; margin-bottom: 8px;">Eliminar Activo</h2>
+            <p style="color: var(--text-light);">
+                ¿Está seguro de que desea eliminar el activo
+                <strong>{{ object.code }}</strong>?
+                <br><small style="color: #dc3545;">Esta acción no se puede deshacer.</small>
+            </p>
+        </div>
+        <form method="post" style="display: flex; justify-content: center; gap: 16px;">
+            {% csrf_token %}
+            <a href="{% url 'asset_list' %}" class="btn" style="background: #e9ecef; color: #495057;">Cancelar</a>
+            <button type="submit" class="btn" style="background: #dc3545; color: white;">
+                <i class="fas fa-trash"></i> Eliminar
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

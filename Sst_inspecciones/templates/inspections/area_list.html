@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}SST - Gestión de Áreas{% endblock %}
+
+{% block header_title %}Gestión de Áreas{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 style="font-size: 1.5rem; font-weight: 700;">Gestión de Áreas</h1>
+        <p style="color: var(--text-light); font-size: 0.9rem;">Administra las áreas disponibles para inspecciones</p>
+    </div>
+    <a href="{% url 'area_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus" style="margin-right: 8px;"></i> Nueva Área
+    </a>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-container" style="margin-bottom: 24px;">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #49BAA0 0%, #3da891 100%);">
+            <i class="fas fa-map-marker-alt"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ total_areas }}</div>
+            <div class="stat-label">Total de Áreas</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #28a745 0%, #20883a 100%);">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ active_areas }}</div>
+            <div class="stat-label">Áreas Activas</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);">
+            <i class="fas fa-ban"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ inactive_areas }}</div>
+            <div class="stat-label">Áreas Inactivas</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom: 24px;">
+    <form method="get" style="display: flex; gap: 16px; align-items: end;">
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label for="search">Buscar por nombre</label>
+            <input type="text" id="search" name="search" value="{{ search }}" placeholder="Buscar área..."
+                style="width: 100%;">
+        </div>
+        <div class="form-group" style="width: 200px; margin-bottom: 0;">
+            <label for="status">Estado</label>
+            <select id="status" name="status" style="width: 100%;">
+                <option value="">Todos</option>
+                <option value="active" {% if status == 'active' %}selected{% endif %}>Activas</option>
+                <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactivas</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-bottom: 0;">
+            <i class="fas fa-search"></i> Buscar
+        </button>
+        {% if search or status %}
+        <a href="{% url 'area_list' %}" class="btn" style="background: #6c757d; color: white; margin-bottom: 0;">
+            <i class="fas fa-times"></i> Limpiar
+        </a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Areas Table -->
+<div class="card">
+    <h3 class="card-title">Listado de Áreas</h3>
+
+    {% if areas %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>Nombre del Área</th>
+                    <th style="width: 120px;">Estado</th>
+                    <th style="width: 180px;">Fecha de Creación</th>
+                    <th style="width: 150px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for area in areas %}
+                <tr>
+                    <td style="font-weight: 600; color: #666;">{{ forloop.counter }}</td>
+                    <td style="font-weight: 500;">{{ area.name }}</td>
+                    <td>
+                        {% if area.is_active %}
+                        <span class="badge"
+                            style="background: #d1e7dd; color: #0f5132; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                            <i class="fas fa-check-circle" style="margin-right: 4px;"></i> Activa
+                        </span>
+                        {% else %}
+                        <span class="badge"
+                            style="background: #f8d7da; color: #842029; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                            <i class="fas fa-ban" style="margin-right: 4px;"></i> Inactiva
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td style="color: #666; font-size: 0.9rem;">{{ area.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="{% url 'area_update' area.pk %}" class="btn btn-sm"
+                                style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar área">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% if area.is_active %}
+                            <form method="post" action="{% url 'area_update' area.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="name" value="{{ area.name }}">
+                                <input type="hidden" name="is_active" value="false">
+                                <button type="submit" class="btn btn-sm"
+                                    style="background: #dc3545; color: white; padding: 6px 12px;"
+                                    title="Desactivar área"
+                                    onclick="return confirm('¿Desactivar el área {{ area.name }}?');">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <form method="post" action="{% url 'area_update' area.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="name" value="{{ area.name }}">
+                                <input type="hidden" name="is_active" value="true">
+                                <button type="submit" class="btn btn-sm"
+                                    style="background: #28a745; color: white; padding: 6px 12px;" title="Activar área"
+                                    onclick="return confirm('¿Activar el área {{ area.name }}?');">
+                                    <i class="fas fa-check-circle"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 60px 20px; color: #999;">
+        <i class="fas fa-map-marker-alt" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;"></i>
+        <p style="font-size: 1.1rem; margin-bottom: 8px;">No se encontraron áreas</p>
+        <p style="font-size: 0.9rem;">
+            {% if search or status %}
+            Intenta cambiar los filtros de búsqueda
+            {% else %}
+            Crea la primera área para comenzar
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

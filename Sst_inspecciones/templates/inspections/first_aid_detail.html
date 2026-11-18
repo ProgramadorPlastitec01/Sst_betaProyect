@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+{% load static permission_tags %}
+
+{% block title %}SST - Detalle Inspección Botiquín{% endblock %}
+
+{% block header_title %}Detalle de Inspección de Botiquín{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+<script src="{% static 'js/evidence_manager.js' %}"></script>
+{% endblock %}
+
+
+{% block content %}
+<div class="inspection-form-container">
+    <div class="dashboard-header">
+        <div>
+            <h1 style="font-size: 1.5rem; font-weight: 700;">Detalle de Inspección #{{ object.pk }}</h1>
+            <p style="color: var(--text-light); font-size: 0.9rem;">Realizada por
+                <b>{{ object.inspector }}</b> el <b>{{ object.inspection_date|date:"d/m/Y" }}</b>
+                <span
+                    class="compliance-badge {% if object.status == 'Cerrada' %}badge-success{% elif object.status == 'Cerrada con Hallazgos' %}badge-warning{% elif object.status == 'En proceso' %}badge-primary{% elif object.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                    style="margin-left:8px; font-size:0.8rem;">
+                    {{ object.get_status_display }}
+                </span>
+            </p>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+
+            <a href="{% url 'first_aid_list' %}" class="btn" style="background: #e9ecef; color: #495057;">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+
+            <a href="{% url 'first_aid_report' object.pk %}" target="_blank" class="btn"
+                style="background: #17a2b8; color: white; display: flex; align-items: center; gap: 8px; text-decoration: none;">
+                <i class="fas fa-file-alt"></i> Ver Reporte
+            </a>
+
+            <button onclick="document.getElementById('signaturesModal').style.display='block'" class="btn"
+                style="background: #6c757d; color: white;">
+                <i class="fas fa-file-signature"></i> Firmas
+            </button>
+
+            {% if object.status != 'Cerrada' and object.status != 'Cerrada con seguimientos' %}
+            {% has_permission 'first_aid' 'edit' as can_edit %}
+            {% if can_edit %}
+            <a href="{% url 'first_aid_edit' object.pk %}" class="btn btn-primary"><i class="fas fa-edit"></i>
+                Editar</a>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Modal Firmas -->
+    <div id="signaturesModal" class="modal"
+        style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+        <div class="modal-content"
+            style="background-color:#fff; margin:5% auto; padding:24px; border:1px solid #888; width:90%; max-width:600px; border-radius:8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                <h2 style="margin:0; font-size:1.25rem; font-weight:700;">Firmas de Participantes</h2>
+                <span onclick="document.getElementById('signaturesModal').style.display='none'"
+                    style="color:#aaa; font-size:28px; font-weight:bold; cursor:pointer;">&times;</span>
+            </div>
+
+            <div style="margin-bottom:24px;">
+                <table style="width:100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color:#f8f9fa; border-bottom: 2px solid #eee;">
+                            <th style="text-align:left; padding:12px; font-size:0.85rem; color:#6c757d;">PARTICIPANTE
+                            </th>
+                            <th style="text-align:left; padding:12px; font-size:0.85rem; color:#6c757d;">ESTADO</th>
+                            <th style="text-align:left; padding:12px; font-size:0.85rem; color:#6c757d;">FECHA FIRMA
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in participants_data %}
+                        <tr style="border-bottom:1px solid #f1f1f1;">
+                            <td style="padding:12px; font-weight:600;">
+                                {{ p.user.get_full_name|default:p.user.username }}
+                                {% if p.user == object.inspector %}<small class="text-muted">(Inspector)</small>
+                                {% endif %}
+                            </td>
+                            <td style="padding:12px;">
+                                {% if p.has_signed %}
+                                <span class="badge"
+                                    style="background:#28a745; color:white; padding:4px 8px; border-radius:4px; font-size:0.75rem;">FIRMADO</span>
+                                {% else %}
+                                <span class="badge"
+                                    style="background:#ffc107; color:#212529; padding:4px 8px; border-radius:4px; font-size:0.75rem;">PENDIENTE</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding:12px; font-size:0.85rem; color:#6c757d;">
+                                {% if p.signed_at %}
+                                {{ p.signed_at|date:"d/m/Y H:i" }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="text-align:right; border-top:1px solid #eee; padding-top:20px;">
+                {% if object.status != 'Cerrada' and object.status != 'Cerrada con seguimientos' %}
+                {% if can_sign %}
+                <form action="{% url 'first_aid_sign' object.pk %}" method="post" id="sign-inspection-form" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="client_uuid" value="">
+                    <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">
+                        <i class="fas fa-file-signature"></i> Firmar Inspección
+                    </button>
+                </form>
+                <script>
+                    document.getElementById('sign-inspection-form').addEventListener('submit', function (e) {
+                        e.preventDefault();
+                        if (!confirm('¿Está seguro de firmar esta inspección? Se utilizará su firma digital registrada en el Perfil.')) {
+                            return;
+                        }
+                        submitFormOffline(e.target, {
+                            moduleLabel: 'Firma de botiquín',
+                            fallbackUrl: '{% url "first_aid_detail" object.pk %}'
+                        });
+                    });
+                </script>
+                {% elif user_has_signed %}
+                <span style="color:#28a745; font-weight:600; margin-right:15px;"><i class="fas fa-check-circle"></i>
+                    Firmado</span>
+                {% elif not is_participant %}
+                <span style="color:#6c757d; font-size:0.85rem; margin-right:15px;">No está en la lista de
+                    participantes.</span>
+                {% elif not has_signature_profile %}
+                <div style="display:inline-block; margin-right:10px; text-align:right;">
+                    <p style="color:#dc3545; font-size:0.8rem; margin:0 0 5px 0;">Debe registrar su firma en el perfil.
+                    </p>
+                    <a href="{% url 'user_profile' %}" class="btn"
+                        style="background-color: #6c757d; color: white; padding: 6px 12px; text-decoration: none; font-size:0.85rem;">Ir
+                        al Perfil</a>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <button class="btn" onclick="document.getElementById('signaturesModal').style.display='none'"
+                    style="background-color: #e9ecef; color: #495057; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-left:10px;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            var modal = document.getElementById('signaturesModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
+
+    <!-- General Info Card (/MOVIDO ARRIBA) -->
+    <div class="card">
+        <h3 class="inspection-section-title"><i class="fas fa-info-circle"></i> Información General</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px;">
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Fecha</label>
+                <div style="font-weight: 600;">{{ object.inspection_date }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Área</label>
+                <div style="font-weight: 600;">{{ object.area }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Inspector</label>
+                <div style="font-weight: 600;">{{ object.inspector }}</div>
+            </div>
+            <div>
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Rol</label>
+                <div style="font-weight: 600;">{{ object.inspector_role }}</div>
+            </div>
+            {% if object.asset %}
+            <div style="grid-column: span 2;">
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">
+                    <i class="fas fa-first-aid" style="color: var(--primary-color);"></i> Botiquín Inspeccionado
+                </label>
+                <div
+                    style="display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #f0faf7, #e6f7f1); border: 1px solid #a8d5c2; border-left: 3px solid var(--primary-color); border-radius: 8px; padding: 10px 14px;">
+                    <div>
+                        <div style="font-weight: 700; font-size: 1rem; color: #155724;">{{ object.asset.code }}</div>
+                        <div style="font-size: 0.8rem; color: #5a8a72; margin-top: 2px;">
+                            <i class="fas fa-map-marker-alt"></i> {{ object.asset.area }}
+                            &nbsp;·&nbsp;
+                            <span class="compliance-badge {{ object.asset.estado_css }}" style="font-size:0.72rem;">{{ object.asset.estado_label }}</span>
+                        </div>
+                    </div>
+                    <a href="{% url 'asset_detail' object.asset.pk %}" class="btn"
+                        style="background: white; border: 1px solid var(--primary-color); color: var(--primary-color); font-size:0.78rem; padding: 4px 10px; margin-left: auto;"
+                        title="Ver activo">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if object.observations %}
+        <div style="margin-top: 24px;">
+            <label
+                style="display: block; font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Observaciones
+                Generales</label>
+            <div
+                style="background: #f8faf9; padding: 16px; border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                {{ object.observations }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Timeline Section (MOVIDO ABAJO) -->
+    {% if timeline_inspections %}
+    <div style="margin-bottom: 24px;">
+        <h3 class="inspection-section-title"><i class="fas fa-history"></i> Historial de Seguimiento</h3>
+        <div
+            style="padding: 20px; display: flex; overflow-x: auto; padding-bottom: 12px; gap: 12px; align-items: center;">
+            {% for item in timeline_inspections %}
+            <!-- Timeline Item -->
+            <a href="{% url 'first_aid_detail' item.pk %}" class="card"
+                style="min-width: 200px; text-decoration: none; color: inherit; margin-bottom: 0; flex-shrink: 0;
+                          transition: transform 0.2s, box-shadow 0.2s;
+                          {% if item.pk == object.pk %}border: 2px solid var(--primary-color); background-color: #f8faf9; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px);{% else %}border: 1px solid #eee; opacity: 0.9;{% endif %}">
+                <div style="padding: 12px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <span
+                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-light); text-transform: uppercase;">
+                            {% if item.parent_inspection %}Seguimiento{% else %}Inicial{% endif %}
+                        </span>
+                        <span
+                            class="compliance-badge {% if item.status == 'Cerrada' %}badge-success{% elif item.status == 'Cerrada con Hallazgos' %}badge-warning{% elif item.status == 'En proceso' %}badge-primary{% elif item.status == 'Programada' %}badge-secondary{% else %}badge-secondary{% endif %}"
+                            style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; color: white;">
+                            {{ item.get_status_display }}
+                        </span>
+                    </div>
+                    <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 4px;">
+                        {{ item.inspection_date|date:"d/m/Y" }}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.75rem; color: var(--text-light);">ID: #{{ item.pk }}</span>
+                        {% if item.pk != object.pk %}
+                        <i class="fas fa-external-link-alt" style="font-size: 0.7rem; color: var(--primary-color);"></i>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+
+            <!-- Connector (except for last item) -->
+            {% if not forloop.last %}
+            <div style="color: #ccc; font-size: 1.2rem;"><i class="fas fa-chevron-right"></i></div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header" style="margin-bottom: 15px;">
+            <h3 class="inspection-section-title" style="margin: 0; border: none;"><i class="fas fa-list-check"></i>
+                Elementos Inspeccionados</h3>
+
+            {% if object.status == 'En proceso' or object.status == 'Programada' and not object.parent_inspection %}
+            <a href="{% url 'first_aid_item_create' object.pk %}" class="btn"
+                style="background-color: #f8faf9; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 6px 12px; font-size: 0.8rem;">
+                <i class="fas fa-plus-circle"></i> Nuevo Ítem
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Elemento</th>
+                        <th>Cantidad</th>
+                        <th>Vencimiento</th>
+                        <th>Estado</th>
+                        <th>Observaciones</th>
+                        <th style="width: 120px; text-align: center;">Evidencia</th>
+                        {% if object.status == 'En proceso' or object.status == 'Programada' %}
+                        <th style="width: 80px;">Acciones</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in object.items.all %}
+                    <tr>
+                        <td style="font-weight: 600;">{{ item.element_name }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.expiration_date|default:"N/A" }}</td>
+                        <td>
+                            <span
+                                class="compliance-badge {% if item.status == 'Existe' %}badge-success{% else %}badge-danger{% endif %}">
+                                {{ item.status }}
+                            </span>
+                        </td>
+                        <td style="font-size: 0.85rem;">{{ item.observations|default:"-" }}</td>
+                        <td style="vertical-align: middle; text-align: center;">
+                            {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=item.pk evidences=item.evidences.all can_edit=False %}
+                        </td>
+
+                        {% if object.status == 'En proceso' or object.status == 'Programada' %}
+                        <td style="text-align: center; vertical-align: middle;">
+                            <a href="{% url 'first_aid_item_edit' item.pk %}" class="btn btn-sm"
+                                style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if object.status == 'En proceso' or object.status == 'Programada' %}7{% else %}6{% endif %}"
+                            style="text-align: center; padding: 24px; color: var(--text-light);">No hay elementos
+                            registrados en esta inspección.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

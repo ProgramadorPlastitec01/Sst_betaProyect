@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Configuración Avanzada - SST{% endblock %}
+
+{% block header_title %}Configuración Avanzada{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 style="font-size: 1.5rem; font-weight: 700;">Configuración Avanzada</h1>
+        <p style="color: var(--text-light); font-size: 0.9rem;">Parámetros globales del comportamiento del sistema.</p>
+    </div>
+    <a href="{% url 'configuration' %}" class="btn-link">
+        <i class="fas fa-arrow-left"></i> Volver a Configuración
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <form method="post">
+            {% csrf_token %}
+
+            {% for category, configs in grouped_configs.items %}
+            <div class="card mb-4 shadow-sm border-0">
+                <div class="card-header bg-white border-bottom pt-3 pb-2">
+                    <h5 class="text-uppercase text-secondary fw-bold small mb-0">
+                        <i class="fas fa-tag me-2"></i> {{ category }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for config in configs %}
+                    <div class="row align-items-center py-3 {% if not forloop.last %}border-bottom{% endif %}">
+                        <div class="col-md-7 mb-2 mb-md-0">
+                            <label class="fw-bold text-dark d-block mb-1" for="config_{{ config.id }}">
+                                {{ config.description|default:config.key }}
+                            </label>
+                            <small class="text-muted font-monospace bg-light px-2 py-1 rounded">
+                                {{ config.key }}
+                            </small>
+                        </div>
+                        <div class="col-md-5">
+                            {% if config.config_type == 'boolean' %}
+                            <div class="form-check form-switch d-flex justify-content-md-end align-items-center">
+                                <input class="form-check-input" type="checkbox" name="config_{{ config.id }}"
+                                    id="config_{{ config.id }}" style="width: 3em; height: 1.5em; cursor: pointer;" 
+									{% if config.value == 'true' %}checked{% endif %} 
+									{% if not config.is_editable %}disabled{% endif %}>
+                            </div>
+                            {% elif config.config_type == 'number' %}
+                            <input type="number" step="any" class="form-control" name="config_{{ config.id }}"
+                                id="config_{{ config.id }}" value="{{ config.value }}" 
+								{% if not config.is_editable%}readonly{% endif %}>
+                            {% else %}
+                            <input type="text" class="form-control" name="config_{{ config.id }}"
+                                id="config_{{ config.id }}" value="{{ config.value }}" 
+								{% if not config.is_editable %}readonly{% endif %}>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="d-flex justify-content-end mb-5">
+                <a href="{% url 'configuration' %}" class="btn btn-secondary me-3">Cancelar</a>
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="fas fa-save me-2"></i> Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

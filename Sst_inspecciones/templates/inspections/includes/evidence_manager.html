@@ -1,0 +1,24 @@
+{% load static %}
+<div class="evidence-container" id="evidence-container-{{ content_type_id }}-{{ object_id|default_if_none:'' }}">
+    {% if object_id and object_id != 'None' and object_id != '' and evidences %}
+    {% for evidence in evidences.all %}
+    <div class="evidence-wrapper" data-id="{{ evidence.id }}"
+        onclick="openEvidencePreview('{{ evidence.image.url }}', '{{ evidence.description|escapejs }}')">
+        <img src="{{ evidence.image.url }}" alt="Evidencia">
+        {% if can_edit %}
+        <div class="evidence-remove" onclick="event.stopPropagation(); deleteEvidence({{ evidence.id }}, this)">&times;
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if can_edit %}
+    <label class="evidence-add-btn" title="Agregar evidencia">
+        <i class="fas fa-camera"></i>
+        <span>Agregar</span>
+        <input type="file" accept="image/*" style="display: none;"
+            onchange="uploadEvidence(this, '{{ content_type_id }}', '{{ object_id|default_if_none:'' }}')">
+    </label>
+    {% endif %}
+</div>

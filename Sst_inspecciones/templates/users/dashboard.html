@@ -1,0 +1,379 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block header_title %}Resumen General de Gestión{% endblock %}
+
+{% block content %}
+<!-- Estilos para Alertas de Activos -->
+<style>
+    .alert-card-premium {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        margin-bottom: 32px;
+        overflow: hidden;
+        border: 1px solid #edf2f0;
+        transition: transform 0.2s;
+    }
+
+    .alert-card-premium:hover {
+        transform: translateY(-2px);
+    }
+
+    .alert-indicator-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .alert-indicator-btn:hover {
+        filter: brightness(1.1);
+        transform: scale(1.05);
+    }
+
+    .alert-indicator-btn .count {
+        background: rgba(255, 255, 255, 0.25);
+        padding: 2px 8px;
+        border-radius: 5px;
+        min-width: 24px;
+        text-align: center;
+    }
+
+    .no-alerts-banner {
+        background: #f0fdf4;
+        border-left: 5px solid #10b981;
+        padding: 15px 22px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 32px;
+        border: 1px solid #d1fae5;
+    }
+</style>
+
+<div class="card bg-primary-gradient no-border" style="padding: 40px; margin-bottom: 32px;">
+    <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 10px;">¡Bienvenido, {{ user.first_name }}!</h2>
+    <p style="font-size: 1.1rem; opacity: 0.9;">Hoy es un buen día para verificar los estándares de seguridad
+        industrial.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECCIÓN DE ALERTAS DE ACTIVOS
+═══════════════════════════════════════════════════════ -->
+{% if asset_alerts.has_alerts %}
+<div class="alert-card-premium" style="border-left: 5px solid #dc3545;">
+    <div
+        style="display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; flex-wrap: wrap; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 18px;">
+            <div
+                style="background: #fee2e2; color: #dc3545; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: #1e3d35; margin: 0;">Alertas de Activos</h3>
+                <p style="font-size: 0.88rem; color: #666; margin: 2px 0 0 0;">Requieren atención preventiva inmediata.
+                </p>
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            {% if asset_alerts.vencidos > 0 %}
+            <a href="{% url 'asset_list' %}?estado=VENCIDO" class="alert-indicator-btn"
+                style="background: #dc3545; color: white;" title="Ver activos con revisión vencida">
+                <span class="count">{{ asset_alerts.vencidos }}</span> Vencidos
+            </a>
+            {% endif %}
+
+            {% if asset_alerts.proximos > 0 %}
+            <a href="{% url 'asset_list' %}?estado=PROXIMO_A_VENCER" class="alert-indicator-btn"
+                style="background: #f59e0b; color: white;" title="Vencimiento en los próximos 30 días">
+                <span class="count">{{ asset_alerts.proximos }}</span> Próximos
+            </a>
+            {% endif %}
+
+            {% if asset_alerts.criticos > 0 %}
+            <a href="{% url 'asset_list' %}?activo=0" class="alert-indicator-btn"
+                style="background: #7f1d1d; color: white;" title="Activos fuera de servicio o inactivos">
+                <span class="count">{{ asset_alerts.criticos }}</span> Críticos
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="no-alerts-banner">
+    <div style="color: #10b981; font-size: 1.4rem;">
+        <i class="fas fa-check-circle"></i>
+    </div>
+    <div>
+        <p style="margin: 0; font-weight: 700; color: #064e3b; font-size: 1rem;">Estado Óptimo de Activos</p>
+        <p style="margin: 0; font-size: 0.85rem; color: #065f46;">No hay alertas activas. Todos los activos están al
+            día.</p>
+    </div>
+</div>
+{% endif %}
+
+
+<!-- Notifications Section -->
+{% if notifications %}
+<div class="card" style="margin-bottom: 32px; border-left: 5px solid #0d6efd;">
+    <div class="card-header" style="border-bottom: 1px solid #eee; padding-bottom: 15px;">
+        <h3 class="card-title" style="color: #0d6efd; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-bell"></i> Notificaciones Recientes
+        </h3>
+    </div>
+    <div style="padding: 10px 0;">
+        {% for noti in notifications %}
+        <div
+            style="padding: 15px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="display: flex; gap: 15px;">
+                <div style="padding-top: 4px;">
+                    {% if noti.notification_type == 'alert' %}
+                    <i class="fas fa-exclamation-circle" style="color: #dc3545; font-size: 1.2rem;"></i>
+                    {% elif noti.notification_type == 'inspection' %}
+                    <i class="fas fa-clipboard-check" style="color: #ffc107; font-size: 1.2rem;"></i>
+                    {% else %}
+                    <i class="fas fa-info-circle" style="color: #17a2b8; font-size: 1.2rem;"></i>
+                    {% endif %}
+                </div>
+                <div>
+                    <h4 style="margin: 0 0 5px 0; font-size: 1rem; font-weight: 600; color: #333;">{{ noti.title }}</h4>
+                    <p style="margin: 0 0 5px 0; color: #666; font-size: 0.9rem;">{{ noti.message }}</p>
+                    <small style="color: #999;">{{ noti.created_at|timesince }} atrás</small>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                {% if noti.link %}
+                <a href="{{ noti.link }}" class="btn btn-sm btn-primary" style="font-size: 0.8rem; padding: 4px 10px;">
+                    Ver <i class="fas fa-arrow-right"></i>
+                </a>
+                {% endif %}
+                <form action="{% url 'mark_notification_read' noti.pk %}" method="post" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit"
+                        style="background: none; border: none; color: #adb5bd; cursor: pointer; font-size: 0.8rem; padding: 0;">
+                        <i class="fas fa-check"></i> Marcar leída
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Alerts Section -->
+{% if overdue_inspections or upcoming_inspections or active_findings %}
+<div style="display: flex; gap: 24px; margin-bottom: 32px; flex-wrap: wrap;">
+    <!-- Upcoming (7 días) - PRIMERO -->
+    {% if upcoming_inspections %}
+    <div class="card" style="flex: 1; min-width: 300px; border-left: 5px solid #ffc107; margin-bottom: 0;">
+        <div class="card-header" style="border-bottom: 1px solid #eee; padding-bottom: 15px;">
+            <h3 class="card-title" style="color: #d39e00; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-clock"></i> Próximas ({{ notification_days }} días)
+            </h3>
+        </div>
+        <div class="table-wrapper">
+            <table style="margin-top: 0;">
+                <tbody>
+                    {% for i in upcoming_inspections|slice:":5" %}
+                    <tr onclick="window.location='{{ i.get_module_url }}';"
+                        style="cursor: pointer; transition: background-color 0.2s;"
+                        onmouseover="this.style.backgroundColor='rgba(0,0,0,0.03)'"
+                        onmouseout="this.style.backgroundColor='transparent'">
+                        <td style="padding: 12px;">
+                            <strong style="display: block; color: var(--text-color); margin-bottom: 4px;">
+                                {{ i.inspection_type }}</strong>
+                            <small style="display: block; color: var(--text-light); margin-bottom: 4px;">
+                                {{ i.area }}</small>
+                            <small style="display: block; color: #d39e00; font-weight: 600;">
+                                {{ i.scheduled_date|date:"d/m/Y" }}
+                            </small>
+                        </td>
+                        <td style="text-align: right; padding: 12px;">
+                            {% if i.is_executable %}
+                            <a href="{{ i.get_module_url }}" class="btn btn-sm btn-success" title="Ejecutar"
+                                style="display: inline-flex; align-items: center; gap: 5px;">
+                                Ir <i class="fas fa-arrow-right"></i>
+                            </a>
+                            {% else %}
+                            <a href="{{ i.get_module_url }}" class="btn btn-sm btn-secondary" title="Ver Programación"
+                                style="display: inline-flex; align-items: center; gap: 5px; color: white;">
+                                Ver <i class="fas fa-eye"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Active Findings - SEGUNDO -->
+    {% if active_findings %}
+    <div class="card" style="flex: 1; min-width: 300px; border-left: 5px solid #fd7e14; margin-bottom: 0;">
+        <div class="card-header" style="border-bottom: 1px solid #eee; padding-bottom: 15px;">
+            <h3 class="card-title" style="color: #fd7e14; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-clipboard-check"></i> Seguimientos Pendientes (Hallazgos)
+            </h3>
+        </div>
+        <div class="table-wrapper">
+            <table style="margin-top: 0;">
+                <tbody>
+                    {% for inspection in active_findings|slice:":5" %}
+                    <tr onclick="window.location='{{ inspection.get_detail_url }}';"
+                        style="cursor: pointer; transition: background-color 0.2s;"
+                        onmouseover="this.style.backgroundColor='rgba(0,0,0,0.03)'"
+                        onmouseout="this.style.backgroundColor='transparent'">
+                        <td style="padding: 12px;">
+                            <strong style="display: block; color: var(--text-color); margin-bottom: 4px;">
+                                {{ inspection.inspection_type }}</strong>
+                            <small style="display: block; color: var(--text-light); margin-bottom: 4px;">
+                                {{ inspection.area }}</small>
+                            <small style="display: block; color: #fd7e14; font-weight: 600;">
+                                {{ inspection.inspection_date|date:"d/m/Y" }}
+                            </small>
+                        </td>
+                        <td style="text-align: right; padding: 12px;">
+                            <a href="{{ inspection.get_detail_url }}" class="btn btn-sm btn-warning" title="Gestionar"
+                                style="display: inline-flex; align-items: center; gap: 5px; background-color: #fd7e14; border-color: #fd7e14; color: white;">
+                                Ir <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Overdue - TERCERO -->
+    {% if overdue_inspections %}
+    <div class="card" style="flex: 1; min-width: 300px; border-left: 5px solid #dc3545; margin-bottom: 0;">
+        <div class="card-header" style="border-bottom: 1px solid #eee; padding-bottom: 15px;">
+            <h3 class="card-title" style="color: #dc3545; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-exclamation-triangle"></i> Inspecciones Vencidas
+            </h3>
+        </div>
+        <div class="table-wrapper">
+            <table style="margin-top: 0;">
+                <tbody>
+                    {% for i in overdue_inspections|slice:":5" %}
+                    <tr onclick="window.location='{{ i.get_module_url }}';"
+                        style="cursor: pointer; transition: background-color 0.2s;"
+                        onmouseover="this.style.backgroundColor='rgba(0,0,0,0.03)'"
+                        onmouseout="this.style.backgroundColor='transparent'">
+                        <td style="padding: 12px;">
+                            <strong style="display: block; color: var(--text-color); margin-bottom: 4px;">
+                                {{ i.inspection_type }}</strong>
+                            <small style="display: block; color: var(--text-light); margin-bottom: 4px;">
+                                {{ i.area }}</small>
+                            <small style="display: block; color: #dc3545; font-weight: 600;">
+                                {{ i.scheduled_date|date:"d/m/Y" }}
+                            </small>
+                        </td>
+                        <td style="text-align: right; padding: 12px;">
+                            <a href="{{ i.get_module_url }}" class="btn btn-sm btn-danger" title="Gestionar"
+                                style="display: inline-flex; align-items: center; gap: 5px;">
+                                Ir <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="dashboard-grid">
+    {% if perm_schedule %}
+    <a href="{% url 'inspection_list' %}" class="no-decoration">
+        <div class="card stat-card full-height">
+            <div class="icon-box icon-blue">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div class="stat-info">
+                <h3>Cronograma Anual</h3>
+                <p style="font-size: 1.1rem; font-weight: 600;">Ver Programación</p>
+                <span style="font-size: 0.8rem; color: var(--text-light);">Seguimiento de cumplimiento</span>
+            </div>
+        </div>
+    </a>
+    {% endif %}
+
+    {% if perm_extinguisher %}
+    <a href="{% url 'extinguisher_list' %}" class="no-decoration">
+        <div class="card stat-card full-height">
+            <div class="icon-box icon-green">
+                <i class="fas fa-fire-extinguisher"></i>
+            </div>
+            <div class="stat-info">
+                <h3>Módulo Extintores</h3>
+                <p style="font-size: 1.1rem; font-weight: 600;">Inspecciones</p>
+                <span style="font-size: 0.8rem; color: var(--text-light);">Revisión masiva de equipos</span>
+            </div>
+        </div>
+    </a>
+    {% endif %}
+
+    {% if perm_first_aid %}
+    <a href="{% url 'first_aid_list' %}" class="no-decoration">
+        <div class="card stat-card full-height">
+            <div class="icon-box icon-orange">
+                <i class="fas fa-medkit"></i>
+            </div>
+            <div class="stat-info">
+                <h3>Módulo Botiquines</h3>
+                <p style="font-size: 1.1rem; font-weight: 600;">Inspecciones</p>
+                <span style="font-size: 0.8rem; color: var(--text-light);">Control de suministros médicos</span>
+            </div>
+        </div>
+    </a>
+    {% endif %}
+</div>
+
+{% if perm_process or perm_storage or perm_forklift or perm_users %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Accesos Rápidos Adicionales</h3>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+        {% if perm_process %}
+        <a href="{% url 'process_list' %}" class="btn btn-card">
+            <i class="fas fa-cogs" style="margin-right: 12px; color: var(--primary-color);"></i> Procesos
+        </a>
+        {% endif %}
+        {% if perm_storage %}
+        <a href="{% url 'storage_list' %}" class="btn btn-card">
+            <i class="fas fa-boxes" style="margin-right: 12px; color: var(--primary-color);"></i> Almacenamiento
+        </a>
+        {% endif %}
+        {% if perm_forklift %}
+        <a href="{% url 'forklift_list' %}" class="btn btn-card">
+            <i class="fas fa-truck-loading" style="margin-right: 12px; color: var(--primary-color);"></i> Montacargas
+        </a>
+        {% endif %}
+        {% if perm_users %}
+        <a href="{% url 'user_list' %}" class="btn btn-card">
+            <i class="fas fa-users" style="margin-right: 12px; color: var(--primary-color);"></i> Usuarios
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

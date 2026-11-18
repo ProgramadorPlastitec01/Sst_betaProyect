@@ -1,0 +1,451 @@
+{% load static permission_tags %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SST - Sistema de Gestión{% endblock %}</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Toastr CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+    {% if user.is_authenticated %}
+    <div class="app-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="{% url 'dashboard' %}" class="logo">
+                    <img src="{% static 'images/logo.png' %}" alt="SST Logo" class="app-logo">
+                </a>
+            </div>
+            <ul class="sidebar-menu">
+                {% has_permission 'users' 'view' as can_view_dashboard %}
+                <li>
+                    <a href="{% url 'dashboard' %}"
+                        class="{% if request.resolver_match.url_name  ==  'dashboard' %}active{% endif %}">
+                        <i class="fas fa-th-large"></i> <span>Dashboard</span>
+                    </a>
+                </li>
+
+                {% has_permission 'schedule' 'view' as can_view_schedule %}
+                {% if can_view_schedule %}
+                <li>
+                    <a href="{% url 'inspection_list' %}"
+                        class="{% if request.resolver_match.url_name  ==  'inspection_list' %}active{% endif %}">
+                        <i class="fas fa-calendar-alt"></i> <span>Cronograma Anual</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% has_permission 'extinguisher' 'view' as can_view_extinguisher %}
+                {% has_permission 'first_aid' 'view' as can_view_first_aid %}
+                {% has_permission 'process' 'view' as can_view_process %}
+                {% has_permission 'storage' 'view' as can_view_storage %}
+                {% has_permission 'forklift' 'view' as can_view_forklift %}
+
+                {% if can_view_extinguisher or can_view_first_aid or can_view_process or can_view_storage or can_view_forklift %}
+                <li>
+                    <button class="nav-group-trigger" id="inspecciones-trigger" type="button">
+                        <i class="fas fa-clipboard-check nav-icon"></i>
+                        <span>Inspecciones</span>
+                        <i class="fas fa-chevron-down chevron"></i>
+                    </button>
+                    <ul class="sidebar-submenu" id="inspecciones-submenu">
+                        {% if can_view_extinguisher %}
+                        <li>
+                            <a href="{% url 'extinguisher_list' %}"
+                                class="{% if 'extinguisher' in request.path %}active{% endif %}">
+                                <i class="fas fa-fire-extinguisher"></i> <span>Extintores</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_view_first_aid %}
+                        <li>
+                            <a href="{% url 'first_aid_list' %}"
+                                class="{% if 'first-aid' in request.path %}active{% endif %}">
+                                <i class="fas fa-medkit"></i> <span>Botiquines</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_view_process %}
+                        <li>
+                            <a href="{% url 'process_list' %}"
+                                class="{% if 'process' in request.path %}active{% endif %}">
+                                <i class="fas fa-cogs"></i> <span>Procesos</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_view_storage %}
+                        <li>
+                            <a href="{% url 'storage_list' %}"
+                                class="{% if 'storage' in request.path %}active{% endif %}">
+                                <i class="fas fa-warehouse"></i> <span>Almacenamiento</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_view_forklift %}
+                        <li>
+                            <a href="{% url 'forklift_list' %}"
+                                class="{% if 'forklift' in request.path %}active{% endif %}">
+                                <i class="fas fa-truck-loading"></i> <span>Montacargas</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+
+                {% has_permission 'assets' 'view' as can_view_assets %}
+                {% if can_view_assets %}
+                <li>
+                    <a href="{% url 'asset_list' %}"
+                        class="{% if request.resolver_match.url_name == 'asset_list' or request.resolver_match.url_name == 'asset_detail' %}active{% endif %}">
+                        <i class="fas fa-boxes"></i> <span>Gestión de Activos</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% has_permission 'planos' 'view' as can_view_planos %}
+                {% if can_view_planos %}
+                <li>
+                    <a href="{% url 'planos_view' %}"
+                        class="{% if 'planos' in request.path %}active{% endif %}">
+                        <i class="fas fa-map"></i> <span>Planos</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% has_permission 'reports' 'view' as can_view_reports %}
+                {% if can_view_assets or can_view_reports %}
+                <li>
+                    <button class="nav-group-trigger" id="reportes-trigger" type="button">
+                        <i class="fas fa-chart-bar nav-icon"></i>
+                        <span>Reportes</span>
+                        <i class="fas fa-chevron-down chevron"></i>
+                    </button>
+                    <ul class="sidebar-submenu" id="reportes-submenu">
+                        {% if can_view_assets %}
+                        <li>
+                            <a href="{% url 'asset_report' %}"
+                                class="{% if request.resolver_match.url_name == 'asset_report' %}active{% endif %}">
+                                <i class="fas fa-boxes"></i> <span>Activos</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_view_reports %}
+                        <li>
+                            <a href="{% url 'inspection_reports' %}"
+                                class="{% if request.resolver_match.url_name == 'inspection_reports' %}active{% endif %}">
+                                <i class="fas fa-clipboard-list"></i> <span>Inspecciones</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+            </ul>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div style="flex: 1; display: flex; flex-direction: column;">
+            <!-- Top Navbar -->
+            <header class="topbar">
+                <div class="page-title">
+                    <h2 style="font-size: 1.1rem; color: var(--text-light); font-weight: 500;">
+                        {% block header_title %}Panel de Control{% endblock %}
+                    </h2>
+                </div>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    {# ── INDICADOR DE ESTADO DE RED ── #}
+                    <div style="display: flex; align-items: center; background-color: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.08); border-radius: 20px; padding: 4px 12px; height: 32px;" title="Estado de la conexión al servidor">
+                        <span id="network-status-dot" style="width: 10px; height: 10px; border-radius: 50%; background-color: #28a745; margin-right: 8px; flex-shrink: 0;"></span>
+                        <span id="network-status-label" style="font-size: 0.8rem; font-weight: 500; color: var(--text-color);">Conectado</span>
+                    </div>
+
+                    {# ── BADGE DE SIMULACIÓN INTEGRADO ── #}
+                    {% if simulated_role %}
+                    <div style="display: flex; align-items: center; background-color: rgba(111, 66, 193, 0.08); border: 1px solid rgba(111, 66, 193, 0.2); border-radius: 20px; padding: 4px 12px; height: 32px;">
+                        <i class="fas fa-user-secret" style="color: #6f42c1; margin-right: 8px; font-size: 0.9rem;"></i>
+                        <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-color);">
+                            Simulando: <strong style="color: #6f42c1;">{{ simulated_role.name }}</strong>
+                        </span>
+                        <div style="width: 1px; height: 14px; background-color: rgba(111, 66, 193, 0.2); margin: 0 10px;"></div>
+                        <form method="post" action="{% url 'role_simulate_stop' %}" style="margin: 0; display: flex; align-items: center;">
+                            {% csrf_token %}
+                            <button type="submit" style="background: none; border: none; padding: 0; color: #dc3545; font-size: 0.8rem; font-weight: 600; cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" title="Salir de simulación">
+                                Salir
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <div class="user-profile" style="position: relative;">
+                    <div class="user-info" style="cursor: pointer;" onclick="toggleUserDropdown()">
+                        <span class="user-name">{{ user.get_full_name|default:user.email }}</span>
+                        <span class="user-role">{% if user.is_staff %}Administrador{% else %}Inspector{% endif %}</span>
+                        <i class="fas fa-chevron-down"
+                            style="margin-left: 8px; font-size: 0.8rem; transition: transform 0.3s;"></i>
+                    </div>
+
+                    <!-- Dropdown Menu -->
+                    <div id="userDropdown" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; 
+                                                   background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+                                                   min-width: 200px; z-index: 1000; overflow: hidden;">
+                        <a href="{% url 'user_profile' %}"
+                            style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
+                                                                    text-decoration: none; color: #333; transition: background 0.2s;">
+                            <i class="fas fa-user-circle" style="color: #49BAA0; width: 20px;"></i>
+                            <span>Perfil</span>
+                        </a>
+                        {% if user.is_staff %}
+                        <a href="{% url 'configuration' %}"
+                            style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
+                                                                    text-decoration: none; color: #333; transition: background 0.2s;">
+                            <i class="fas fa-cog" style="color: #49BAA0; width: 20px;"></i>
+                            <span>Configuración</span>
+                        </a>
+                        {% endif %}
+                        <form action="{% url 'logout' %}" method="post" id="logout-form" style="margin: 0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{% url 'login' %}?inactive=1">
+                            <button type="submit"
+                                style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 16px; 
+                                                          background: none; border: none; cursor: pointer; color: #dc3545; 
+                                                          transition: background 0.2s; text-align: left; font-size: 1rem;">
+                                <i class="fas fa-sign-out-alt" style="width: 20px;"></i>
+                                <span>Cerrar Sesión</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                </div>
+            </header>
+
+            <!-- Offline-first: banner de guardado local pendiente de sincronizar -->
+            <div id="offline-banner" style="display: none; background-color: #fff3cd; border-bottom: 1px solid #ffe69c; color: #664d03; font-size: 0.85rem;"></div>
+
+            <!-- Main Content Area -->
+            <main class="main-content">
+
+
+
+                <div class="content-container">
+                    {# Django messages are now handled by Toastr - see bottom of template #}
+
+                    {% block content %}{% endblock %}
+                </div>
+            </main>
+        </div>
+    </div>
+
+
+    <!-- Inactivity Timer Script -->
+    <script>
+        (function () {
+            const INACTIVITY_TIME = 30 * 60 * 1000; // 30 minutes
+            let timeout;
+
+            function logout() {
+                console.log("Inactivity detected. Logging out...");
+                const form = document.getElementById('logout-form');
+                if (form) {
+                    form.submit();
+                } else {
+                    window.location.href = "{% url 'login' %}?inactive=1";
+                }
+            }
+
+            function resetTimer() {
+                clearTimeout(timeout);
+                timeout = setTimeout(logout, INACTIVITY_TIME);
+            }
+
+            // Activity events
+            const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+            events.forEach(function (name) {
+                document.addEventListener(name, resetTimer, true);
+            });
+
+            resetTimer();
+        })();
+    </script>
+
+    <!-- Offline-first: pedir almacenamiento persistente para que el navegador no vacíe el outbox local bajo presión de disco -->
+    <script>
+        if (navigator.storage && navigator.storage.persist) {
+            navigator.storage.persist();
+        }
+    </script>
+    {% else %}
+    <!-- Layout for unauthenticated users (Login) -->
+    <main style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+        <div style="width: 100%; max-width: 400px; padding: 20px;">
+            {% block auth_content %}{% endblock %}
+        </div>
+    </main>
+    {% endif %}
+
+    <!-- Hidden Django Messages for Toastr Auto-Capture -->
+    {% if messages %}
+    <div style="display: none;">
+        {% for message in messages %}
+        <div class="django-message" data-message-type="{{ message.tags }}" data-message-text="{{ message }}">
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- jQuery (required by Toastr) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- Toastr JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <!-- Custom Notifications System -->
+    <script src="{% static 'js/notifications.js' %}"></script>
+    <script src="{% static 'js/evidence_manager.js' %}"></script>
+    <!-- Offline-first: indicador de red, outbox local y sincronización automática -->
+    <script src="{% static 'js/network_status.js' %}"></script>
+    <script src="{% static 'js/offline_outbox.js' %}"></script>
+    <script src="{% static 'js/offline_submit.js' %}"></script>
+    <script src="{% static 'js/offline_flush.js' %}"></script>
+
+    <!-- Cleanup script to prevent modal overlay issues -->
+    <script>
+        // Remove modal-open class on page load to prevent gray overlay
+        document.addEventListener('DOMContentLoaded', function () {
+            document.body.classList.remove('modal-open');
+        });
+
+        // User dropdown toggle
+        function toggleUserDropdown() {
+            const dropdown = document.getElementById('userDropdown');
+            const chevron = document.querySelector('.user-info i.fa-chevron-down');
+
+            if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+                dropdown.style.display = 'block';
+                if (chevron) chevron.style.transform = 'rotate(180deg)';
+            } else {
+                dropdown.style.display = 'none';
+                if (chevron) chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (event) {
+            const dropdown = document.getElementById('userDropdown');
+            const userProfile = document.querySelector('.user-profile');
+
+            if (dropdown && userProfile && !userProfile.contains(event.target)) {
+                dropdown.style.display = 'none';
+                const chevron = document.querySelector('.user-info i.fa-chevron-down');
+                if (chevron) chevron.style.transform = 'rotate(0deg)';
+            }
+        });
+    </script>
+
+    <!-- Custom Modal for Evidence Preview -->
+    <div id="evidencePreviewModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; align-items: center; justify-content: center; padding: 20px;">
+        <div
+            style="position: relative; max-width: 95%; max-height: 95%; background: white; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; animation: modalFadeIn 0.3s ease;">
+            <span onclick="closeEvidencePreview()"
+                style="position: absolute; top: 12px; right: 20px; font-size: 32px; font-weight: bold; cursor: pointer; color: #333; z-index: 5001; text-shadow: 0 0 10px rgba(255,255,255,0.8);">&times;</span>
+            <div
+                style="flex: 1; overflow: hidden; text-align: center; background: #000; display: flex; align-items: center; justify-content: center; min-height: 200px;">
+                <img id="evidencePreviewImage" src="" style="max-width: 100%; max-height: 85vh; object-fit: contain;">
+            </div>
+            <div id="evidencePreviewDesc"
+                style="padding: 15px 25px; background: white; font-size: 0.95rem; color: #4b5563; border-top: 1px solid #f3f4f6; font-weight: 500; text-align: center;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Dropdown hover styles -->
+    <style>
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        #userDropdown a:hover,
+        #userDropdown button:hover {
+            background: #f8f9fa;
+        }
+    </style>
+
+    <script>
+        (function () {
+            var trigger = document.getElementById('inspecciones-trigger');
+            var submenu = document.getElementById('inspecciones-submenu');
+            if (trigger && submenu) {
+                // Auto-open if current path is an inspection route
+                var inspectionPaths = ['extinguisher', 'first-aid', 'process', 'storage', 'forklift'];
+                var currentPath = window.location.pathname;
+                var isInspectionActive = inspectionPaths.some(function (p) {
+                    return currentPath.indexOf(p) !== -1;
+                });
+                if (isInspectionActive) {
+                    submenu.classList.add('open');
+                    trigger.classList.add('open');
+                }
+                // Toggle on click
+                trigger.addEventListener('click', function () {
+                    var isOpen = submenu.classList.contains('open');
+                    if (isOpen) {
+                        submenu.classList.remove('open');
+                        trigger.classList.remove('open');
+                    } else {
+                        submenu.classList.add('open');
+                        trigger.classList.add('open');
+                    }
+                });
+            }
+
+            // ── Reportes submenu ──
+            var repTrigger = document.getElementById('reportes-trigger');
+            var repSubmenu = document.getElementById('reportes-submenu');
+            if (repTrigger && repSubmenu) {
+                var reportPaths = ['asset-report', 'asset_report', 'reports', 'inspection-reports'];
+                var currentPath = window.location.pathname;
+                var isReportActive = reportPaths.some(function (p) {
+                    return currentPath.indexOf(p) !== -1;
+                });
+                if (isReportActive) {
+                    repSubmenu.classList.add('open');
+                    repTrigger.classList.add('open');
+                }
+                repTrigger.addEventListener('click', function () {
+                    var isOpen = repSubmenu.classList.contains('open');
+                    if (isOpen) {
+                        repSubmenu.classList.remove('open');
+                        repTrigger.classList.remove('open');
+                    } else {
+                        repSubmenu.classList.add('open');
+                        repTrigger.classList.add('open');
+                    }
+                });
+            }
+        })();
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>

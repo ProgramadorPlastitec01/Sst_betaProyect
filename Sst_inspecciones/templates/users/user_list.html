@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}SST - Usuarios{% endblock %}
+
+{% block header_title %}Gestión de Usuarios{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 style="font-size: 1.5rem; font-weight: 700;">Usuarios del Sistema</h1>
+        <p style="color: var(--text-light); font-size: 0.9rem;">Administre los accesos y roles de los inspectores.</p>
+    </div>
+    <a href="{% url 'user_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus" style="margin-right: 8px;"></i> Nuevo Usuario
+    </a>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-container">
+    <div class="stat-card">
+        <div class="stat-icon icon-blue">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ total_users }}</div>
+            <div class="stat-label">Total Usuarios</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon icon-green">
+            <i class="fas fa-user-check"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ active_users }}</div>
+            <div class="stat-label">Usuarios Activos</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon icon-gray">
+            <i class="fas fa-user-slash"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ inactive_users }}</div>
+            <div class="stat-label">Usuarios Inactivos</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom: 24px;">
+    <form method="get" style="display: flex; gap: 16px; align-items: end;">
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label for="search">Buscar por nombre, email o documento</label>
+            <input type="text" id="search" name="search" value="{{ search }}" placeholder="Buscar usuario..."
+                style="width: 100%;">
+        </div>
+        <div class="form-group" style="width: 200px; margin-bottom: 0;">
+            <label for="status">Estado</label>
+            <select id="status" name="status" style="width: 100%;">
+                <option value="">Todos</option>
+                <option value="active" {% if status == 'active' %}selected{% endif %}>Activos</option>
+                <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactivos</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-bottom: 0;">
+            <i class="fas fa-search"></i> Buscar
+        </button>
+        {% if search or status %}
+        <a href="{% url 'user_list' %}" class="btn" style="background: #6c757d; color: white; margin-bottom: 0;">
+            <i class="fas fa-times"></i> Limpiar
+        </a>
+        {% endif %}
+    </form>
+</div>
+<!-- Users Table -->
+<div class="card">
+    <h3 class="card-title">Listado de Usuarios</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+
+                    <th>Email / Usuario</th>
+                    <th>Nombre Completo</th>
+                    <th>Rol</th>
+                    <th>Documento</th>
+                    <th style="width: 180px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user_item in users %}
+                <tr>
+
+                    <td>{{ user_item.email }}</td>
+                    <td style="font-weight: 600;">{{ user_item.get_full_name|default:user_item.username }}</td>
+                    <td>
+                        <span class="badge"
+                            style="background-color: #e9ecef; color: #495057; border: 1px solid #ced4da;">
+                            {{ user_item.role.name|default:"Sin Rol" }}
+                        </span>
+                    </td>
+                    <td>{{ user_item.document_number|default:"-" }}</td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="{% url 'user_edit' user_item.pk %}" class="btn btn-sm"
+                                style="background: #49BAA0; color: white; padding: 6px 12px;" title="Editar usuario">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% if request.user.role.name == 'Administrador' or request.user.is_superuser %}
+                            <a href="{% url 'user_reset_password' user_item.pk %}" class="btn btn-sm"
+                                style="background: #ffc107; color: #212529; padding: 6px 12px;"
+                                title="Restablecer Contraseña">
+                                <i class="fas fa-key"></i>
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'user_delete' user_item.pk %}" class="btn btn-sm"
+                                style="background: #dc3545; color: white; padding: 6px 12px;" title="Eliminar usuario"
+                                onclick="return confirm('¿Está seguro de eliminar este usuario?');">
+                                <i class="fas fa-trash-alt"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 32px; color: var(--text-light);">
+                        No hay usuarios registrados en el sistema.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

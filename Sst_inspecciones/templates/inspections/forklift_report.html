@@ -1,0 +1,361 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reporte Inspección de Montacargas #{{ object.pk }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    @media print {
+        body {
+            background: white;
+            padding: 0;
+        }
+
+        .no-print {
+            display: none !important;
+        }
+
+        .report-container {
+            box-shadow: none !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+    }
+
+    .report-container {
+        max-width: 900px;
+        margin: 20px auto;
+        background: white;
+        padding: 40px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .report-header {
+        text-align: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 20px;
+    }
+
+    .report-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin: 10px 0;
+    }
+
+    .report-subtitle {
+        font-size: 1rem;
+        color: #666;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-bottom: 30px;
+        background: #f8f9fa;
+        padding: 20px;
+        border: 1px solid #dee2e6;
+    }
+
+    .info-item label {
+        font-weight: 700;
+        display: block;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        color: #555;
+    }
+
+    .status-box {
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .table-report {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+    }
+
+    .table-report th {
+        background: #333;
+        color: white;
+        padding: 10px;
+        text-align: left;
+        font-size: 0.9rem;
+    }
+
+    .table-report td {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        font-size: 0.9rem;
+    }
+
+    .table-report tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+
+    .observations-box {
+        border: 1px solid #dee2e6;
+        padding: 15px;
+        margin-bottom: 30px;
+        background: #fff;
+    }
+
+    .signatures-section {
+        margin-top: 50px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 40px;
+    }
+
+    .signature-box {
+        text-align: center;
+        padding-top: 10px;
+    }
+
+    .signature-img {
+        max-height: 80px;
+        margin-bottom: 5px;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .signature-line {
+        border-top: 1px solid #333;
+        padding-top: 5px;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row no-print mb-4">
+    <div class="col-12">
+        <a href="{% url 'forklift_detail' object.pk %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Detalle
+        </a>
+    </div>
+</div>
+
+<div class="report-container">
+    <div class="report-header">
+        <h1 class="report-title">Reporte de Inspección de Montacargas</h1>
+        <p class="report-subtitle">Código: R-RH-SST-022 | Estado: {{ object.status }}</p>
+    </div>
+
+    <!-- General Info -->
+    <div class="info-grid">
+        <div class="info-item">
+            <label>Fecha de Inspección:</label>
+            <div>{{ object.inspection_date|date:"d/m/Y" }}</div>
+        </div>
+        <div class="info-item">
+            <label>Área:</label>
+            <div>{{ object.area }}</div>
+        </div>
+        <div class="info-item">
+            <label>Inspector:</label>
+            <div>{{ object.inspector.get_full_name|default:object.inspector.username }}</div>
+        </div>
+        <div class="info-item">
+            <label>Equipo (Inventario):</label>
+            <div>
+                {% if object.asset %}
+                <strong>{{ object.asset.code }}</strong>
+                {% if object.asset.montacargas_detail %} - {{ object.asset.montacargas_detail.marca }} {{ object.asset.montacargas_detail.modelo }}
+                {% endif %}
+                {% else %}
+                N/A
+                {% endif %}
+            </div>
+        </div>
+        <div class="info-item">
+            <label>Tipo de Energía:</label>
+            <div>{{ object.forklift_type|default:"-" }}</div>
+        </div>
+        <div class="info-item">
+            <label>Resultado General:</label>
+            <div class="status-box"
+                style="background: {% if object.status == 'Cerrada' %}#d4edda{% elif object.status == 'Cerrada con Hallazgos' %}#fff3cd{% elif object.status == 'En proceso' %}#cce5ff{% else %}#e2e3e5{% endif %}; color: {% if object.status == 'Cerrada' %}#155724{% elif object.status == 'Cerrada con Hallazgos' %}#856404{% elif object.status == 'En proceso' %}#004085{% else %}#383d41{% endif %};">
+                {{ object.get_status_display }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen de Verificación -->
+    <h3><i class="fas fa-chart-pie"></i> Resumen de Verificación</h3>
+    <div
+        style="background:#f8f9fa; border:1px solid #dee2e6; padding:16px; margin-bottom:24px; border-left:4px solid var(--primary-color);">
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; text-align:center;">
+            <div>
+                <div
+                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#555; margin-bottom:5px;">
+                    Ítems Evaluados</div>
+                <div style="font-size:1.5rem; font-weight:700; color:var(--primary-color);">{{ total_inspected|default:object.items.count }}</div>
+            </div>
+            <div>
+                <div
+                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#555; margin-bottom:5px;">
+                    En Buen Estado</div>
+                <div style="font-size:1.5rem; font-weight:700; color:#2e7d32;">{{ total_good|default:"0" }}</div>
+            </div>
+            <div>
+                <div
+                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#555; margin-bottom:5px;">
+                    Hallazgos (Malo)</div>
+                <div style="font-size:1.5rem; font-weight:700; color:#c62828;">{{ total_bad|default:"0" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checklist -->
+    <h3><i class="fas fa-tasks"></i> Resultados de Verificación</h3>
+    <table class="table-report">
+        <thead>
+            <tr>
+                <th style="width: 45%;">Ítem Evaluado</th>
+                <th style="width: 10%;">Cumple</th>
+                <th style="width: 15%;">Estado</th>
+                <th style="width: 30%;">Observaciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in object.items.all %}
+            <tr>
+                <td>{{ item.question }}</td>
+                <td style="text-align: center;">{{ item.response }}</td>
+                <td
+                    style="text-align: center; {% if item.item_status == 'Malo' %}color: red; font-weight: bold;{% endif %}">
+                    {{ item.item_status }}
+                </td>
+                <td>{{ item.observations|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Observations -->
+    {% if object.additional_observations %}
+    <h3><i class="fas fa-comment-dots"></i> Observaciones Adicionales</h3>
+    <div class="observations-box">
+        {{ object.additional_observations|linebreaks }}
+    </div>
+    {% endif %}
+
+    <!-- Evidencia Fotográfica -->
+    {% if object.evidences.exists or any_item_has_evidence %}
+    <div class="page-break"></div>
+    <h3><i class="fas fa-camera"></i> Evidencia Fotográfica</h3>
+
+    {% if object.evidences.exists %}
+    <h4
+        style="font-size:0.95rem; font-weight:700; color:#333; margin:16px 0 8px; padding:8px 12px; background:#f8f9fa; border-left:4px solid var(--primary-color); border-radius:2px;">
+        <i class="fas fa-info-circle"></i> Evidencia General de la Inspección
+    </h4>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px;">
+        {% for evidence in object.evidences.all %}
+        <div style="border:1px solid #dee2e6; border-radius:4px; overflow:hidden; background:#fff;">
+            <img src="{{ evidence.image.url }}"
+                style="width:100%; max-height:200px; object-fit:contain; display:block; background:#f8f9fa;">
+            {% if evidence.description %}
+            <div style="padding:5px 8px; font-size:0.75rem; color:#555; border-top:1px solid #eee;">{{
+                evidence.description }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% for item in object.items.all %}
+    {% if item.evidences.exists %}
+    <h4
+        style="font-size:0.95rem; font-weight:700; color:#333; margin:16px 0 8px; padding:8px 12px; background:#f8f9fa; border-left:4px solid {% if item.item_status == 'Malo' %}#dc3545{% elif item.item_status == 'Bueno' %}#28a745{% else %}#ffc107{% endif %}; border-radius:2px;">
+        <i class="fas fa-tasks" style="margin-right:6px;"></i>
+        {{ item.question|truncatechars:60 }}
+        <span
+            style="margin-left:10px; padding:2px 8px; border-radius:4px; font-size:0.75rem; background:{% if item.item_status == 'Bueno' %}#28a745{% elif item.item_status == 'Malo' %}#dc3545{% elif item.item_status == 'Regular' %}#ffc107{% else %}#6c757d{% endif %}; color:{% if item.item_status == 'Regular' %}#212529{% else %}white{% endif %};">
+			{{ item.item_status }}</span>
+    </h4>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px;">
+        {% for evidence in item.evidences.all %}
+        <div style="border:1px solid #dee2e6; border-radius:4px; overflow:hidden; background:#fff;">
+            <img src="{{ evidence.image.url }}"
+                style="width:100%; max-height:200px; object-fit:contain; display:block; background:#f8f9fa;">
+            {% if evidence.description %}
+            <div style="padding:5px 8px; font-size:0.75rem; color:#555; border-top:1px solid #eee;">{{
+                evidence.description }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    <!-- Signatures (Only in Report) -->
+    <div class="page-break"></div>
+    <div class="signatures-section">
+        {% for sig in object.signatures.all %}
+        <div class="signature-box">
+            {% if sig.signature %}
+            <img src="{{ sig.signature }}" class="signature-img" alt="Firma Digital">
+            {% else %}
+            <div style="height: 80px; display: flex; align-items: center; justify-content: center; color: #ccc;">Firma
+                Digital No Disponible</div>
+            {% endif %}
+            <div class="signature-line">
+                <div style="font-weight: bold;">{{ sig.user.get_full_name|default:sig.user.username }}</div>
+                <div style="font-size: 0.8rem; color: #666;">Firma Inspector/Responsable</div>
+                <div style="font-size: 0.7rem; color: #999;">{{ sig.signed_at|date:"d/m/Y H:i" }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="margin-top: 40px; text-align: center; font-size: 0.8rem; color: #999;">
+        <p>Generado automáticamente por el Sistema de Gestión SST - Plastitec SAS</p>
+    </div>
+</div>
+
+<!-- Bottom Buttons -->
+<div class="row no-print mt-4 mb-5">
+    <div class="col-12 text-center">
+        <div class="d-flex flex-column align-items-center gap-3" style="text-align: center;">
+            {% if object.status == 'Cerrada' or object.status == 'Cerrada con Hallazgos' %}
+            <div class="d-flex justify-content-center gap-2">
+                <button onclick="window.print()" class="btn btn-primary btn-lg">
+                    <i class="fas fa-print"></i> Imprimir / Guardar PDF
+                </button>
+                <a href="{% url 'forklift_detail' object.pk %}" class="btn btn-secondary btn-lg">
+                    <i class="fas fa-arrow-left"></i> Volver al Detalle
+                </a>
+            </div>
+            {% else %}
+            <div class="alert alert-warning d-inline-block mb-0">
+                <i class="fas fa-exclamation-triangle"></i>
+                El reporte debe estar <strong>Cerrado y Firmado</strong> para poder imprimirse.
+            </div>
+            <div class="d-flex justify-content-center gap-2">
+                <button class="btn btn-primary btn-lg disabled" style="cursor: not-allowed;"
+                    title="Pendiente de firmas">
+                    <i class="fas fa-print"></i> Imprimir (Bloqueado)
+                </button>
+                <a href="{% url 'forklift_detail' object.pk %}" class="btn btn-secondary btn-lg">
+                    <i class="fas fa-arrow-left"></i> Volver al Detalle
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

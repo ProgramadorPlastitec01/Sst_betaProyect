@@ -1,0 +1,732 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}SST - {% if object %}Editar{% else %}Nueva{% endif %} Inspección de Montacargas{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+<script src="{% static 'js/evidence_manager.js' %}"></script>
+<!-- Tom Select (searchable dropdown) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<style>
+    .inspection-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f2f5;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--text-color);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+        outline: none;
+    }
+
+    .item-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .item-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-light);
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .item-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+        vertical-align: top;
+    }
+
+    .status-select {
+        min-width: 120px;
+    }
+
+    .obs-input {
+        width: 100%;
+        min-height: 60px;
+    }
+
+    /* Tom Select - montacargas selector */
+    .ts-wrapper.form-control,
+    .ts-wrapper {
+        padding: 0 !important;
+        border: none !important;
+        background: #ffffff !important;
+    }
+
+    .ts-control,
+    .ts-control.has-items,
+    .ts-control.focus {
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 6px !important;
+        font-size: 0.9rem !important;
+        min-height: 42px !important;
+        box-shadow: none !important;
+        color: var(--text-color, #333) !important;
+    }
+
+    .ts-control input,
+    .ts-control input:focus {
+        background: #ffffff !important;
+        color: var(--text-color, #333) !important;
+        opacity: 1 !important;
+    }
+
+    .ts-control:focus-within,
+    .ts-wrapper.focus .ts-control {
+        border-color: var(--primary-color) !important;
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15) !important;
+        background: #ffffff !important;
+    }
+
+    .ts-dropdown,
+    .ts-dropdown-content {
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12) !important;
+        font-size: 0.88rem !important;
+        z-index: 9999 !important;
+    }
+
+    .ts-dropdown-content {
+        max-height: 280px;
+        overflow-y: auto;
+    }
+
+    .ts-dropdown .option {
+        background: #ffffff !important;
+        color: var(--text-color, #333) !important;
+        padding: 9px 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .ts-dropdown .option:hover,
+    .ts-dropdown .option.active {
+        background: #f0f7ff !important;
+        color: #1a3c5e !important;
+    }
+
+    .mnt-opt-code {
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: #1a3c5e;
+    }
+
+    .mnt-opt-meta {
+        font-size: 0.76rem;
+        color: #888;
+        margin-top: 2px;
+    }
+
+    /* Preview card del montacargas */
+    .asset-preview-card {
+        display: none;
+        background: linear-gradient(135deg, #f0f7ff 0%, #e8f4fd 100%);
+        border: 1px solid #c5dff5;
+        border-left: 4px solid var(--primary-color);
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-top: 16px;
+        animation: fadeInCard 0.25s ease;
+    }
+
+    @keyframes fadeInCard {
+        from {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .asset-preview-card.visible {
+        display: block;
+    }
+
+    .preview-card-header {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--primary-color);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .preview-card-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px 16px;
+    }
+
+    @media (max-width: 768px) {
+        .preview-card-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .preview-card-field {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .preview-card-lbl {
+        font-size: 0.60rem;
+        color: #5a8ab0;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .preview-card-val {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #1a3c5e;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+{% endblock %}
+
+{% block header_title %}Inspecciones de Seguridad - Montacargas{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="max-width: 1200px; padding: 20px;">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 1.8rem; font-weight: 700; color: var(--text-color); margin-bottom: 4px;">
+                {% if object %}Editar{% else %}Nueva{% endif %} Inspección de Montacargas
+            </h1>
+            <p style="color: var(--text-light); margin: 0;">Formato R-RH-SST-022</p>
+        </div>
+        <a href="{% url 'forklift_list' %}" class="btn btn-secondary"
+            style="background: white; border: 1px solid #dee2e6; color: var(--text-color);">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <form method="post" novalidate id="inspection-form" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="client_uuid" value="">
+
+        <!-- Render hidden fields (like area) -->
+        {% for field in form.hidden_fields %}
+        {{ field }}
+        {% endfor %}
+
+        <!-- General Data Card -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-info-circle"></i> Selección de Equipo y Datos Generales</h3>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Fecha de Inspección</label>
+                    {{ form.inspection_date }}
+                </div>
+
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Seleccionar Montacargas (Inventario)</label>
+                    {{ form.asset }}
+                    <small class="text-muted">Busque por código, marca o modelo.</small>
+                </div>
+            </div>
+
+            <!-- Tarjeta preview del montacargas seleccionado -->
+            <div id="asset-preview-panel" class="asset-preview-card">
+                <div class="preview-card-header">
+                    <i class="fas fa-truck-moving"></i> Información del equipo seleccionado
+                </div>
+                <div class="preview-card-grid">
+                    <div class="preview-card-field">
+                        <span class="preview-card-lbl">Marca / Modelo</span>
+                        <span class="preview-card-val" id="preview-marca-modelo">—</span>
+                    </div>
+                    <div class="preview-card-field">
+                        <span class="preview-card-lbl">Tipo de Energía</span>
+                        <span class="preview-card-val" id="preview-fuel">—</span>
+                    </div>
+                    <div class="preview-card-field">
+                        <span class="preview-card-lbl">Área / Ubicación</span>
+                        <span class="preview-card-val" id="preview-area">—</span>
+                    </div>
+                    <div class="preview-card-field">
+                        <span class="preview-card-lbl">Estado Actual</span>
+                        <span class="preview-card-val" id="preview-estado">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-grid mt-4">
+                <div class="form-group">
+                    <label>Área de Registro</label>
+                    {{ form.area }}
+                </div>
+                
+                <!-- Manual Participants -->
+                <div class="form-group">
+                    <label style="font-weight: 600;">
+                        <i class="fas fa-users" style="color:var(--primary-color);"></i> {{ form.manual_participants.label }}
+                    </label>
+                    {{ form.manual_participants }}
+                    {{ form.manual_participants.errors }}
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 4px; line-height: 1.2;">
+                        Seleccione usuarios adicionales que acompañaron la inspección.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const assetSelect = document.getElementById('id_asset_forklift');
+                const previewPanel = document.getElementById('asset-preview-panel');
+                const areaSelect = document.getElementById('id_area');
+
+                if (!assetSelect) return;
+
+                // Extraer data-attributes de cada option ANTES de inicializar Tom Select
+                const rawOptions = [];
+                Array.from(assetSelect.options).forEach(opt => {
+                    rawOptions.push({
+                        value: opt.value,
+                        text: opt.text,
+                        code: opt.getAttribute('data-code') || '',
+                        area: opt.getAttribute('data-area') || '',
+                        marca: opt.getAttribute('data-marca') || '',
+                        modelo: opt.getAttribute('data-modelo') || '',
+                        fuel: opt.getAttribute('data-fuel') || '',
+                        estado: opt.getAttribute('data-estado') || '',
+                        search: opt.getAttribute('data-search') || opt.text,
+                    });
+                });
+
+                function showPreview(item) {
+                    if (!item || !item.value) {
+                        previewPanel.classList.remove('visible');
+                        return;
+                    }
+                    document.getElementById('preview-marca-modelo').textContent =
+                        ((item.marca || '') + ' ' + (item.modelo || '')).trim() || '—';
+                    document.getElementById('preview-fuel').textContent = item.fuel || '—';
+                    document.getElementById('preview-area').textContent = item.area || '—';
+
+                    const estadoEl = document.getElementById('preview-estado');
+                    const estadoColor = (item.estado || '').includes('Operativo') || (item.estado || '').includes('Activo')
+                        ? '#28a745' : '#fd7e14';
+                    estadoEl.innerHTML = `<span style="font-weight:700;color:${estadoColor};">${item.estado || '—'}</span>`;
+
+                    // Auto-seleccionar área del activo si el campo no está bloqueado
+                    if (item.area && areaSelect && !areaSelect.disabled) {
+                        for (let i = 0; i < areaSelect.options.length; i++) {
+                            if (areaSelect.options[i].text === item.area) {
+                                areaSelect.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    previewPanel.classList.add('visible');
+                }
+
+                // Inicializar Tom Select
+                const ts = new TomSelect(assetSelect, {
+                    valueField: 'value',
+                    labelField: 'text',
+                    searchField: ['code', 'marca', 'modelo', 'fuel', 'area', 'search'],
+                    options: rawOptions,
+                    maxOptions: null,
+                    placeholder: '--- Seleccione un montacargas ---',
+                    allowEmptyOption: true,
+                    plugins: ['clear_button'],
+                    render: {
+                        option: function (data, escape) {
+                            if (!data.value) {
+                                return `<div class="option" style="color:#aaa;font-style:italic;">${escape(data.text)}</div>`;
+                            }
+                            const estadoColor = (data.estado || '').includes('Operativo') || (data.estado || '').includes('Activo')
+                                ? '#28a745' : '#fd7e14';
+                            return `<div class="option">
+                                <div class="mnt-opt-code">
+                                    <i class="fas fa-truck-moving" style="color:var(--primary-color);margin-right:5px;"></i>
+                                    ${escape(data.code || data.text)}
+                                    <span style="font-size:0.72rem;font-weight:400;color:${estadoColor};margin-left:8px;">${escape(data.estado)}</span>
+                                </div>
+                                <div class="mnt-opt-meta">${escape(data.marca)} ${escape(data.modelo)} &nbsp;·&nbsp; ${escape(data.fuel)} &nbsp;·&nbsp; ${escape(data.area)}</div>
+                            </div>`;
+                        },
+                        item: function (data, escape) {
+                            if (!data.value) return `<div>${escape(data.text)}</div>`;
+                            return `<div><strong>${escape(data.code || data.text)}</strong><span style="font-size:0.8rem;color:#666;margin-left:8px;">${escape(data.marca)} ${escape(data.modelo)}</span></div>`;
+                        },
+                        no_results: function (data, escape) {
+                            return `<div class="no-results" style="padding:12px;text-align:center;color:#888;"><i class="fas fa-search" style="margin-right:5px;"></i>Sin resultados para "${escape(data.input)}"</div>`;
+                        }
+                    },
+                    onChange: function (value) {
+                        const item = this.options[value];
+                        showPreview(item);
+                    }
+                });
+
+                // Disparar preview si ya hay valor seleccionado (modo edición)
+                if (assetSelect.value) {
+                    const sel = rawOptions.find(o => o.value == assetSelect.value);
+                    if (sel) showPreview(sel);
+                }
+
+                // Inicializar Tom Select para Participantes Manuales
+                const manualParticipantsEl = document.getElementById('id_manual_participants');
+                if (manualParticipantsEl) {
+                    new TomSelect(manualParticipantsEl, {
+                        plugins: ['remove_button'],
+                        placeholder: 'Buscar y seleccionar participantes...',
+                        render: {
+                            item: function(data, escape) {
+                                return '<div style="background-color: #f0faf7; color: #155724; border-radius: 20px; padding: 4px 12px; margin: 2px 4px 2px 0; font-size: 0.85rem; font-weight: 500; border: 1px solid #a8d5c2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">' + 
+                                       '<i class="fas fa-user-check" style="color:var(--primary-color, #49BAA0);margin-right:6px;"></i>' + 
+                                       escape(data.text) + 
+                                       '</div>';
+                            },
+                            option: function(data, escape) {
+                                return '<div style="padding: 10px 14px; border-bottom: 1px solid #f8f9fa; cursor: pointer;">' + 
+                                       '<i class="fas fa-user-circle" style="color:var(--primary-color, #49BAA0); margin-right:8px; font-size: 1.1rem; vertical-align: middle;"></i>' + 
+                                       '<span style="font-weight: 500; vertical-align: middle;">' + escape(data.text) + '</span>' + 
+                                       '</div>';
+                            }
+                        }
+                    });
+                }
+            });
+        </script>
+
+        <!-- Items Checklist -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-tasks"></i> Lista de Verificación</h3>
+            {{ items.management_form }}
+
+            {% if items.non_form_errors %}
+            <div class="alert alert-danger">{{ items.non_form_errors }}</div>
+            {% endif %}
+
+            <h4 class="subsection-title"
+                style="color: #49BAA0; margin: 20px 0 10px; border-bottom: 2px solid #e9ecef; padding-bottom: 8px;">
+                <i class="fas fa-power-off"></i> MONTACARGAS APAGADO (Pre-operacional)
+            </h4>
+            <div style="overflow-x: auto;">
+                <table class="item-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 35%;">Ítem a Evaluar</th>
+                            <th style="width: 10%;">Cumple</th>
+                            <th style="width: 12%;">Estado</th>
+                            <th style="width: 28%;">Observaciones</th>
+                            <th style="width: 15%; text-align: center;"><i class="fas fa-camera"></i> Evidencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item_form in items %}
+                        {% if forloop.counter <= 19 %} {{ item_form.id }} <tr>
+                            <td>{{ item_form.question }}</td>
+                            <td>
+                                {{ item_form.response }}
+                                {% if item_form.response.errors %}
+                                <div class="text-danger small">{{ item_form.response.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.item_status }}
+                                {% if item_form.item_status.errors %}
+                                <div class="text-danger small">{{ item_form.item_status.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.observations }}
+                                {% if item_form.observations.errors %}
+                                <div class="text-danger small">{{ item_form.observations.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td style="vertical-align: middle; text-align: center;">
+                                <div class="evidence-container"
+                                    id="evidence-container-{{ item_content_type_id }}-{{ item_form.prefix }}">
+                                    {% if item_form.instance.pk %}
+                                    {% for evidence in item_form.instance.evidences.all %}
+                                    <div class="evidence-wrapper" data-id="{{ evidence.id }}"
+                                        onclick="openEvidencePreview('{{ evidence.image.url }}', '{{ evidence.description|escapejs }}')">
+                                        <img src="{{ evidence.image.url }}" alt="Evidencia">
+                                        <div class="evidence-remove"
+                                            onclick="event.stopPropagation(); deleteEvidence({{ evidence.id }}, this)">
+                                            &times;</div>
+                                    </div>
+                                    {% endfor %}
+                                    {% endif %}
+                                    <label class="evidence-add-btn" title="Agregar evidencia">
+                                        <i class="fas fa-camera"></i>
+                                        <span>Agregar</span>
+                                        <input type="file" accept="image/*" style="display: none;"
+                                            onchange="uploadEvidence(this, '{{ item_content_type_id }}', '{{ item_form.prefix }}')">
+                                    </label>
+                                </div>
+                            </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- SECTION 2: MONTACARGAS ENCENDIDO -->
+            <h4 class="subsection-title"
+                style="color: #FF7043; margin: 30px 0 10px; border-bottom: 2px solid #e9ecef; padding-bottom: 8px;">
+                <i class="fas fa-bolt"></i> MONTACARGAS ENCENDIDO (Operativo)
+            </h4>
+            <div style="overflow-x: auto;">
+                <table class="item-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 35%;">Ítem a Evaluar</th>
+                            <th style="width: 10%;">Cumple</th>
+                            <th style="width: 12%;">Estado</th>
+                            <th style="width: 28%;">Observaciones</th>
+                            <th style="width: 15%; text-align: center;"><i class="fas fa-camera"></i> Evidencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item_form in items %}
+                        {% if forloop.counter > 19 %}
+                        {{ item_form.id }}
+                        <tr>
+                            <td>{{ item_form.question }}</td>
+                            <td>
+                                {{ item_form.response }}
+                                {% if item_form.response.errors %}
+                                <div class="text-danger small">{{ item_form.response.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.item_status }}
+                                {% if item_form.item_status.errors %}
+                                <div class="text-danger small">{{ item_form.item_status.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.observations }}
+                                {% if item_form.observations.errors %}
+                                <div class="text-danger small">{{ item_form.observations.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td style="vertical-align: middle; text-align: center;">
+                                <div class="evidence-container"
+                                    id="evidence-container-{{ item_content_type_id }}-{{ item_form.prefix }}">
+                                    {% if item_form.instance.pk %}
+                                    {% for evidence in item_form.instance.evidences.all %}
+                                    <div class="evidence-wrapper" data-id="{{ evidence.id }}"
+                                        onclick="openEvidencePreview('{{ evidence.image.url }}', '{{ evidence.description|escapejs }}')">
+                                        <img src="{{ evidence.image.url }}" alt="Evidencia">
+                                        <div class="evidence-remove"
+                                            onclick="event.stopPropagation(); deleteEvidence({{ evidence.id }}, this)">
+                                            &times;</div>
+                                    </div>
+                                    {% endfor %}
+                                    {% endif %}
+                                    <label class="evidence-add-btn" title="Agregar evidencia">
+                                        <i class="fas fa-camera"></i>
+                                        <span>Agregar</span>
+                                        <input type="file" accept="image/*" style="display: none;"
+                                            onchange="uploadEvidence(this, '{{ item_content_type_id }}', '{{ item_form.prefix }}')">
+                                    </label>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Additional Observations -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-comment-alt"></i> Observaciones Adicionales</h3>
+            <div class="form-group">
+                {{ form.additional_observations }}
+                {% if form.additional_observations.errors %}
+                <div class="text-danger small">{{ form.additional_observations.errors }}</div>
+                {% endif %}
+                <small class="text-muted">Cualquier otra observación relevante que no esté cubierta en los ítems
+                    anteriores.</small>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+            <a href="{% url 'forklift_list' %}" class="btn btn-light"
+                style="background: white; border: 1px solid #dee2e6;">Cancelar</a>
+            <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 500;">
+                <i class="fas fa-save"></i> Guardar Inspección
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    (function () {
+        // Strict validation for "Malo" status
+        function validateForm(event) {
+            let hasError = false;
+            let firstErrorInput = null;
+            let errorCount = 0;
+
+            const rows = document.querySelectorAll('tbody tr');
+
+            rows.forEach(function (row, index) {
+                let statusSelect = row.querySelector('select[name*="item_status"]');
+                let obsInput = row.querySelector('textarea[name*="observations"]');
+
+                if (!statusSelect) statusSelect = row.querySelector('select'); // Fallback
+                if (!obsInput) obsInput = row.querySelector('textarea'); // Fallback
+
+                if (statusSelect && obsInput) {
+                    const status = statusSelect.value;
+                    const obs = obsInput.value.trim();
+
+                    if (status === 'Malo') {
+                        if (obs === '') {
+                            hasError = true;
+                            errorCount++;
+
+                            obsInput.style.border = '2px solid #dc3545';
+                            obsInput.style.backgroundColor = '#fff8f8';
+
+                            let errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                            if (!errorDiv) {
+                                errorDiv = document.createElement('div');
+                                errorDiv.className = 'text-danger small js-strict-error';
+                                errorDiv.style.fontWeight = 'bold';
+                                errorDiv.style.marginTop = '4px';
+                                errorDiv.innerText = 'Debe ingresar una observación en el ítem marcado como "Malo".';
+                                obsInput.parentNode.appendChild(errorDiv);
+                            }
+
+                            if (!firstErrorInput) firstErrorInput = obsInput;
+                        } else {
+                            obsInput.style.border = '';
+                            obsInput.style.backgroundColor = '';
+                            const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                            if (errorDiv) errorDiv.remove();
+                        }
+                    } else {
+                        // Clear error if not Malo
+                        obsInput.style.border = '';
+                        obsInput.style.backgroundColor = '';
+                        const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                        if (errorDiv) errorDiv.remove();
+                    }
+                }
+            });
+
+            if (hasError) {
+                event.preventDefault();
+                event.stopPropagation();
+                alert('Existen ítems en estado "Malo" sin observación. Por favor complete la información antes de continuar.');
+                if (firstErrorInput) {
+                    firstErrorInput.focus();
+                    firstErrorInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return false;
+            }
+            return true;
+        }
+
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            if (form.tagName === 'FORM') {
+                if (!validateForm(e)) {
+                    e.preventDefault();
+                }
+            }
+        }, true);
+
+        // Real-time validation removal
+        document.addEventListener('change', function (e) {
+            const target = e.target;
+            if (target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+                const row = target.closest('tr');
+                if (row) {
+                    const statusSelect = row.querySelector('select[name*="item_status"]');
+                    const obsInput = row.querySelector('textarea[name*="observations"]');
+                    if (statusSelect && obsInput) {
+                        if (statusSelect.value !== 'Malo' || obsInput.value.trim() !== '') {
+                            obsInput.style.border = '';
+                            obsInput.style.backgroundColor = '';
+                            const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                            if (errorDiv) errorDiv.remove();
+                        }
+                    }
+                }
+            }
+        }, true);
+
+    })();
+</script>
+
+<!-- Offline-first: intercepta el submit para no perder el formulario si se corta la red -->
+<script>
+    document.getElementById('inspection-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitFormOffline(e.target, {
+            moduleLabel: 'Montacargas',
+            fallbackUrl: '{% url "forklift_list" %}'
+        });
+    });
+</script>
+{% endblock %}

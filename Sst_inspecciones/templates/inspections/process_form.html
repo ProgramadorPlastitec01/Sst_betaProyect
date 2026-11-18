@@ -1,0 +1,503 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}SST - {% if object %}Editar{% else %}Nueva{% endif %} Inspección de Procesos{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+<script src="{% static 'js/evidence_manager.js' %}"></script>
+<!-- Tom Select (searchable dropdown) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<!-- Reuse existing styles -->
+<style>
+    /* Tom Select shared styles */
+    .ts-wrapper.form-control, .ts-wrapper {
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+    }
+    .ts-control, .ts-control.has-items, .ts-control.focus {
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 6px !important;
+        font-size: 0.9rem !important;
+        min-height: 42px !important;
+        box-shadow: none !important;
+        color: var(--text-color, #333) !important;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    .ts-control input, .ts-control input:focus {
+        background: transparent !important;
+        color: var(--text-color, #333) !important;
+    }
+    .ts-control:focus-within, .ts-wrapper.focus .ts-control {
+        border-color: var(--primary-color) !important;
+        box-shadow: 0 0 0 3px rgba(73, 186, 160, 0.15) !important;
+    }
+    .ts-dropdown, .ts-dropdown-content {
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12) !important;
+        font-size: 0.88rem !important;
+        z-index: 9999 !important;
+    }
+    .ts-dropdown .option:hover, .ts-dropdown .option.active {
+        background: #f0faf7 !important;
+        color: #0f5132 !important;
+    }
+
+    .inspection-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f2f5;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--text-color);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+        outline: none;
+    }
+
+    .item-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .item-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-light);
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .item-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+        vertical-align: top;
+    }
+
+    .status-select {
+        min-width: 120px;
+    }
+
+    .obs-input {
+        width: 100%;
+        min-height: 60px;
+    }
+</style>
+{% endblock %}
+
+{% block header_title %}Inspecciones de Seguridad - Instalaciones de Proceso{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="max-width: 1200px; padding: 20px;">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 1.8rem; font-weight: 700; color: var(--text-color); margin-bottom: 4px;">
+                {% if object %}Editar{% else %}Nueva{% endif %} Inspección de Proceso
+            </h1>
+            <p style="color: var(--text-light); margin: 0;">Formato R-RH-SST-030</p>
+        </div>
+        <a href="{% url 'process_list' %}" class="btn btn-secondary"
+            style="background: white; border: 1px solid #dee2e6; color: var(--text-color);">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <form method="post" novalidate id="inspection-form" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="client_uuid" value="">
+
+        <!-- Render hidden fields (like area) -->
+        {% for field in form.hidden_fields %}
+        {{ field }}
+        {% endfor %}
+
+        <!-- General Data Card -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-info-circle"></i> Datos Generales</h3>
+
+            <div class="form-grid">
+                <!-- Inspection Date -->
+                <div class="form-group">
+                    <label>Fecha de Inspección</label>
+                    {{ form.inspection_date }}
+                    {% if form.inspection_date.errors %}
+                    <div class="text-danger small">{{ form.inspection_date.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Inspector Role -->
+                <div class="form-group">
+                    <label>Rol del Inspector</label>
+                    {{ form.inspector_role }}
+                    {% if form.inspector_role.errors %}
+                    <div class="text-danger small">{{ form.inspector_role.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Inspected Process -->
+                <div class="form-group">
+                    <label>Proceso Inspeccionado</label>
+                    {{ form.inspected_process }}
+                    {% if form.inspected_process.errors %}
+                    <div class="text-danger small">{{ form.inspected_process.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Manual Participants -->
+                <div class="form-group">
+                    <label style="font-weight: 600;">
+                        <i class="fas fa-users" style="color:var(--primary-color);"></i> {{ form.manual_participants.label }}
+                    </label>
+                    {{ form.manual_participants }}
+                    {{ form.manual_participants.errors }}
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 4px; line-height: 1.2;">
+                        Seleccione usuarios adicionales que acompañaron la inspección.
+                    </div>
+                </div>
+
+                <!-- Render other visible fields dynamically (e.g., area if visible) -->
+                {% for field in form.visible_fields %}
+                {% if field.name != 'inspection_date' and field.name != 'inspector_role' and field.name != 'inspected_process' and field.name != 'additional_observations' and field.name != 'manual_participants' %}
+                <div class="form-group">
+                    <label>{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <div class="text-danger small">{{ field.errors }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+
+            <!-- If there are other visible fields not manually rendered, show them here (excluding additional_observations which goes at the end) -->
+        </div>
+
+        <!-- Items Checklist -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-tasks"></i> Lista de Verificación</h3>
+            {{ items.management_form }}
+
+            {% if items.non_form_errors %}
+            <div class="alert alert-danger">{{ items.non_form_errors }}</div>
+            {% endif %}
+
+            <div style="overflow-x: auto;">
+                <table class="item-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 35%;">Ítem a Evaluar</th>
+                            <th style="width: 10%;">Cumple</th>
+                            <th style="width: 12%;">Estado</th>
+                            <th style="width: 28%;">Observaciones</th>
+                            <th style="width: 15%; text-align: center;"><i class="fas fa-camera"></i> Evidencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item_form in items %}
+                        {{ item_form.id }}
+                        <tr>
+                            <td>
+                                {{ item_form.question }}
+                            </td>
+                            <td>
+                                {{ item_form.response }}
+                                {% if item_form.response.errors %}
+                                <div class="text-danger small">{{ item_form.response.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.item_status }}
+                                {% if item_form.item_status.errors %}
+                                <div class="text-danger small">{{ item_form.item_status.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item_form.observations }}
+                                {% if item_form.observations.errors %}
+                                <div class="text-danger small">{{ item_form.observations.errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td style="vertical-align: middle; text-align: center;">
+                                <div class="evidence-container"
+                                    id="evidence-container-{{ item_content_type_id }}-{{ item_form.prefix }}">
+                                    {% if item_form.instance.pk %}
+                                    {% for evidence in item_form.instance.evidences.all %}
+                                    <div class="evidence-wrapper" data-id="{{ evidence.id }}"
+                                        onclick="openEvidencePreview('{{ evidence.image.url }}', '{{ evidence.description|escapejs }}')">
+                                        <img src="{{ evidence.image.url }}" alt="Evidencia">
+                                        <div class="evidence-remove"
+                                            onclick="event.stopPropagation(); deleteEvidence({{ evidence.id }}, this)">
+                                            &times;</div>
+                                    </div>
+                                    {% endfor %}
+                                    {% endif %}
+                                    <label class="evidence-add-btn" title="Agregar evidencia">
+                                        <i class="fas fa-camera"></i>
+                                        <span>Agregar</span>
+                                        <input type="file" accept="image/*" style="display: none;"
+                                            onchange="uploadEvidence(this, '{{ item_content_type_id }}', '{{ item_form.prefix }}')">
+                                    </label>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Additional Observations -->
+        <div class="inspection-card">
+            <h3 class="section-title"><i class="fas fa-comment-alt"></i> Observaciones Adicionales</h3>
+            <div class="form-group">
+                {{ form.additional_observations }}
+                {% if form.additional_observations.errors %}
+                <div class="text-danger small">{{ form.additional_observations.errors }}</div>
+                {% endif %}
+                <small class="text-muted">Cualquier otra observación relevante que no esté cubierta en los ítems
+                    anteriores.</small>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+            <a href="{% url 'process_list' %}" class="btn btn-light"
+                style="background: white; border: 1px solid #dee2e6;">Cancelar</a>
+            <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 500;">
+                <i class="fas fa-save"></i> Guardar Inspección
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    (function () {
+
+        // Inicializar Tom Select para Participantes Manuales
+        const manualParticipantsEl = document.getElementById('id_manual_participants');
+        if (manualParticipantsEl) {
+            new TomSelect(manualParticipantsEl, {
+                plugins: ['remove_button'],
+                placeholder: 'Buscar y seleccionar participantes...',
+                render: {
+                    item: function(data, escape) {
+                        return '<div style="background-color: #f0faf7; color: #155724; border-radius: 20px; padding: 4px 12px; margin: 2px 4px 2px 0; font-size: 0.85rem; font-weight: 500; border: 1px solid #a8d5c2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">' + 
+                               '<i class="fas fa-user-check" style="color:var(--primary-color, #49BAA0);margin-right:6px;"></i>' + 
+                               escape(data.text) + 
+                               '</div>';
+                    },
+                    option: function(data, escape) {
+                        return '<div style="padding: 10px 14px; border-bottom: 1px solid #f8f9fa; cursor: pointer;">' + 
+                               '<i class="fas fa-user-circle" style="color:var(--primary-color, #49BAA0); margin-right:8px; font-size: 1.1rem; vertical-align: middle;"></i>' + 
+                               '<span style="font-weight: 500; vertical-align: middle;">' + escape(data.text) + '</span>' + 
+                               '</div>';
+                    }
+                }
+            });
+        }
+
+        // --- Banner de error inline (reemplaza alert()) ---
+        function showValidationBanner(messages) {
+            let banner = document.getElementById('js-validation-banner');
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'js-validation-banner';
+                banner.style.cssText = [
+                    'position:fixed', 'top:20px', 'right:20px', 'z-index:9999',
+                    'max-width:380px', 'background:#fff',
+                    'border-left:4px solid #dc3545', 'border-radius:8px',
+                    'box-shadow:0 4px 16px rgba(0,0,0,0.12)',
+                    'padding:14px 16px', 'font-size:0.9rem', 'color:#333'
+                ].join(';');
+                document.body.appendChild(banner);
+            }
+            const listItems = messages.map(m => `<li style="margin-bottom:4px;">${m}</li>`).join('');
+            banner.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+                    <div>
+                        <div style="font-weight:600;color:#dc3545;margin-bottom:6px;">
+                            <i class="fas fa-exclamation-circle"></i> Por favor corrija los siguientes errores:
+                        </div>
+                        <ul style="margin:0;padding-left:18px;color:#555;">${listItems}</ul>
+                    </div>
+                    <button onclick="document.getElementById('js-validation-banner').remove()"
+                        style="background:none;border:none;cursor:pointer;color:#aaa;font-size:1.2rem;padding:0;line-height:1;">&times;</button>
+                </div>`;
+            clearTimeout(banner._timer);
+            banner._timer = setTimeout(() => { if (banner.parentNode) banner.remove(); }, 8000);
+        }
+
+        function validateForm(event) {
+            let hasError = false;
+            let firstErrorInput = null;
+            const errorMessages = [];
+
+            // --- Validar campo Proceso Inspeccionado ---
+            const processInput = document.querySelector('input[name="inspected_process"], textarea[name="inspected_process"]');
+            if (processInput) {
+                const processErrorId = 'js-process-error';
+                if (processInput.value.trim() === '') {
+                    hasError = true;
+                    errorMessages.push('El campo <strong>Proceso Inspeccionado</strong> es obligatorio.');
+                    processInput.style.border = '2px solid #dc3545';
+                    processInput.style.backgroundColor = '#fff8f8';
+                    if (!document.getElementById(processErrorId)) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.id = processErrorId;
+                        errorDiv.className = 'text-danger small';
+                        errorDiv.style.cssText = 'font-weight:600;margin-top:4px;';
+                        errorDiv.innerText = 'Este campo es obligatorio.';
+                        processInput.parentNode.appendChild(errorDiv);
+                    }
+                    if (!firstErrorInput) firstErrorInput = processInput;
+                } else {
+                    processInput.style.border = '';
+                    processInput.style.backgroundColor = '';
+                    const existingError = document.getElementById(processErrorId);
+                    if (existingError) existingError.remove();
+                }
+            }
+
+            // --- Validar ítems con estado Malo sin observación ---
+            let maloSinObs = 0;
+            const rows = document.querySelectorAll('tbody tr');
+            rows.forEach(function (row) {
+                let statusSelect = row.querySelector('select[name*="item_status"]') || row.querySelector('select');
+                let obsInput = row.querySelector('textarea[name*="observations"]') || row.querySelector('textarea');
+                if (statusSelect && obsInput) {
+                    const status = statusSelect.value;
+                    const obs = obsInput.value.trim();
+                    if (status === 'Malo' && obs === '') {
+                        hasError = true;
+                        maloSinObs++;
+                        obsInput.style.border = '2px solid #dc3545';
+                        obsInput.style.backgroundColor = '#fff8f8';
+                        let errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                        if (!errorDiv) {
+                            errorDiv = document.createElement('div');
+                            errorDiv.className = 'text-danger small js-strict-error';
+                            errorDiv.style.cssText = 'font-weight:600;margin-top:4px;';
+                            errorDiv.innerText = 'Debe ingresar una observación para ítems en estado "Malo".';
+                            obsInput.parentNode.appendChild(errorDiv);
+                        }
+                        if (!firstErrorInput) firstErrorInput = obsInput;
+                    } else {
+                        obsInput.style.border = '';
+                        obsInput.style.backgroundColor = '';
+                        const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                        if (errorDiv) errorDiv.remove();
+                    }
+                }
+            });
+
+            if (maloSinObs > 0) {
+                errorMessages.push(`${maloSinObs} ítem(s) marcado(s) como <strong>"Malo"</strong> sin observación registrada.`);
+            }
+
+            if (hasError) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                showValidationBanner(errorMessages);
+                if (firstErrorInput) {
+                    firstErrorInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstErrorInput.focus();
+                }
+                return false;
+            }
+
+            return true;
+        }
+
+        document.addEventListener('submit', function (e) {
+            if (e.target.tagName === 'FORM') {
+                if (!validateForm(e)) e.preventDefault();
+            }
+        }, true);
+
+        document.addEventListener('change', function (e) {
+            const target = e.target;
+            if (target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+                const row = target.closest('tr');
+                if (row) {
+                    const statusSelect = row.querySelector('select[name*="item_status"]') || row.querySelector('select');
+                    const obsInput = row.querySelector('textarea[name*="observations"]') || row.querySelector('textarea');
+                    if (statusSelect && obsInput) {
+                        if (statusSelect.value !== 'Malo' || obsInput.value.trim() !== '') {
+                            obsInput.style.border = '';
+                            obsInput.style.backgroundColor = '';
+                            const errorDiv = obsInput.parentNode.querySelector('.js-strict-error');
+                            if (errorDiv) errorDiv.remove();
+                        }
+                    }
+                }
+            }
+        }, true);
+
+        // Limpiar error del campo proceso al escribir
+        document.addEventListener('input', function (e) {
+            if (e.target.name === 'inspected_process' && e.target.value.trim() !== '') {
+                e.target.style.border = '';
+                e.target.style.backgroundColor = '';
+                const err = document.getElementById('js-process-error');
+                if (err) err.remove();
+            }
+        }, true);
+
+    })();
+</script>
+
+<!-- Offline-first: intercepta el submit para no perder el formulario si se corta la red -->
+<script>
+    document.getElementById('inspection-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitFormOffline(e.target, {
+            moduleLabel: 'Proceso',
+            fallbackUrl: '{% url "process_list" %}'
+        });
+    });
+</script>
+{% endblock %}

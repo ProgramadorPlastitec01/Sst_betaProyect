@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}SST - {% if object %}Editar{% else %}Programar{% endif %} Inspección{% endblock %}
+
+{% block header_title %}Cronograma de Inspecciones{% endblock %}
+
+{% block content %}
+<div class="inspection-form-container" style="max-width: 600px;">
+    <div class="dashboard-header">
+        <div>
+            <h1 style="font-size: 1.5rem; font-weight: 700;">{% if object %}Editar{% else %}Nueva{% endif %}
+                Programación</h1>
+            <p style="color: var(--text-light); font-size: 0.9rem;">Defina los parámetros para el cronograma anual.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="form-group">
+                <label style="font-weight: 600;">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div style="color: #dc3545; font-size: 0.8rem; margin-top: 5px;">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div
+                style="margin-top: 32px; display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 24px;">
+                <a href="{% url 'inspection_list' %}" class="btn"
+                    style="background: #e9ecef; color: #495057;">Cancelar</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save" style="margin-right: 8px;"></i> Guardar Programación
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

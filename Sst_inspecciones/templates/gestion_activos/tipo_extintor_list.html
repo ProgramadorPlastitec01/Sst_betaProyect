@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}SST - Tipos de Extintor{% endblock %}
+{% block header_title %}Configuración del Sistema{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 style="font-size: 1.5rem; font-weight: 700;">
+            <i class="fas fa-fire-extinguisher" style="color: #49BAA0; margin-right: 8px;"></i>
+            Tipos de Extintor
+        </h1>
+        <p style="color: var(--text-light); font-size: 0.9rem;">Gestión de clases y tipos de extintores disponibles</p>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center;">
+        <a href="{% url 'configuration' %}" class="btn" style="background: #e9ecef; color: #495057;">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+        <a href="{% url 'tipo_extintor_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nuevo Tipo
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Tipos registrados <span style="color: var(--text-light); font-weight: 400;">({{
+                tipos.count }})</span></h3>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th style="text-align: center;">Estado</th>
+                    <th style="width: 120px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tipo in tipos %}
+                <tr>
+                    <td style="font-weight: 500;">{{ tipo.nombre }}</td>
+                    <td style="text-align: center;">
+                        {% if tipo.activo %}
+                        <span class="compliance-badge badge-success" style="font-size: 0.78rem;">
+                            <i class="fas fa-check-circle" style="margin-right: 4px;"></i> Activo
+                        </span>
+                        {% else %}
+                        <span class="compliance-badge badge-secondary" style="font-size: 0.78rem;">
+                            <i class="fas fa-times-circle" style="margin-right: 4px;"></i> Inactivo
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="{% url 'tipo_extintor_update' tipo.pk %}" class="btn btn-sm btn-primary"
+                                title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'tipo_extintor_delete' tipo.pk %}" class="btn btn-sm"
+                                style="background: #dc3545; color: white;" title="Eliminar"
+                                onclick="return confirm('¿Eliminar el tipo {{ tipo.nombre }}?');">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 48px 20px; color: var(--text-light);">
+                        <i class="fas fa-fire-extinguisher"
+                            style="font-size: 2.5rem; margin-bottom: 12px; opacity: 0.3; display: block;"></i>
+                        No hay tipos registrados.
+                        <br><a href="{% url 'tipo_extintor_create' %}" style="color: #49BAA0;">Crear el primero</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

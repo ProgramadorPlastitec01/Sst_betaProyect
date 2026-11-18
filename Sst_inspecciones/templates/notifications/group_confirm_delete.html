@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 50vh;">
+    <div class="card shadow-sm text-center p-4 bg-white border-0" style="max-width: 500px;">
+        <div class="mb-4 text-danger">
+            <i class="fas fa-exclamation-triangle fa-3x"></i>
+        </div>
+        <h4 class="text-danger mb-3 fw-bold">Eliminar Grupo</h4>
+        <p class="mb-4 text-secondary">¿Estás seguro de que deseas eliminar el grupo <strong>{{ object.name }}</strong>?
+        </p>
+        <p class="text-muted small border-top pt-3 mt-3">Esta acción no se puede deshacer y eliminará las
+            configuraciones de notificación asociadas.</p>
+
+        <form method="post" class="mt-4 d-grid gap-2 d-md-block">
+            {% csrf_token %}
+            <a href="{% url 'notification_group_list' %}" class="btn btn-outline-secondary px-4 me-2">Cancelar</a>
+            <button type="submit" class="btn btn-danger px-4 fw-bold">
+                <i class="fas fa-trash-alt me-2"></i> Sí, eliminar
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

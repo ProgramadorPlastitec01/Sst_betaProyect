@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}SST - Grupos de Notificación{% endblock %}
+
+{% block header_title %}Configuración de Alertas{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 style="font-size: 1.5rem; font-weight: 700;">Grupos de Notificación</h1>
+        <p style="color: var(--text-light); font-size: 0.9rem;">Gestione los grupos de usuarios que recibirán alertas
+            automáticas del sistema.</p>
+    </div>
+    <a href="{% url 'notification_group_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus" style="margin-right: 8px;"></i> Nuevo Grupo
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom: 24px;">
+    <form method="get" style="display: flex; gap: 16px; align-items: end; flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <label for="search" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; display: block;">Buscar
+                grupo</label>
+            <input type="text" id="search" name="search" value="{{ search }}" placeholder="Nombre del grupo..."
+                style="width: 100%; padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px;">
+        </div>
+        <div class="form-group" style="width: 200px; margin-bottom: 0;">
+            <label for="status"
+                style="font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; display: block;">Estado</label>
+            <select id="status" name="status"
+                style="width: 100%; padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; background-color: #fff;">
+                <option value="">Todos</option>
+                <option value="active" {% if status == 'active' %}selected{% endif %}>Activos</option>
+                <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactivos</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary"
+                style="margin-bottom: 0; padding: 8px 20px; height: 38px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-search" style="margin-right: 8px;"></i> Buscar
+            </button>
+            {% if search or status %}
+            <a href="{% url 'notification_group_list' %}" class="btn"
+                style="background: #6c757d; color: white; margin-bottom: 0; padding: 8px 20px; text-decoration: none; border-radius: 4px; height: 38px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-times" style="margin-right: 8px;"></i> Limpiar
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Groups Table -->
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 class="card-title" style="margin: 0;">Listado de Grupos</h3>
+        <span class="badge" style="background: #e9ecef; color: #666; font-size: 0.9rem;">Total:
+            {{ groups.count }}</span>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 250px;">Nombre del Grupo</th>
+                    <th>Descripción</th>
+                    <th style="text-align: center; width: 100px;">Miembros</th>
+                    <th style="text-align: center; width: 100px;">Estado</th>
+                    <th style="text-align: right; width: 120px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for group in groups %}
+                <tr>
+                    <td>
+                        <strong style="color: #333; font-size: 1rem;">{{ group.name }}</strong>
+                        {% if group.is_system_default %}
+                        <span
+                            style="font-size: 0.7rem; background: #e9ecef; color: #666; padding: 2px 6px; border-radius: 4px; margin-left: 8px; text-transform: uppercase; font-weight: 600;">Sistema</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: #666; font-size: 0.9rem;">
+                        {{ group.description|default:"-"|truncatewords:8 }}
+                    </td>
+                    <td style="text-align: center;">
+                        <span
+                            style="background: #e3f2fd; color: #0d6efd; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 0.85rem;">
+                            {{ group.users.count }}
+                        </span>
+                    </td>
+                    <td style="text-align: center;">
+                        {% if group.is_active %}
+                        <span
+                            style="color: #28a745; background: rgba(40, 167, 69, 0.1); padding: 4px 10px; border-radius: 4px; font-weight: 600; font-size: 0.85rem;">Activo</span>
+                        {% else %}
+                        <span
+                            style="color: #6c757d; background: rgba(108, 117, 125, 0.1); padding: 4px 10px; border-radius: 4px; font-weight: 600; font-size: 0.85rem;">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                            <a href="{% url 'notification_group_edit' group.pk %}" class="btn btn-sm"
+                                style="background: #49BAA0; color: white; padding: 6px 12px; border-radius: 4px;"
+                                title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% if not group.is_system_default %}
+                            <a href="{% url 'notification_group_delete' group.pk %}" class="btn btn-sm"
+                                style="background: #dc3545; color: white; padding: 6px 12px; border-radius: 4px;"
+                                title="Eliminar" onclick="return confirm('¿Está seguro de eliminar este grupo?');">
+                                <i class="fas fa-trash-alt"></i>
+                            </a>
+                            {% else %}
+                            <button class="btn btn-sm" disabled
+                                style="background: #e9ecef; color: #adb5bd; padding: 6px 12px; border-radius: 4px; cursor: not-allowed;"
+                                title="Grupo protegido por el sistema">
+                                <i class="fas fa-lock"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-light);">
+                        <div style="margin-bottom: 16px; opacity: 0.5;">
+                            <i class="fas fa-users-slash fa-3x"></i>
+                        </div>
+                        <p>No hay grupos de notificación registrados.</p>
+                        <a href="{% url 'notification_group_create' %}"
+                            style="color: var(--primary-color); font-weight: 600; text-decoration: none;">
+                            Crear el primer grupo
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

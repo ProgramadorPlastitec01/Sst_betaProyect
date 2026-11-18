@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}SST - {% if form.instance.pk %}Editar{% else %}Agregar{% endif %} Elemento{% endblock %}
+
+{% block header_title %}Registro de Elementos del Botiquín{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/inspections.css' %}">
+{% endblock %}
+
+
+{% block content %}
+<div class="inspection-form-container" style="max-width: 600px;">
+    <div class="dashboard-header">
+        <div>
+            <h1 style="font-size: 1.5rem; font-weight: 700;">{% if form.instance.pk %}Editar{% else %}Nuevo{% endif %}
+                Elemento</h1>
+            <p style="color: var(--text-light); font-size: 0.9rem;">Gestión individual de ítems de botiquín.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="form-group">
+                <label style="font-weight: 600;">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div style="color: #dc3545; font-size: 0.8rem; margin-top: 5px;">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div style="margin-top: 24px; border-top: 1px solid #f0f2f5; padding-top: 20px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 12px;">
+                    <i class="fas fa-camera"></i> Evidencia Fotográfica
+                </label>
+                {% include 'inspections/includes/evidence_manager.html' with content_type_id=item_content_type_id object_id=form.instance.pk evidences=form.instance.evidences.all can_edit=True %}
+            </div>
+
+            <div
+                style="margin-top: 32px; display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 24px;">
+                <a href="{% if form.instance.pk %}{% url 'first_aid_detail' form.instance.inspection.pk %}{% else %}{% url 'first_aid_detail' view.kwargs.pk %}{% endif %}"
+                    class="btn" style="background: #e9ecef; color: #495057;">Cancelar</a>
+
+                {% if not form.instance.pk %}
+                <button type="submit" name="save_and_add" class="btn"
+                    style="background: #f8faf9; color: var(--primary-color); border: 1px solid var(--primary-color);">
+                    Guardar y Agregar Otro
+                </button>
+                {% endif %}
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save" style="margin-right: 8px;"></i> Guardar Elemento
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

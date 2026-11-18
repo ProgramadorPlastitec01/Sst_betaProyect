@@ -1,0 +1,765 @@
+{% extends 'base.html' %}
+{% load static permission_tags %}
+
+{% block title %}Cronograma de Inspecciones{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<style>
+    /* Estilos para Alertas de Activos */
+    .alert-card-premium {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
+        overflow: hidden;
+        border: 1px solid #edf2f0;
+        transition: transform 0.2s;
+    }
+
+    .alert-card-premium:hover {
+        transform: translateY(-2px);
+    }
+
+    .alert-indicator-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .alert-indicator-btn:hover {
+        filter: brightness(1.1);
+        transform: scale(1.05);
+    }
+
+    .alert-indicator-btn .count {
+        background: rgba(255, 255, 255, 0.25);
+        padding: 2px 8px;
+        border-radius: 5px;
+        min-width: 24px;
+        text-align: center;
+    }
+
+    .no-alerts-banner {
+        background: #f0fdf4;
+        border-left: 5px solid #10b981;
+        padding: 15px 22px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 24px;
+        border: 1px solid #d1fae5;
+    }
+</style>
+{% endblock %}
+
+{% block header_title %}Cronograma de Inspecciones SG-SST{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 style="font-size: 1.5rem; font-weight: 700;">Inspecciones Generales</h1>
+        <p style="color: var(--text-light); font-size: 0.9rem;">Resumen anual y programación de actividades de
+            seguridad.</p>
+    </div>
+    {% has_permission 'schedule' 'create' as can_create %}
+    {% if can_create %}
+    <button onclick="openModal('newRecordModal')" class="btn btn-primary">
+        <i class="fas fa-plus" style="margin-right: 8px;"></i> Nueva Programación
+    </button>
+    {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECCIÓN DE ALERTAS DE ACTIVOS
+═══════════════════════════════════════════════════════ -->
+{% if asset_alerts.has_alerts %}
+<div class="alert-card-premium" style="border-left: 5px solid #dc3545;">
+    <div
+        style="display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; flex-wrap: wrap; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 18px;">
+            <div
+                style="background: #fee2e2; color: #dc3545; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: #1e3d35; margin: 0;">Alertas de Activos</h3>
+                <p style="font-size: 0.88rem; color: #666; margin: 2px 0 0 0;">Requieren atención preventiva inmediata.
+                </p>
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            {% if asset_alerts.vencidos > 0 %}
+            <a href="{% url 'asset_list' %}?estado=VENCIDO" class="alert-indicator-btn"
+                style="background: #dc3545; color: white;" title="Ver activos con revisión vencida">
+                <span class="count">{{ asset_alerts.vencidos }}</span> Vencidos
+            </a>
+            {% endif %}
+
+            {% if asset_alerts.proximos > 0 %}
+            <a href="{% url 'asset_list' %}?estado=PROXIMO_A_VENCER" class="alert-indicator-btn"
+                style="background: #f59e0b; color: white;" title="Vencimiento en los próximos 30 días">
+                <span class="count">{{ asset_alerts.proximos }}</span> Próximos
+            </a>
+            {% endif %}
+
+            {% if asset_alerts.criticos > 0 %}
+            <a href="{% url 'asset_list' %}?activo=0" class="alert-indicator-btn"
+                style="background: #7f1d1d; color: white;" title="Activos fuera de servicio o inactivos">
+                <span class="count">{{ asset_alerts.criticos }}</span> Críticos
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="no-alerts-banner">
+    <div style="color: #10b981; font-size: 1.4rem;">
+        <i class="fas fa-check-circle"></i>
+    </div>
+    <div>
+        <p style="margin: 0; font-weight: 700; color: #064e3b; font-size: 1rem;">Estado Óptimo</p>
+        <p style="margin: 0; font-size: 0.85rem; color: #065f46;">No hay alertas activas. Todos los activos están al
+            día.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Key Metrics -->
+<div class="stats-container">
+    <!-- Card: Total Programadas → abre modal Cronograma Programado -->
+    <div class="stat-card" onclick="openModal('cronogramaModal')" style="cursor: pointer;"
+        title="Ver Cronograma Programado">
+        <div class="stat-icon icon-blue">
+            <i class="fas fa-tasks"></i>
+        </div>
+        <div class="stat-info">
+            <h3>Total Programadas</h3>
+            <p>{{ total_p_global }}</p>
+        </div>
+    </div>
+    <!-- Card: Total Ejecutadas → abre modal Gestión de Registros -->
+    <div class="stat-card" onclick="openModal('registrosModal')" style="cursor: pointer;"
+        title="Ver Gestión de Registros">
+        <div class="stat-icon icon-green">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-info">
+            <h3>Total Ejecutadas</h3>
+            <p>{{ total_e_global }}</p>
+        </div>
+    </div>
+    <div class="stat-card" onclick="openModal('complianceChartModal')" style="cursor: pointer;"
+        title="Ver gráfico de cumplimiento">
+        <div class="stat-icon icon-orange">
+            <i class="fas fa-percentage"></i>
+        </div>
+        <div class="stat-info">
+            <h3>Cumplimiento</h3>
+            <p>{{ global_compliance }}%</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Gráfico de Cumplimiento -->
+<div id="complianceChartModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-dark);">Tendencia de Cumplimiento Mensual
+            </h2>
+            <button onclick="closeModal('complianceChartModal')"
+                style="background:none; border:none; font-size: 1.5rem; cursor:pointer; color: #999;">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <div style="display: flex; gap: 20px; align-items: flex-start;">
+                <!-- Column 1: Chart -->
+                <div
+                    style="flex: 2; min-width: 0; background: #fff; padding: 20px 20px 20px 45px; border-radius: 8px; border: 1px solid #f0f0f0; position: relative;">
+                    <div
+                        style="height: 300px; display: flex; align-items: flex-end; justify-content: space-around; border-bottom: 2px solid #eee; position: relative;">
+                        <!-- Y-Axis Labels -->
+                        <div
+                            style="position: absolute; top: 0; left: -45px; font-size: 0.65rem; color: #999; font-weight: 700;">
+                            {{ modal_y_max_label }}%</div>
+                        <div
+                            style="position: absolute; top: 50%; left: -45px; font-size: 0.65rem; color: #999; font-weight: 700;">
+                            {{ modal_y_mid_label }}%</div>
+                        <!-- Grid lines -->
+                        <div
+                            style="position: absolute; top: 5%; left: 0; right: 0; border-top: 1px dashed #f0f0f0; z-index: 0;">
+                        </div>
+                        <div
+                            style="position: absolute; top: 52.5%; left: 0; right: 0; border-top: 1px dashed #f0f0f0; z-index: 0;">
+                        </div>
+                        {% for s in modal_monthly_stats %}
+                        <div
+                            style="width: 7%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; z-index: 1;">
+                            <div style="height: {{ s.height_px|default:0 }}px; width: 100%; background: var(--primary-color); border-radius: 4px 4px 0 0; position: relative; transition: height 0.5s ease; box-shadow: 0 4px 6px rgba(73, 186, 160, 0.2);"
+                                title="{{ s.month_name }}: {{ s.compliance }}% ({{ s.e }}/{{ s.p }})">
+                                {% if s.compliance > 0 %}
+                                <span
+                                    style="position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 0.6rem; font-weight: 700; color: #4B5563; white-space: nowrap;">
+                                    {{ s.compliance }}%</span>
+                                {% endif %}
+                            </div>
+                            <span style="margin-top: 10px; font-size: 0.65rem; color: #6B7280; font-weight: 700;">
+                                {{ s.month_name }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Column 2: Data Table -->
+                <div
+                    style="flex: 1; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #eee; max-height: 340px; overflow-y: auto;">
+                    <h4
+                        style="font-size: 0.8rem; margin-bottom: 12px; color: #374151; border-bottom: 1px solid #ddd; padding-bottom: 5px; font-weight: 700;">
+                        Detalle Mensual</h4>
+                    <table style="width: 100%; font-size: 0.75rem; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align: left; color: #6b7280; border-bottom: 2px solid #eee;">
+                                <th style="padding: 6px 4px;">Mes</th>
+                                <th style="padding: 6px 4px; text-align: center;">%</th>
+                                <th style="padding: 6px 4px; text-align: right;">E/P</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in modal_monthly_stats %}
+                            <tr style="border-bottom: 1px solid #f3f4f6;">
+                                <td style="padding: 6px 4px; font-weight: 700;">{{ s.month_name }}</td>
+                                <td
+                                    style="padding: 6px 4px; text-align: center; color: var(--primary-color); font-weight: 800;">
+                                    {{ s.compliance }}%</td>
+                                <td style="padding: 6px 4px; text-align: right; color: #6B7280;">{{ s.e }}/{{ s.p }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer" style="text-align: right; background: #f9fafb;">
+            <button onclick="closeModal('complianceChartModal')" class="btn"
+                style="background: #ef4444; color: white;">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Filters -->
+<form method="get" class="filters-bar card">
+    <h3 style="font-size: 0.9rem; font-weight: 600; margin-right: 10px;">Filtros:</h3>
+    <select name="year" onchange="this.form.submit()">
+        <option value="">Año</option>
+        {% for y in years_data %}
+        <option value="{{ y.val }}" {% if y.selected %}selected{% endif %}>{{ y.val }}</option>
+        {% endfor %}
+    </select>
+    <select name="inspection_type" onchange="this.form.submit()">
+        <option value="">Inspección</option>
+        {% for t in types_data %}
+        <option value="{{ t.val }}" {% if t.selected %}selected{% endif %}>{{ t.val }}</option>
+        {% endfor %}
+    </select>
+    <select name="area" onchange="this.form.submit()">
+        <option value="">Área</option>
+        {% for a in areas_data %}
+        <option value="{{ a.id }}" {% if a.selected %}selected{% endif %}>{{ a.name }}</option>
+        {% endfor %}
+    </select>
+    <a href="?" class="btn-link" style="font-size: 0.85rem; margin-left: 10px;">Limpiar filtros</a>
+</form>
+
+<!-- Main Visualizations -->
+<!-- Main Visualizations - Stacked Layout -->
+<div style="display: flex; flex-direction: column; gap: 24px; margin-bottom: 24px;">
+
+    <!-- Cronograma Table Card -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Cronograma de Actividades - {{ year_display }}</h3>
+        </div>
+        <div class="table-wrapper cronograma-table-container">
+            <table class="excel-style-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2">Actividad</th>
+                        <th rowspan="2" style="width: 30px;"></th>
+                        <th colspan="12" style="text-align: center;">Meses</th>
+                        <th rowspan="2">Total</th>
+                        <th rowspan="2">% Cumpl.</th>
+                    </tr>
+                    <tr>
+                        {% for m in months_names %}
+                        <th style="padding: 8px 4px; font-size: 0.7rem;">{{ m }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in matrix %}
+                    <tr class="row-p">
+                        <td rowspan="2" style="min-width: 150px; font-weight: 600;">{{ row.type }}</td>
+                        <td style="color: var(--text-light); font-size: 0.7rem;">P</td>
+                        {% for cell in row.cells %}
+                        <td>{{ cell.p|default:"" }}</td>
+                        {% endfor %}
+                        <td style="background: rgba(73, 186, 160, 0.05);">{{ row.total_p }}</td>
+                        <td rowspan="2">
+                            <span
+                                class="compliance-badge {% if row.compliance >= 100 %}badge-success{% elif row.compliance >= 70 %}badge-warning{% else %}badge-danger{% endif %}">
+                                {{ row.compliance }}%
+                            </span>
+                        </td>
+                    </tr>
+                    <tr class="row-e">
+                        <td style="color: var(--text-light); font-size: 0.7rem;">E</td>
+                        {% for cell in row.cells %}
+                        <td>{{ cell.e|default:"" }}</td>
+                        {% endfor %}
+                        <td style="background: rgba(73, 186, 160, 0.05);">{{ row.total_e }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+</div>
+
+<!-- Las tablas se acceden únicamente desde las tarjetas superiores (modales) -->
+
+
+
+<!-- MODAL: Nueva Programación -->
+<div id="newRecordModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: var(--primary-color);">Nueva Programación Anual</h3>
+                <button onclick="closeModal('newRecordModal')"
+                    style="background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer;">&times;</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <form id="inspectionForm" method="post" action="{% url 'inspection_create' %}">
+                {% csrf_token %}
+                <div class="modal-form-grid">
+                    {% for f in form %}
+                    <div class="form-group {% if 'observ' in f.name or 'Observ' in f.label %}full-width{% endif %}">
+                        <label>{{ f.label }}</label>
+                        {{ f }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('newRecordModal')">Cancelar</button>
+                <button type="submit" form="inspectionForm" class="btn btn-primary">Guardar Registro</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Gestión de Registros de Programación (Total Ejecutadas) -->
+<div id="registrosModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 1050px; width: 97%;">
+        <div class="modal-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: var(--primary-color);"><i class="fas fa-clipboard-list"
+                        style="margin-right:8px;"></i>Gestión de Registros de Programación</h3>
+                <button onclick="closeModal('registrosModal')"
+                    style="background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer;">&times;</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <!-- Filtros -->
+            <div
+                style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; padding:14px; background:#f8f9fa; border-radius:8px; align-items:flex-end;">
+                <div style="flex:1; min-width:150px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-search"></i> Búsqueda</label>
+                    <input type="text" id="reg-q" placeholder="Área, inspector…" class="form-control"
+                        style="height:36px; font-size:.875rem;" oninput="regDebounce()">
+                </div>
+                <div style="flex:1; min-width:130px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-calendar"></i> Fecha</label>
+                    <input type="date" id="reg-date" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadRegModal(1)">
+                </div>
+                <div style="flex:1; min-width:160px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-tag"></i> Tipo</label>
+                    <select id="reg-type" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadRegModal(1)">
+                        <option value="">Todos los tipos</option>
+                        {% for t in types_data %}<option value="{{ t.val }}">{{ t.val }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div style="flex:1; min-width:140px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-flag"></i> Estado</label>
+                    <select id="reg-status" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadRegModal(1)">
+                        <option value="">Todos</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="En proceso">En proceso</option>
+                        <option value="Pendiente de Firmas">Pendiente de Firmas</option>
+                        <option value="Cerrada">Cerrada</option>
+                        <option value="Cerrada con Hallazgos">Cerrada con Hallazgos</option>
+                    </select>
+                </div>
+                <button class="btn btn-sm btn-secondary" onclick="clearRegFilters()" style="height:36px;"><i
+                        class="fas fa-times"></i> Limpiar</button>
+            </div>
+            <!-- Tabla -->
+            <div class="table-wrapper" style="margin:0;">
+                <table style="width:100%; margin:0;">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Área</th>
+                            <th>Tipo</th>
+                            <th>Inspector</th>
+                            <th>Estado</th>
+                            <th style="text-align:center;">Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reg-tbody">
+                        <tr>
+                            <td colspan="6" style="padding:40px; text-align:center; color:#6c757d;"><i
+                                    class="fas fa-spinner fa-spin"></i> Cargando…</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Paginación -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                <span id="reg-info" style="color:#6c757d; font-size:.875rem;"></span>
+                <div id="reg-pages" style="display:flex; gap:6px;"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div style="display: flex; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('registrosModal')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Cronograma Programado (Total Programadas) -->
+<div id="cronogramaModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 1050px; width: 97%;">
+        <div class="modal-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: var(--primary-color);"><i class="fas fa-calendar-check"
+                        style="margin-right:8px;"></i>Cronograma Programado</h3>
+                <button onclick="closeModal('cronogramaModal')"
+                    style="background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer;">&times;</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <!-- Filtros -->
+            <div
+                style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; padding:14px; background:#f8f9fa; border-radius:8px; align-items:flex-end;">
+                <div style="flex:1; min-width:150px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-search"></i> Búsqueda</label>
+                    <input type="text" id="crn-q" placeholder="Tipo, área…" class="form-control"
+                        style="height:36px; font-size:.875rem;" oninput="crnDebounce()">
+                </div>
+                <div style="flex:1; min-width:130px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-calendar"></i> Fecha</label>
+                    <input type="date" id="crn-date" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadCrnModal(1)">
+                </div>
+                <div style="flex:1; min-width:160px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-tag"></i> Tipo</label>
+                    <select id="crn-type" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadCrnModal(1)">
+                        <option value="">Todos los tipos</option>
+                        {% for t in types_data %}<option value="{{ t.val }}">{{ t.val }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div style="flex:1; min-width:140px;">
+                    <label style="font-size:.8rem; color:#6c757d; display:block; margin-bottom:4px;"><i
+                            class="fas fa-flag"></i> Estado</label>
+                    <select id="crn-status" class="form-control" style="height:36px; font-size:.875rem;"
+                        onchange="loadCrnModal(1)">
+                        <option value="">Todos</option>
+                        <option value="Programada">Programada</option>
+                        <option value="Realizada">Realizada</option>
+                        <option value="Pendiente por ejecutar">Pendiente por ejecutar</option>
+                    </select>
+                </div>
+                <button class="btn btn-sm btn-secondary" onclick="clearCrnFilters()" style="height:36px;"><i
+                        class="fas fa-times"></i> Limpiar</button>
+            </div>
+            <!-- Tabla -->
+            <div class="table-wrapper" style="margin:0;">
+                <table style="width:100%; margin:0;">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Área</th>
+                            <th>Frecuencia</th>
+                            <th>Responsable</th>
+                            <th>Estado</th>
+                            <th id="crn-actions-th" style="text-align:center; display:none;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="crn-tbody">
+                        <tr>
+                            <td colspan="7" style="padding:40px; text-align:center; color:#6c757d;"><i
+                                    class="fas fa-spinner fa-spin"></i> Cargando…</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Paginación -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                <span id="crn-info" style="color:#6c757d; font-size:.875rem;"></span>
+                <div id="crn-pages" style="display:flex; gap:6px;"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div style="display: flex; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('cronogramaModal')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const MODAL_AJAX_URL = "{% url 'dashboard_modal_data' %}";
+    let _regTimer = null;
+    let _crnTimer = null;
+
+    // ── Filtro general: única fuente de verdad ────────────────
+    // Lee los valores activos del formulario principal de filtros
+    function getMainFilters() {
+        const form = document.querySelector('form.filters-bar');
+        if (!form) return {};
+        const year = form.querySelector('[name="year"]')?.value || '';
+        const itype = form.querySelector('[name="inspection_type"]')?.value || '';
+        const area = form.querySelector('[name="area"]')?.value || '';
+        return { main_year: year, main_type: itype, main_area: area };
+    }
+
+    function openModal(modalId) {
+        document.getElementById(modalId).style.display = 'flex';
+        document.body.classList.add('modal-open');
+        // Auto-load modal data on open
+        if (modalId === 'registrosModal') loadRegModal(1);
+        if (modalId === 'cronogramaModal') loadCrnModal(1);
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
+
+    window.onclick = function (e) {
+        if (e.target.classList.contains('modal-overlay')) {
+            e.target.style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
+    }
+
+    // Action Menu Toggle for Table
+    function toggleActionMenu(event, menuId) {
+        event.stopPropagation();
+        document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
+            if (menu.id !== menuId) menu.style.display = 'none';
+        });
+        const menu = document.getElementById(menuId);
+        menu.style.display = (menu.style.display === 'none' || menu.style.display === '') ? 'block' : 'none';
+    }
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('.action-menu-container') && !event.target.closest('.btn-light')) {
+            document.querySelectorAll('.action-dropdown-menu').forEach(menu => { menu.style.display = 'none'; });
+        }
+    });
+
+    // ── Status badge helper ──────────────────────────────────
+    function statusBadge(s) {
+        const map = {
+            'Cerrada': 'background:#d4edda;color:#155724;',
+            'Cerrada con Hallazgos': 'background:#fff3cd;color:#856404;',
+            'Pendiente de Firmas': 'background:#fff3e0;color:#e65100;',
+            'En proceso': 'background:#cce5ff;color:#004085;',
+            'Realizada': 'background:#d4edda;color:#155724;',
+            'Programada': 'background:#e2e3e5;color:#495057;',
+        };
+        const st = map[s] || 'background:#e2e3e5;color:#495057;';
+        return `<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:600;${st}">${s || '—'}</span>`;
+    }
+
+    // ── Pagination renderer ──────────────────────────────────
+    function renderPagination(prefix, data, loaderFn) {
+        document.getElementById(prefix + '-info').textContent = data.total_count + ' registro(s) encontrado(s)';
+        const pEl = document.getElementById(prefix + '-pages');
+        let html = '';
+        const c = data.page, t = data.total_pages;
+        if (c > 1) html += `<button class="btn btn-sm btn-secondary" onclick="${loaderFn}(${c - 1})" style="padding:4px 10px;">&#8249;</button>`;
+        for (let i = Math.max(1, c - 2); i <= Math.min(t, c + 2); i++) {
+            const cls = i === c ? 'btn-primary' : 'btn-outline-secondary';
+            html += `<button class="btn btn-sm ${cls}" onclick="${loaderFn}(${i})" style="padding:4px 10px;min-width:34px;">${i}</button>`;
+        }
+        if (c < t) html += `<button class="btn btn-sm btn-secondary" onclick="${loaderFn}(${c + 1})" style="padding:4px 10px;">&#8250;</button>`;
+        pEl.innerHTML = html;
+    }
+
+    // ── MODAL: Gestión de Registros (ejecutadas) ─────────────
+    function regDebounce() { clearTimeout(_regTimer); _regTimer = setTimeout(() => loadRegModal(1), 350); }
+    function clearRegFilters() {
+        ['reg-q', 'reg-date', 'reg-type', 'reg-status'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        loadRegModal(1);
+    }
+    function loadRegModal(page) {
+        const mf = getMainFilters();
+        const params = new URLSearchParams({
+            table: 'executed', page: page || 1,
+            q: document.getElementById('reg-q').value,
+            date: document.getElementById('reg-date').value,
+            type: document.getElementById('reg-type').value,
+            status: document.getElementById('reg-status').value,
+            // Filtro general (única fuente de verdad)
+            main_year: mf.main_year,
+            main_type: mf.main_type,
+            main_area: mf.main_area,
+        });
+        const tbody = document.getElementById('reg-tbody');
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#6c757d;"><i class="fas fa-spinner fa-spin"></i> Cargando…</td></tr>';
+        fetch(MODAL_AJAX_URL + '?' + params, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.rows || data.rows.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#6c757d;">Sin resultados para los filtros aplicados.</td></tr>';
+                } else {
+                    tbody.innerHTML = data.rows.map(r =>
+                        `<tr style="border-bottom:1px solid #f0f0f0;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.date || '—'}</td>` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.area || '—'}</td>` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.type || '—'}</td>` +
+                        `<td style="padding:10px;font-size:.875rem;">${r.inspector || '—'}</td>` +
+                        `<td style="padding:10px;">${statusBadge(r.status)}</td>` +
+                        `<td style="padding:10px;text-align:center;"><a href="${r.detail_url}" class="btn btn-sm btn-info" title="Ver Detalle"><i class="fas fa-eye"></i></a></td>` +
+                        `</tr>`
+                    ).join('');
+                }
+                renderPagination('reg', data, 'loadRegModal');
+            })
+            .catch(() => { tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#dc3545;">Error al cargar los datos.</td></tr>'; });
+    }
+
+    // ── MODAL: Cronograma Programado ─────────────────────────
+    function crnDebounce() { clearTimeout(_crnTimer); _crnTimer = setTimeout(() => loadCrnModal(1), 350); }
+    function clearCrnFilters() {
+        ['crn-q', 'crn-date', 'crn-type', 'crn-status'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        loadCrnModal(1);
+    }
+    function loadCrnModal(page) {
+        const mf = getMainFilters();
+        const params = new URLSearchParams({
+            table: 'schedule', page: page || 1,
+            q: document.getElementById('crn-q').value,
+            date: document.getElementById('crn-date').value,
+            type: document.getElementById('crn-type').value,
+            status: document.getElementById('crn-status').value,
+            // Filtro general (única fuente de verdad)
+            main_year: mf.main_year,
+            main_type: mf.main_type,
+            main_area: mf.main_area,
+        });
+        const tbody = document.getElementById('crn-tbody');
+        const actionsTh = document.getElementById('crn-actions-th');
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:#6c757d;"><i class="fas fa-spinner fa-spin"></i> Cargando…</td></tr>';
+        fetch(MODAL_AJAX_URL + '?' + params, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(res => res.json())
+            .then(data => {
+                // Mostrar/ocultar columna de acciones según los flags del primer row
+                const firstRow = data.rows && data.rows.length > 0 ? data.rows[0] : null;
+                const showActions = firstRow && (firstRow.can_edit || firstRow.can_delete);
+                if (actionsTh) actionsTh.style.display = showActions ? '' : 'none';
+
+                if (!data.rows || data.rows.length === 0) {
+                    const cols = showActions ? 7 : 6;
+                    tbody.innerHTML = `<tr><td colspan="${cols}" style="padding:40px;text-align:center;color:#6c757d;">Sin resultados para los filtros aplicados.</td></tr>`;
+                } else {
+                    tbody.innerHTML = data.rows.map(r => {
+                        // ── Botones de acción condicionales ──────────────────
+                        let actionCell = '';
+                        if (r.can_edit || r.can_delete) {
+                            let btns = '';
+                            if (r.can_edit) {
+                                btns += `<a href="${r.edit_url}"
+                                    class="btn btn-sm"
+                                    title="Editar programación"
+                                    style="background:#49BAA0;color:white;padding:6px 12px;">
+                                    <i class="fas fa-edit"></i></a>`;
+                            }
+                            if (r.can_delete) {
+                                btns += `<a href="${r.delete_url}"
+                                    class="btn btn-sm"
+                                    title="Eliminar programación"
+                                    style="background:#dc3545;color:white;padding:6px 12px;margin-left:6px;"
+                                    onclick="return confirm('¿Está seguro de eliminar esta programación?')"
+                                    ><i class="fas fa-trash-alt"></i></a>`;
+                            }
+                            actionCell = `<td style="padding:8px;text-align:center;white-space:nowrap;"><div style="display:flex;gap:4px;justify-content:center;">${btns}</div></td>`;
+                        } else if (showActions) {
+                            actionCell = `<td></td>`;
+                        }
+                        return (
+                            `<tr style="border-bottom:1px solid #f0f0f0;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">` +
+                            `<td style="padding:10px;font-size:.875rem;">${r.date || '—'}</td>` +
+                            `<td style="padding:10px;font-size:.875rem;">${r.type || '—'}</td>` +
+                            `<td style="padding:10px;font-size:.875rem;">${r.area || '—'}</td>` +
+                            `<td style="padding:10px;font-size:.875rem;">${r.frequency || '—'}</td>` +
+                            `<td style="padding:10px;font-size:.875rem;">${r.responsible || '—'}</td>` +
+                            `<td style="padding:10px;">${statusBadge(r.status)}</td>` +
+                            actionCell +
+                            `</tr>`
+                        );
+                    }).join('');
+                }
+                renderPagination('crn', data, 'loadCrnModal');
+            })
+            .catch(() => { tbody.innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:#dc3545;">Error al cargar los datos.</td></tr>'; });
+    }
+</script>
+
+<style>
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        text-decoration: none;
+        color: #333;
+        transition: background 0.2s;
+        font-size: 0.85rem;
+    }
+
+    .dropdown-item:hover {
+        background: #f8f9fa;
+    }
+</style>
+{% endblock %}

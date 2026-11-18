@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}SST - {% if object %}Editar{% else %}Nuevo{% endif %} Plano{% endblock %}
+{% block header_title %}Configuración del Sistema{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1 style="font-size: 1.5rem; font-weight: 700;">
+            {% if object %}Editar Plano{% else %}Nuevo Plano{% endif %}
+        </h1>
+        <a href="{% url 'plano_list' %}" class="btn" style="background: #e9ecef; color: #495057;">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="card">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label style="font-weight: 600; margin-bottom: 8px; display: block;">
+                    {{ form.nombre.label }} <span style="color: #dc3545;">*</span>
+                </label>
+                {{ form.nombre }}
+                {% if form.nombre.errors %}
+                <div class="text-danger small">{{ form.nombre.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+                {{ form.activo }}
+                <label style="margin-bottom: 0; font-weight: 500;">{{ form.activo.label }}</label>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <a href="{% url 'plano_list' %}" class="btn"
+                    style="background: white; border: 1px solid #dee2e6; color: #495057;">Cancelar</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

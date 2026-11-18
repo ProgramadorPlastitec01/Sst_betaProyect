@@ -1,0 +1,373 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reporte Inspección #{{ object.pk }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    @media print {
+        body {
+            background: white;
+            padding: 0;
+        }
+
+        .no-print {
+            display: none !important;
+        }
+
+        .report-container {
+            box-shadow: none !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+    }
+
+    .report-container {
+        max-width: 1000px;
+        margin: 20px auto;
+        background: white;
+        padding: 40px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .report-header {
+        text-align: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 20px;
+    }
+
+    .report-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin: 10px 0;
+    }
+
+    .report-subtitle {
+        font-size: 1rem;
+        color: #666;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-bottom: 30px;
+        background: #f8f9fa;
+        padding: 20px;
+        border: 1px solid #dee2e6;
+    }
+
+    .info-item label {
+        font-weight: 700;
+        display: block;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        color: #555;
+    }
+
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: white;
+    }
+
+    .table-report {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+        font-size: 0.85rem;
+    }
+
+    .table-report th {
+        background: #333;
+        color: white;
+        padding: 10px;
+        text-align: left;
+    }
+
+    .table-report td {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .table-report tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+
+    .signatures-section {
+        margin-top: 50px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 40px;
+    }
+
+    .signature-box {
+        text-align: center;
+        padding-top: 10px;
+    }
+
+    .signature-img {
+        max-height: 80px;
+        margin-bottom: 5px;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .signature-line {
+        border-top: 1px solid #333;
+        padding-top: 5px;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row no-print mb-4">
+    <div class="col-12">
+        <a href="{% url 'extinguisher_detail' object.pk %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Detalle
+        </a>
+    </div>
+</div>
+
+<div class="report-container">
+    <div class="report-header">
+        <h1 class="report-title">Reporte de Inspección de Extintores</h1>
+        <p class="report-subtitle">Código: R-RH-SST-019 | Estado: {{ object.status }}</p>
+    </div>
+
+    <!-- General Info -->
+    <div class="info-grid">
+        <div class="info-item">
+            <label>Fecha de Inspección:</label>
+            <div>{{ object.inspection_date|date:"d/m/Y" }}</div>
+        </div>
+        <div class="info-item">
+            <label>Área:</label>
+            <div>{{ object.area }}</div>
+        </div>
+        <div class="info-item">
+            <label>Inspector:</label>
+            <div>{{ object.inspector.get_full_name|default:object.inspector.username }}</div>
+        </div>
+        <div class="info-item">
+            <label>Rol:</label>
+            <div>{{ object.inspector_role }}</div>
+        </div>
+        <div class="info-item">
+            <label>N° Inspección:</label>
+            <div>#{{ object.pk }}</div>
+        </div>
+        <div class="info-item">
+            <label>Estado General:</label>
+            <div>
+                <span class="status-badge"
+                    style="background-color:{% if object.status == 'Cerrada' %}#28a745{% elif object.status == 'Cerrada con Hallazgos' %}#ffc107{% else %}#007bff{% endif %};">
+                    {{ object.status }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen de Inspección -->
+    <h3><i class="fas fa-chart-pie"></i> Resumen de Inspección</h3>
+    <div
+        style="background:#f8f9fa; border:1px solid #dee2e6; padding:16px; margin-bottom:24px; border-left:4px solid var(--primary-color);">
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; text-align:center;">
+            <div>
+                <div
+                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#555; margin-bottom:5px;">
+                    Total Inspeccionados</div>
+                <div style="font-size:1.5rem; font-weight:700; color:var(--primary-color);">
+                    {{ total_inspected|default:object.items.count }}</div>
+            </div>
+            <div>
+                <div
+                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#555; margin-bottom:5px;">
+                    Estado Bueno</div>
+                <div style="font-size:1.5rem; font-weight:700; color:#2e7d32;">{{ total_good|default:"0" }}</div>
+            </div>
+            <div>
+                <div
+                    style="font-weight:700; text-transform:uppercase; font-size:0.75rem; color:#555; margin-bottom:5px;">
+                    Hallazgos (Malo/Recarga)</div>
+                <div style="font-size:1.5rem; font-weight:700; color:#c62828;">{{ total_bad|default:"0" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Table -->
+    <h3><i class="fas fa-tasks"></i> Detalle de Extintores Inspeccionados</h3>
+    <table class="table-report">
+        <thead>
+            <tr>
+                <th style="width: 25%">Extintor</th>
+                <th style="width: 40%">Revisión Puntos Clave</th>
+                <th style="width: 15%">Estado</th>
+                <th style="width: 20%">Observaciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in object.items.all %}
+            <tr>
+                <td>
+                    {% if item.asset %}
+                    <div style="font-weight: 700;">{{ item.asset.code }}</div>
+                    <div style="font-size: 0.75rem; color: #666;">{{ item.asset.area|default:"—" }}</div>
+                    {% if item.asset.extintor_detail %}
+                    <div style="font-size: 0.7rem; color: #888;">
+                        {{ item.asset.extintor_detail.tipo_agente|default:"" }}
+                        {% if item.asset.extintor_detail.capacidad_kg %} · {{ item.asset.extintor_detail.capacidad_kg }}
+                        lbs{% endif %}
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <span style="color: #999;">Sin activo asignado</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; font-size: 0.75rem;">
+                        <span>{% if item.pressure_gauge_ok %}✔{% else %}✘{% endif %} Manómetro</span>
+                        <span>{% if item.safety_pin_ok %}✔{% else %}✘{% endif %} Seguro</span>
+                        <span>{% if item.hose_nozzle_ok %}✔{% else %}✘{% endif %} Manguera</span>
+                        <span>{% if item.signage_ok %}✔{% else %}✘{% endif %} Señalización</span>
+                        <span>{% if item.access_ok %}✔{% else %}✘{% endif %} Acceso</span>
+                        <span>{% if item.label_ok %}✔{% else %}✘{% endif %} Etiqueta</span>
+                    </div>
+                </td>
+                <td style="text-align: center;">
+                    <span class="status-badge"
+                        style="background-color: {% if item.status == 'Bueno' %}#28a745{% elif item.status == 'Malo' %}#dc3545{% else %}#ffc107{% endif %};">
+                        {{ item.status }}
+                    </span>
+                </td>
+                <td>{{ item.observations|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if object.observations %}
+    <h3><i class="fas fa-comment-dots"></i> Observaciones Generales</h3>
+    <div style="border: 1px solid #dee2e6; padding: 15px; background: #fff; margin-bottom: 30px;">
+        {{ object.observations|linebreaks }}
+    </div>
+    {% endif %}
+
+    <!-- Evidencia Fotográfica -->
+    {% if object.evidences.exists or any_item_has_evidence %}
+    <div class="page-break"></div>
+    <h3><i class="fas fa-camera"></i> Evidencia Fotográfica</h3>
+
+    <!-- Evidencias Generales de la inspección -->
+    {% if object.evidences.exists %}
+    <h4 style="font-size:0.9rem; color:#555; margin:0 0 10px 0; text-transform:uppercase; letter-spacing:0.5px;">General
+    </h4>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+        {% for evidence in object.evidences.all %}
+        <div style="border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden; background: #fff;">
+            <img src="{{ evidence.image.url }}"
+                style="width: 100%; max-height: 200px; object-fit: contain; display: block; background: #f8f9fa;">
+            <div style="padding: 6px 8px; font-size: 0.75rem; color: #555; border-top: 1px solid #eee;">
+                {{ evidence.description|default:"Sin descripción" }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Evidencias por Ítem -->
+    {% for item in object.items.all %}
+    {% if item.evidences.exists %}
+    <h4
+        style="font-size:0.9rem; color:var(--primary-color,#2e7d32); margin:16px 0 8px 0; padding:6px 10px; background:#f8fff8; border-left:3px solid var(--primary-color,#2e7d32);">
+        <i class="fas fa-fire-extinguisher" style="margin-right:6px;"></i>
+        Extintor: {{ item.asset.code|default:"Sin código" }} {% if item.asset.area %} — {{ item.asset.area }}{% endif %}
+        <span
+            style="margin-left:10px; padding:2px 8px; border-radius:4px; font-size:0.75rem; background:{% if item.status == 'Bueno' %}#28a745{% elif item.status == 'Malo' %}#dc3545{% else %}#ffc107{% endif %}; color:white;">
+			{{ item.status }}</span>
+    </h4>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px;">
+        {% for evidence in item.evidences.all %}
+        <div style="border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden; background: #fff;">
+            <img src="{{ evidence.image.url }}"
+                style="width: 100%; max-height: 200px; object-fit: contain; display: block; background: #f8f9fa;">
+            {% if evidence.description %}
+            <div style="padding: 5px 8px; font-size: 0.75rem; color: #555; border-top: 1px solid #eee;">{{
+                evidence.description }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {% endif %}
+
+    <!-- Signatures -->
+    <div class="page-break"></div>
+    <div class="signatures-section">
+        {% for sig in object.signatures.all %}
+        <div class="signature-box">
+            {% if sig.signature %}
+            <img src="{{ sig.signature }}" class="signature-img" alt="Firma Digital">
+            {% else %}
+            <div style="height: 80px; display: flex; align-items: center; justify-content: center; color: #ccc;">Firma
+                Digital No Disponible</div>
+            {% endif %}
+            <div class="signature-line">
+                <div style="font-weight: bold;">{{ sig.user.get_full_name|default:sig.user.username }}</div>
+                <div style="font-size: 0.8rem; color: #666;">Firma Inspector/Responsable</div>
+                <div style="font-size: 0.7rem; color: #999;">{{ sig.signed_at|date:"d/m/Y H:i" }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="margin-top: 40px; text-align: center; font-size: 0.8rem; color: #999;">
+        <p>Generado automáticamente por el Sistema de Gestión SST - Plastitec S.A.S</p>
+    </div>
+</div>
+
+<!-- Bottom Buttons -->
+<div class="row no-print mt-4 mb-5">
+    <div class="col-12 text-center">
+        <div class="d-flex flex-column align-items-center gap-3" style="text-align: center;">
+            {% if object.status == 'Cerrada' or object.status == 'Cerrada con Hallazgos' %}
+            <div class="d-flex justify-content-center gap-2">
+                <button onclick="window.print()" class="btn btn-primary btn-lg">
+                    <i class="fas fa-print"></i> Imprimir / Guardar PDF
+                </button>
+                <a href="{% url 'extinguisher_detail' object.pk %}" class="btn btn-secondary btn-lg">
+                    <i class="fas fa-arrow-left"></i> Volver al Detalle
+                </a>
+            </div>
+            {% else %}
+            <div class="alert alert-warning d-inline-block mb-0">
+                <i class="fas fa-exclamation-triangle"></i>
+                El reporte debe estar <strong>Cerrado y Firmado</strong> para poder imprimirse.
+            </div>
+            <div class="d-flex justify-content-center gap-2" style="text-align: center;">
+                <button class="btn btn-primary btn-lg disabled" style="cursor: not-allowed;"
+                    title="Pendiente de firmas">
+                    <i class="fas fa-print"></i> Imprimir (Bloqueado)
+                </button>
+                <a href="{% url 'extinguisher_detail' object.pk %}" class="btn btn-secondary btn-lg">
+                    <i class="fas fa-arrow-left"></i> Volver al Detalle
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

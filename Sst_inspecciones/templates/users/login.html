@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}SST - Iniciar Sesión{% endblock %}
+
+{% block auth_content %}
+<div class="card" style="box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: none; padding: 40px;">
+    <div style="text-align: center; margin-bottom: 30px;">
+        <img src="{% static 'images/logo.png' %}" alt="SST Logo" style="max-height: 110px; margin-bottom: 20px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+        <h2 style="font-weight: 700; color: #333;">Bienvenido</h2>
+        <p style="color: #666; font-size: 0.9rem;">Ingrese sus credenciales para continuar</p>
+    </div>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.errors %}
+        <div class="message error"
+            style="background: #fdf2f2; color: #d32f2f; border: 1px solid #f9d7d7; padding: 10px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 20px;">
+            Usuario o contraseña incorrectos.
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="id_username">Correo Electrónico</label>
+            <div style="position: relative;">
+                <i class="fas fa-envelope" style="position: absolute; left: 14px; top: 14px; color: #adb5bd;"></i>
+                <input type="text" name="username" id="id_username" placeholder="admin@example.com"
+                    style="padding-left: 40px;" required>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 30px;">
+            <label for="id_password">Contraseña</label>
+            <div style="position: relative;">
+                <i class="fas fa-lock" style="position: absolute; left: 14px; top: 14px; color: #adb5bd;"></i>
+                <input type="password" name="password" id="id_password" placeholder="••••••••"
+                    style="padding-left: 40px;" required>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1rem;">
+            Ingresar al Sistema
+        </button>
+    </form>
+
+    <div style="margin-top: 30px; text-align: center;">
+        <p style="font-size: 0.8rem; color: #adb5bd;">&copy; 2026 SST Management System</p>
+    </div>
+</div>
+{% endblock %}
